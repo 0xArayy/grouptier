@@ -41,7 +41,9 @@ if (existsSync(frontendDist)) {
     root: frontendDist,
     prefix: '/',
     decorateReply: false,
+    wildcard: false,   // don't register GET /* automatically
   });
+  // SPA fallback — serve index.html for all non-API routes
   fastify.get('/*', async (_req, reply) => {
     return reply.sendFile('index.html', frontendDist);
   });

@@ -5,6 +5,10 @@ import { computeBorda } from '../db/borda.js';
 
 export const bot = new Bot(process.env.BOT_TOKEN ?? '');
 
+bot.catch((err) => {
+  console.error('Bot error:', err);
+});
+
 // /startsession [name]
 bot.command('startsession', async (ctx) => {
   if (!ctx.chat || ctx.chat.type === 'private') {
@@ -97,16 +101,23 @@ bot.command('vote', async (ctx) => {
   const miniAppUrl = `${process.env.MINI_APP_URL}?session_id=${session.id}`;
   const name = session.name ?? 'Untitled Session';
 
-  // CP5: send message with inline keyboard
-  const sent = await ctx.reply(
-    `🗳️ Voting open for *${name}*!\n\n0 of 0 voted`,
-    {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [[{ text: '🗳️ Cast your vote →', web_app: { url: miniAppUrl } }]],
+  let sent;
+  try {
+    // CP5: send message with inline keyboard
+    sent = await ctx.reply(
+      `🗳️ Voting open for *${name}*!\n\n0 of 0 voted`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [[{ text: '🗳️ Cast your vote →', web_app: { url: miniAppUrl } }]],
+        },
       },
-    },
-  );
+    );
+  } catch (err) {
+    console.error('/vote reply failed:', err);
+    await ctx.reply('❌ Failed to open voting. Check server logs.');
+    return;
+  }
 
   // Store message_id for CP1 edits
   await pool.query('UPDATE sessions SET message_id = $1 WHERE id = $2', [

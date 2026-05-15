@@ -132,7 +132,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         bot.api
           .editMessageText(session.chat_id, session.message_id, text, {
             reply_markup: {
-              inline_keyboard: [[{ text: '🗳️ Cast your vote →', url: miniAppUrl }]],
+              inline_keyboard: [[{ text: '🗳️ Cast your vote →', web_app: { url: miniAppUrl } }]],
             },
           })
           .catch((err: unknown) => console.error('editMessageText failed:', err));

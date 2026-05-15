@@ -210,6 +210,7 @@ export default function App() {
     const numRounds = tournament.rounds.length;
     return (
       <Compare
+        key={`${tournament.currentRound}-${tournament.currentMatchup}`}
         matchup={matchup}
         currentRound={tournament.currentRound}
         totalRounds={numRounds}

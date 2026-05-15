@@ -1,10 +1,11 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import Fastify from 'fastify';
 import fastifyCors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import { sessionRoutes } from './routes/sessions.js';
+import { pool } from './db/client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -22,6 +23,16 @@ if (!process.env.MINI_APP_URL) {
   process.exit(1);
 }
 
+// Auto-initialize DB schema on every start (idempotent — uses IF NOT EXISTS)
+const schemaPath = path.join(__dirname, '../../scripts/schema.sql');
+if (existsSync(schemaPath)) {
+  const sql = readFileSync(schemaPath, 'utf8');
+  await pool.query(sql);
+  console.log('✓ DB schema ready');
+} else {
+  console.warn('schema.sql not found — skipping auto-init');
+}
+
 // Import bot AFTER env check so grammy never gets an empty token
 const { bot } = await import('./bot/bot.js');
 
@@ -34,16 +45,15 @@ fastify.get('/health', async () => ({ ok: true }));
 
 await fastify.register(sessionRoutes);
 
-// Serve React Mini App — only if dist exists (skipped in CI / early deploys)
+// Serve React Mini App — only if dist exists
 const frontendDist = path.join(__dirname, '../../frontend/dist');
 if (existsSync(frontendDist)) {
   await fastify.register(fastifyStatic, {
     root: frontendDist,
     prefix: '/',
     decorateReply: false,
-    wildcard: false,   // don't register GET /* automatically
+    wildcard: false,
   });
-  // SPA fallback — serve index.html for all non-API routes
   fastify.get('/*', async (_req, reply) => {
     return reply.sendFile('index.html', frontendDist);
   });
@@ -51,7 +61,6 @@ if (existsSync(frontendDist)) {
   console.warn(`frontend/dist not found at ${frontendDist} — static serving disabled`);
 }
 
-// T1: Fastify binds to PORT BEFORE grammy starts polling
 const port = parseInt(process.env.PORT ?? '3000', 10);
 await fastify.listen({ port, host: '0.0.0.0' });
 console.log(`Server listening on port ${port}`);

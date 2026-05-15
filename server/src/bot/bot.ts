@@ -5,14 +5,8 @@ import { computeBorda } from '../db/borda.js';
 
 export const bot = new Bot(process.env.BOT_TOKEN ?? '');
 
-// Build a tg:// deep link that Telegram handles inline (no browser hop).
-// Parses MINI_APP_TGLINK=https://t.me/grouptier_bot/vote → tg://resolve?domain=grouptier_bot&appname=vote&startapp=ID
 function buildTgUrl(sessionId: string): string {
-  const tgLink = process.env.MINI_APP_TGLINK ?? '';
-  const match = tgLink.match(/t\.me\/([^/?]+)\/([^/?]+)/);
-  if (match) {
-    return `tg://resolve?domain=${match[1]}&appname=${match[2]}&startapp=${sessionId}`;
-  }
+  const tgLink = (process.env.MINI_APP_TGLINK ?? '').replace(/\/$/, '');
   return `${tgLink}?startapp=${sessionId}`;
 }
 
@@ -116,12 +110,14 @@ bot.command('vote', async (ctx) => {
 
   let sent;
   try {
-    // Text link with tg:// is handled inline by Telegram on all platforms.
-    // Inline keyboard url buttons open a browser on Desktop — text links don't.
-    const safeName = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     sent = await ctx.reply(
-      `🗳️ Voting open for <b>${safeName}</b>!\n\n<a href="${miniAppUrl}">🗳️ Cast your vote →</a>\n\n0 of 0 voted`,
-      { parse_mode: 'HTML' },
+      `🗳️ Voting open for *${name}*!\n\n0 of 0 voted`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [[{ text: '🗳️ Cast your vote →', url: miniAppUrl }]],
+        },
+      },
     );
   } catch (err) {
     console.error('/vote reply failed:', err);

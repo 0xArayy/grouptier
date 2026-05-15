@@ -9,6 +9,7 @@ interface TelegramWebApp {
   initData: string;
   initDataUnsafe: {
     user?: TelegramWebAppUser;
+    start_param?: string;
   };
   switchInlineQuery?: (query: string, chooserTypes?: string[]) => void;
   close?: () => void;

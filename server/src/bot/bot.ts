@@ -5,9 +5,9 @@ import { computeBorda } from '../db/borda.js';
 
 export const bot = new Bot(process.env.BOT_TOKEN ?? '');
 
-function buildTgUrl(sessionId: string): string {
-  const tgLink = (process.env.MINI_APP_TGLINK ?? '').replace(/\/$/, '');
-  return `${tgLink}?startapp=${sessionId}`;
+function buildVoteUrl(sessionId: string): string {
+  const base = (process.env.MINI_APP_URL ?? '').replace(/\/$/, '');
+  return `${base}?session_id=${sessionId}`;
 }
 
 bot.catch((err) => {
@@ -103,9 +103,7 @@ bot.command('vote', async (ctx) => {
 
   await pool.query(`UPDATE sessions SET status = 'voting' WHERE id = $1`, [session.id]);
 
-  // tg:// scheme is handled by Telegram directly (no browser hop).
-  // https://t.me/bot/app links open a browser on Desktop; tg://resolve opens inline.
-  const miniAppUrl = buildTgUrl(session.id);
+  const miniAppUrl = buildVoteUrl(session.id);
   const name = session.name ?? 'Untitled Session';
 
   let sent;
@@ -115,7 +113,9 @@ bot.command('vote', async (ctx) => {
       {
         parse_mode: 'Markdown',
         reply_markup: {
-          inline_keyboard: [[{ text: '🗳️ Cast your vote →', url: miniAppUrl }]],
+          keyboard: [[{ text: '🗳️ Cast your vote →', web_app: { url: miniAppUrl } }]],
+          resize_keyboard: true,
+          one_time_keyboard: false,
         },
       },
     );
@@ -171,7 +171,10 @@ bot.command('closesession', async (ctx) => {
 
   await ctx.reply(
     `🏆 *${sessionName}* winner: *${borda[0].option}*!\n\nFull group ranking:\n${ranking}`,
-    { parse_mode: 'Markdown' },
+    {
+      parse_mode: 'Markdown',
+      reply_markup: { remove_keyboard: true },
+    },
   );
 });
 

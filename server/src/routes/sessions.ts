@@ -125,16 +125,11 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       const totalVoters = parseInt(voterCount.rows[0].count);
 
       if (session.message_id) {
-        const miniAppUrl = `${(process.env.MINI_APP_TGLINK ?? '').replace(/\/$/, '')}?startapp=${id}`;
         const text =
           `🗳️ Voting open for ${session.name ?? 'Untitled Session'}!\n\n` +
           `${resultCount} of ${totalVoters} voted`;
         bot.api
-          .editMessageText(session.chat_id, session.message_id, text, {
-            reply_markup: {
-              inline_keyboard: [[{ text: '🗳️ Cast your vote →', url: miniAppUrl }]],
-            },
-          })
+          .editMessageText(session.chat_id, session.message_id, text)
           .catch((err: unknown) => console.error('editMessageText failed:', err));
       }
 

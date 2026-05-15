@@ -18,8 +18,8 @@ if (!process.env.DATABASE_URL) {
   console.error('FATAL: DATABASE_URL environment variable is not set.');
   process.exit(1);
 }
-if (!process.env.MINI_APP_URL) {
-  console.error('FATAL: MINI_APP_URL environment variable is not set.');
+if (!process.env.MINI_APP_TGLINK) {
+  console.error('FATAL: MINI_APP_TGLINK environment variable is not set (e.g. https://t.me/grouptier_bot/vote).');
   process.exit(1);
 }
 

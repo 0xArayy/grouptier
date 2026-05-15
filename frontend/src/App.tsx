@@ -28,7 +28,9 @@ function getUserId(): number {
 }
 
 function getSessionId(): string | null {
-  return new URLSearchParams(window.location.search).get('session_id');
+  // When opened via t.me/bot/app?startapp=ID the session id is in start_param, not URL.
+  return window.Telegram?.WebApp?.initDataUnsafe?.start_param
+    ?? new URLSearchParams(window.location.search).get('session_id');
 }
 
 export default function App() {

@@ -98,7 +98,9 @@ bot.command('vote', async (ctx) => {
 
   await pool.query(`UPDATE sessions SET status = 'voting' WHERE id = $1`, [session.id]);
 
-  const miniAppUrl = `${process.env.MINI_APP_URL}?session_id=${session.id}`;
+  // web_app buttons only work in private chats — use url with t.me link so Mini App
+  // opens inline in group chats too (requires shortname configured in BotFather).
+  const miniAppUrl = `${process.env.MINI_APP_TGLINK}?startapp=${session.id}`;
   const name = session.name ?? 'Untitled Session';
 
   let sent;
@@ -109,7 +111,7 @@ bot.command('vote', async (ctx) => {
       {
         parse_mode: 'Markdown',
         reply_markup: {
-          inline_keyboard: [[{ text: '🗳️ Cast your vote →', web_app: { url: miniAppUrl } }]],
+          inline_keyboard: [[{ text: '🗳️ Cast your vote →', url: miniAppUrl }]],
         },
       },
     );

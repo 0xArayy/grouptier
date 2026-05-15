@@ -103,7 +103,7 @@ bot.command('vote', async (ctx) => {
     {
       parse_mode: 'Markdown',
       reply_markup: {
-        inline_keyboard: [[{ text: '🗳️ Cast your vote →', url: miniAppUrl }]],
+        inline_keyboard: [[{ text: '🗳️ Cast your vote →', web_app: { url: miniAppUrl } }]],
       },
     },
   );

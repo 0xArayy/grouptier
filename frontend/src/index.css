@@ -1,0 +1,56 @@
+:root {
+  --tier-s: #e53935;
+  --tier-s-text: #fff;
+  --tier-a: #fb8c00;
+  --tier-a-text: #fff;
+  --tier-b: #fdd835;
+  --tier-b-text: #1a1a1a;
+  --tier-c: #43a047;
+  --tier-c-text: #fff;
+  --font-primary: 'Inter', sans-serif;
+  --tap-target-min: 48px;
+  --bg: var(--tg-theme-bg-color, #1a1a2e);
+  --surface: var(--tg-theme-secondary-bg-color, #16213e);
+  --text: var(--tg-theme-text-color, #eee);
+  --text-hint: var(--tg-theme-hint-color, #888);
+  --accent: var(--tg-theme-button-color, #5c7cfa);
+  --accent-text: var(--tg-theme-button-text-color, #fff);
+  --radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-primary);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  overscroll-behavior: none;
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fillBar {
+  from { width: 0%; }
+  to   { width: 100%; }
+}

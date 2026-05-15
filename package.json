@@ -1,0 +1,12 @@
+{
+  "name": "grouptier",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build && cd ../server && npm run build",
+    "start": "cd server && npm start",
+    "install:all": "cd server && npm install && cd ../frontend && npm install"
+  }
+}

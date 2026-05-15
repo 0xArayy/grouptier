@@ -5,6 +5,17 @@ import { computeBorda } from '../db/borda.js';
 
 export const bot = new Bot(process.env.BOT_TOKEN ?? '');
 
+// Build a tg:// deep link that Telegram handles inline (no browser hop).
+// Parses MINI_APP_TGLINK=https://t.me/grouptier_bot/vote → tg://resolve?domain=grouptier_bot&appname=vote&startapp=ID
+function buildTgUrl(sessionId: string): string {
+  const tgLink = process.env.MINI_APP_TGLINK ?? '';
+  const match = tgLink.match(/t\.me\/([^/?]+)\/([^/?]+)/);
+  if (match) {
+    return `tg://resolve?domain=${match[1]}&appname=${match[2]}&startapp=${sessionId}`;
+  }
+  return `${tgLink}?startapp=${sessionId}`;
+}
+
 bot.catch((err) => {
   console.error('Bot error:', err);
 });
@@ -98,9 +109,9 @@ bot.command('vote', async (ctx) => {
 
   await pool.query(`UPDATE sessions SET status = 'voting' WHERE id = $1`, [session.id]);
 
-  // web_app buttons only work in private chats — use url with t.me link so Mini App
-  // opens inline in group chats too (requires shortname configured in BotFather).
-  const miniAppUrl = `${process.env.MINI_APP_TGLINK}?startapp=${session.id}`;
+  // tg:// scheme is handled by Telegram directly (no browser hop).
+  // https://t.me/bot/app links open a browser on Desktop; tg://resolve opens inline.
+  const miniAppUrl = buildTgUrl(session.id);
   const name = session.name ?? 'Untitled Session';
 
   let sent;

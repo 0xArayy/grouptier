@@ -125,7 +125,11 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       const totalVoters = parseInt(voterCount.rows[0].count);
 
       if (session.message_id) {
-        const miniAppUrl = `${process.env.MINI_APP_TGLINK}?startapp=${id}`;
+        const tgLink = process.env.MINI_APP_TGLINK ?? '';
+        const match = tgLink.match(/t\.me\/([^/?]+)\/([^/?]+)/);
+        const miniAppUrl = match
+          ? `tg://resolve?domain=${match[1]}&appname=${match[2]}&startapp=${id}`
+          : `${tgLink}?startapp=${id}`;
         const text =
           `🗳️ Voting open for ${session.name ?? 'Untitled Session'}!\n\n` +
           `${resultCount} of ${totalVoters} voted`;

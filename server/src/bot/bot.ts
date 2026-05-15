@@ -6,8 +6,8 @@ import { computeBorda } from '../db/borda.js';
 export const bot = new Bot(process.env.BOT_TOKEN ?? '');
 
 function buildVoteUrl(sessionId: string): string {
-  const base = (process.env.MINI_APP_URL ?? '').replace(/\/$/, '');
-  return `${base}?session_id=${sessionId}`;
+  const tgLink = (process.env.MINI_APP_TGLINK ?? '').replace(/\/$/, '');
+  return `${tgLink}?startapp=${sessionId}`;
 }
 
 bot.catch((err) => {
@@ -113,9 +113,7 @@ bot.command('vote', async (ctx) => {
       {
         parse_mode: 'Markdown',
         reply_markup: {
-          keyboard: [[{ text: '🗳️ Cast your vote →', web_app: { url: miniAppUrl } }]],
-          resize_keyboard: true,
-          one_time_keyboard: false,
+          inline_keyboard: [[{ text: '🗳️ Cast your vote →', url: miniAppUrl }]],
         },
       },
     );
@@ -171,10 +169,7 @@ bot.command('closesession', async (ctx) => {
 
   await ctx.reply(
     `🏆 *${sessionName}* winner: *${borda[0].option}*!\n\nFull group ranking:\n${ranking}`,
-    {
-      parse_mode: 'Markdown',
-      reply_markup: { remove_keyboard: true },
-    },
+    { parse_mode: 'Markdown' },
   );
 });
 

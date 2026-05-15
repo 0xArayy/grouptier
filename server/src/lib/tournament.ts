@@ -38,35 +38,6 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
   return a;
 }
 
-function buildRounds(options: string[]): Matchup[][] {
-  const rounds: Matchup[][] = [];
-  let pool = [...options];
-
-  while (pool.length > 1) {
-    const round: Matchup[] = [];
-    const nextPool: string[] = [];
-    let i = 0;
-    while (i < pool.length) {
-      if (i + 1 < pool.length) {
-        round.push({ optionA: pool[i], optionB: pool[i + 1], isBye: false });
-        i += 2;
-        // winner TBD — placeholder, will be filled in as user picks
-      } else {
-        // Last option gets a bye
-        round.push({ optionA: pool[i], optionB: '', isBye: true });
-        nextPool.push(pool[i]); // auto-advances
-        i++;
-      }
-    }
-    rounds.push(round);
-    // nextPool will be populated by results — placeholder here
-    // we only pre-build round 1; subsequent rounds are built dynamically
-    break;
-  }
-
-  return rounds;
-}
-
 /**
  * Create initial tournament state for a set of options and a user seed.
  */

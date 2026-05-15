@@ -30,18 +30,18 @@ npm run install:all
 # 2. Start local Postgres
 docker-compose up -d
 
-# 3. Copy env and fill in BOT_TOKEN
+# 3. Copy env and fill in values
 cp .env.example server/.env
-# Edit server/.env — set BOT_TOKEN, leave DATABASE_URL as below
-
-# Local DATABASE_URL for docker-compose:
-# DATABASE_URL=postgresql://grouptier:grouptier@localhost:5432/grouptier
-# MINI_APP_URL=https://your-ngrok-url  (see step 4)
-# NODE_ENV=development
+# Edit server/.env:
+#   BOT_TOKEN=your-token
+#   DATABASE_URL=postgresql://grouptier:grouptier@localhost:5432/grouptier
+#   MINI_APP_TGLINK=https://t.me/your_bot/vote  (set after step 4)
+#   NODE_ENV=development
 
 # 4. Expose local server with ngrok (Mini App requires HTTPS)
 npx ngrok http 3000
-# Copy the https://xxxxx.ngrok.io URL → set as MINI_APP_URL in server/.env
+# Copy the https://xxxxx.ngrok.io URL → set in BotFather as your Mini App URL
+# BotFather then gives you a t.me link — set that as MINI_APP_TGLINK in server/.env
 
 # 5. Build frontend
 cd frontend && npm run build && cd ..
@@ -61,16 +61,11 @@ cd server && npm run dev
 |----------|-------|
 | `BOT_TOKEN` | From @BotFather |
 | `DATABASE_URL` | Auto-set by Railway Postgres addon |
-| `MINI_APP_URL` | Your Railway deploy URL (e.g. `https://grouptier-production.up.railway.app`) |
+| `MINI_APP_TGLINK` | t.me link to your Mini App from BotFather `/newapp` (e.g. `https://t.me/your_bot/vote`) |
 | `NODE_ENV` | `production` |
 
-5. Set **Start Command**: `npm run build && node server/dist/index.js`
-6. First deploy: Railway will build and start. Run DB init:
-   ```
-   # In Railway shell (or via Railway CLI):
-   DATABASE_URL=$DATABASE_URL node --input-type=module < server/scripts/init-db.js
-   ```
-7. Set **Railway plan to Hobby** ($5/month) — prevents cold starts during demo
+5. Deploy — Railway uses `railway.toml` for build/start commands automatically. DB schema is auto-initialized on first start (idempotent `IF NOT EXISTS`).
+6. Set **Railway plan to Hobby** ($5/month) — prevents cold starts during demo
 8. Set up [UptimeRobot](https://uptimerobot.com) free ping every 5 min to `https://your-app.up.railway.app/health`
 
 ### 4. Register Mini App with BotFather (5 min)

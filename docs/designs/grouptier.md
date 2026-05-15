@@ -67,7 +67,7 @@ C: [options]"`
 ### CP6 — Session close + winner announcement (added by /autoplan premise gate)
 - New bot command: `/closesession` — any group member can trigger, session creator preferred
 - When triggered: bot sends new message to group: `"🏆 [Session Name] winner: [Top Option]!\n\nFull group ranking:\n1. [Option] — [Borda score] pts\n2. [Option] — [Borda score] pts\n..."`
-- Data model: add `status TEXT DEFAULT 'open'` column to sessions table (`'open'` | `'closed'`)
+- Data model: add `status TEXT DEFAULT 'collecting'` column to sessions table (`'collecting'` | `'voting'` | `'closed'`)
 - When session is closed: `GET /api/sessions/:id` returns `status: 'closed'`; Mini App shows results-only view (no new comparisons accepted)
 - `POST /api/sessions/:id/results` returns 403 if session is closed
 - Bot queries `GET /api/sessions/:id` on `/closesession` to fetch Borda ranking, formats winner message
@@ -174,16 +174,15 @@ Telegram Group Chat
   ↓ /startsession [name]   /addoption [text]   /vote   /closesession
 grammy bot (bot.ts)
   ↓ writes → PostgreSQL
-  ├── sessions(id, name, chat_id, message_id, status)
+  ├── sessions(id, name, chat_id, message_id, status) -- 'collecting'|'voting'|'closed'
   ├── options(id, session_id, text)
-  ├── comparisons(id, session_id, option_a, option_b, winner, user_id)
   ├── user_results(id, session_id, user_id, ranked_list JSONB)
   └── session_voters(session_id, user_id) ← ON CONFLICT DO NOTHING
-  ↓ CP5: sendMessage with inline keyboard (url → miniAppUrl?session_id=X)
+  ↓ CP5: sendMessage with inline keyboard (url → t.me link?startapp=sessionId)
   ↓ CP1: editMessageText on every POST /results (re-supply reply_markup)
   ↓ CP6: sendMessage winner announcement on /closesession
 Fastify REST API (server/)
-  GET  /api/sessions/:id  → {options, comparisons[], borda_ranking, status}
+  GET  /api/sessions/:id  → {options, borda_ranking, status}
   POST /api/sessions/:id/results → save ranked_list; fire CP1 bot edit
   GET  /health            → 200 (Railway health check)
   ↓ serves static
@@ -221,7 +220,7 @@ React Mini App (frontend/dist/)
 - **CP4 spoofing:** `ctx.from.id` used for auth (not query string userId) — PASS
 - **initData HMAC:** server-side validation required — tracked in eng task T2
 - **Rate limiting on POST /results:** closed by HMAC validation (can't forge initData)
-- **Session isolation:** no uniqueness constraint on (chat_id, status='open') — MEDIUM gap; multiple open sessions per group is confusing. Fix: add unique index or return most-recent-active session.
+- **Session isolation:** no uniqueness constraint on (chat_id, status='collecting') — MEDIUM gap; multiple open sessions per group is confusing. Fix: add unique index or return most-recent-active session.
 
 ### Section 4: Data Flow Edge Cases
 
@@ -622,20 +621,19 @@ Two CRITICAL findings: N=1 bracket crash, /closesession double-fire race conditi
 Telegram Group Chat
   ↓ /startsession [name]  /addoption [text]  /vote  /closesession
 grammy bot (bot.ts)
-  ├─ /startsession → INSERT sessions(chat_id, name, status='open')
+  ├─ /startsession → INSERT sessions(chat_id, name, status='collecting')
   ├─ /addoption    → INSERT options(session_id, text)
-  ├─ /vote         → assert COUNT(options)≥2, sendMessage + store message_id (CP5)
+  ├─ /vote         → assert COUNT(options)≥2, sendMessage + store message_id (CP5), status→'voting'
   └─ /closesession → UPDATE sessions SET status='closed'
-                        WHERE id=:id AND status='open' AND chat_id=ctx.chat.id
+                        WHERE id=(SELECT id ... WHERE status='voting' AND chat_id=ctx.chat.id)
                         RETURNING *          ← atomic guard (prevents race + auth)
                      if 0 rows: return (idempotent)
                      if user_results empty: send "No votes — session closed"
                      else: compute Borda → sendMessage winner announcement (CP6)
 
 PostgreSQL
-  sessions(id, name, chat_id, message_id, status DEFAULT 'open', created_at)
+  sessions(id, name, chat_id, message_id, status DEFAULT 'collecting', created_at)
   options(id, session_id, text)
-  comparisons — NOT needed (client-side bracket)
   user_results(id, session_id, user_id, ranked_list JSONB)
   session_voters(session_id, user_id) ← ON CONFLICT DO NOTHING
 
@@ -672,8 +670,8 @@ Key implementation specs added to plan:
 bot.command("closesession", async (ctx) => {
   const result = await db.query(
     `UPDATE sessions SET status='closed'
-     WHERE chat_id=$1 AND status='open'
-     ORDER BY created_at DESC  -- most recent open session for this chat
+     WHERE chat_id=$1 AND status='voting'
+     ORDER BY created_at DESC  -- most recent voting session for this chat
      LIMIT 1
      RETURNING *`,
     [ctx.chat.id]
@@ -688,7 +686,7 @@ bot.command("closesession", async (ctx) => {
   // compute Borda, send winner announcement
 });
 ```
-Note: PostgreSQL UPDATE with ORDER BY + LIMIT requires a subquery: `UPDATE sessions SET status='closed' WHERE id=(SELECT id FROM sessions WHERE chat_id=$1 AND status='open' ORDER BY created_at DESC LIMIT 1) RETURNING *`
+Note: PostgreSQL UPDATE with ORDER BY + LIMIT requires a subquery: `UPDATE sessions SET status='closed' WHERE id=(SELECT id FROM sessions WHERE chat_id=$1 AND status='voting' ORDER BY created_at DESC LIMIT 1) RETURNING *`
 
 **2. /vote — minimum 2 options guard:**
 ```typescript
@@ -789,7 +787,7 @@ No performance risks identified.
 | Failure mode | Severity | Trigger | Mitigation |
 |-------------|----------|---------|------------|
 | N=1 option → bracket crash | CRITICAL | /vote before 2 options added | Guard COUNT≥2 in /vote handler |
-| /closesession double-fire | CRITICAL | Two users type simultaneously | Atomic UPDATE WHERE status='open' |
+| /closesession double-fire | CRITICAL | Two users type simultaneously | Atomic UPDATE WHERE status='voting' |
 | /closesession wrong chat | HIGH | Bot DM from different group | Assert chat_id in UPDATE WHERE clause |
 | NULL message_id → editMessageText crash | HIGH | Bot crashed before /vote send | `if (session.message_id)` guard |
 | 0 voters /closesession | MEDIUM | Demo with no actual voters | "No votes recorded" response |
@@ -819,7 +817,7 @@ No performance risks identified.
 | # | Phase | Decision | Classification | Principle | Rationale |
 |---|-------|----------|----------------|-----------|-----------|
 | 21 | Eng | N=1 option: /vote asserts COUNT≥2 | Mechanical | P1 | CRITICAL — bracket crash |
-| 22 | Eng | /closesession: atomic UPDATE WHERE status='open' AND chat_id=ctx.chat.id | Mechanical | P1 | CRITICAL — race condition + auth |
+| 22 | Eng | /closesession: atomic UPDATE WHERE status='voting' AND chat_id=ctx.chat.id | Mechanical | P1 | CRITICAL — race condition + auth |
 | 23 | Eng | /closesession: idempotent (0 rows → return) | Mechanical | P1 | Both models flag double-fire |
 | 24 | Eng | /closesession: 0 voters → "No votes recorded" | Mechanical | P5 | Explicit over generic |
 | 25 | Eng | editMessageText: NULL message_id guard | Mechanical | P1 | HIGH — uncaught crash |
@@ -848,7 +846,7 @@ DX DUAL VOICES — CONSENSUS TABLE:
   3. Error messages actionable?           PARTIAL   HIGH       CONFIRMED
      (blank Mini App has no debug path)             gap        (both flag)
   4. Docs findable & prerequisites?       PARTIAL   HIGH       CONFIRMED
-     (MINI_APP_URL, PORT undocumented)              3 missing
+     (MINI_APP_TGLINK, PORT undocumented)             3 missing
   5. Upgrade path safe?                   YES       LOW        CONFIRMED
      (CP6 migration note needed)                    (DB ALTER)
   6. Dev environment friction-free?       NO        HIGH       CONFIRMED
@@ -881,7 +879,7 @@ Consensus: 5/6 confirmed. TTHW: ~2+ hours initial → target <45 min with fixes.
 | 2. Get BOT_TOKEN | Assumed known | List in env vars table |
 | 3. Configure commands | /setcommands format not given | Add canonical command list |
 | 4. Configure inline mode | /setinline buried in checklist | Move to Day 0, flag CP4 dependency |
-| 5. Provision Railway | DATABASE_URL, PORT, MINI_APP_URL undocumented | Env vars table |
+| 5. Provision Railway | DATABASE_URL, PORT, MINI_APP_TGLINK undocumented | Env vars table |
 | 6. Init database | init.sql exists but timing unclear | "Run before first deploy" |
 | 7. Local dev iteration | No local path documented | ngrok + docker-compose |
 | 8. Debug blank Mini App | No diagnostic path | Local dev + initData mock |
@@ -934,7 +932,7 @@ Add to plan:
 |----------|---------|-------|
 | BOT_TOKEN | 1234567890:AABBcc... | From BotFather /newbot |
 | DATABASE_URL | postgresql://... | Injected by Railway Postgres plugin |
-| MINI_APP_URL | https://your-app.railway.app | No trailing slash. Used in /vote inline keyboard URL |
+| MINI_APP_TGLINK | https://t.me/your_bot/vote | t.me link from BotFather /newapp. Used in /vote inline keyboard URL |
 | PORT | 3000 | Set automatically by Railway — do NOT hardcode |
 
 Note: Railway sets PORT automatically. Fastify must bind to process.env.PORT.
@@ -951,7 +949,7 @@ docker-compose up -d postgres
 # Set local env
 export DATABASE_URL=postgres://localhost/grouptier
 export BOT_TOKEN=your-token-here
-export MINI_APP_URL=https://abc123.ngrok.io
+export MINI_APP_TGLINK=https://t.me/your_bot/vote  # t.me link from BotFather (ngrok URL is registered there, not set here)
 export PORT=3000
 
 # Init DB
@@ -962,7 +960,7 @@ npm run dev
 
 # Expose to Telegram (Mini App requires HTTPS)
 ngrok http 3000
-# Copy the https://abc123.ngrok.io URL → set MINI_APP_URL
+# Register https://abc123.ngrok.io in BotFather as Mini App URL → BotFather gives a t.me link → set that as MINI_APP_TGLINK
 
 # Debug blank Mini App:
 # 1. Open https://abc123.ngrok.io directly in browser (no initData)
@@ -972,7 +970,7 @@ ngrok http 3000
 # 4. Railway logs: railway logs --tail
 
 # DB migration for CP6 (if DB already exists from before /closesession):
-# ALTER TABLE sessions ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'open';
+# ALTER TABLE sessions ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'collecting';
 ```
 
 #### Architecture Comment (options bot-only)
@@ -1008,7 +1006,7 @@ Add to architecture notes:
 | # | Phase | Decision | Classification | Principle | Rationale |
 |---|-------|----------|----------------|-----------|-----------|
 | 29 | DX | Add Day 0 setup sequence | Mechanical | P1 | TTHW 2h → 40min |
-| 30 | DX | Add env vars table (MINI_APP_URL, PORT note) | Mechanical | P1 | Deploy blocker if missing |
+| 30 | DX | Add env vars table (MINI_APP_TGLINK, PORT note) | Mechanical | P1 | Deploy blocker if missing |
 | 31 | DX | Add local dev + ngrok section | Mechanical | P1 | Blank Mini App has no debug path |
 | 32 | DX | Add DB migration note for CP6 (ALTER TABLE) | Mechanical | P5 | Existing DB deploy won't have status column |
 | 33 | DX | Add "options bot-only" architecture comment | Mechanical | P5 | Prevents accidental REST /addoption |

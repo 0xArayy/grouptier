@@ -130,15 +130,14 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         const miniAppUrl = match
           ? `tg://resolve?domain=${match[1]}&appname=${match[2]}&startapp=${id}`
           : `${tgLink}?startapp=${id}`;
+        const safeName = (session.name ?? 'Untitled Session')
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const text =
-          `🗳️ Voting open for ${session.name ?? 'Untitled Session'}!\n\n` +
+          `🗳️ Voting open for <b>${safeName}</b>!\n\n` +
+          `<a href="${miniAppUrl}">🗳️ Cast your vote →</a>\n\n` +
           `${resultCount} of ${totalVoters} voted`;
         bot.api
-          .editMessageText(session.chat_id, session.message_id, text, {
-            reply_markup: {
-              inline_keyboard: [[{ text: '🗳️ Cast your vote →', web_app: { url: miniAppUrl } }]],
-            },
-          })
+          .editMessageText(session.chat_id, session.message_id, text, { parse_mode: 'HTML' })
           .catch((err: unknown) => console.error('editMessageText failed:', err));
       }
 

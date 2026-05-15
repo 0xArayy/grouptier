@@ -116,15 +116,12 @@ bot.command('vote', async (ctx) => {
 
   let sent;
   try {
-    // CP5: send message with inline keyboard
+    // Text link with tg:// is handled inline by Telegram on all platforms.
+    // Inline keyboard url buttons open a browser on Desktop — text links don't.
+    const safeName = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     sent = await ctx.reply(
-      `🗳️ Voting open for *${name}*!\n\n0 of 0 voted`,
-      {
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [[{ text: '🗳️ Cast your vote →', url: miniAppUrl }]],
-        },
-      },
+      `🗳️ Voting open for <b>${safeName}</b>!\n\n<a href="${miniAppUrl}">🗳️ Cast your vote →</a>\n\n0 of 0 voted`,
+      { parse_mode: 'HTML' },
     );
   } catch (err) {
     console.error('/vote reply failed:', err);

@@ -1,4 +1,5 @@
-import { Bot, InlineQueryResultBuilder } from 'grammy';
+import { Bot } from 'grammy';
+import type { InlineQueryResultArticle } from 'grammy/types';
 import { pool } from '../db/client.js';
 import { computeBorda } from '../db/borda.js';
 
@@ -190,10 +191,13 @@ bot.on('inline_query', async (ctx) => {
 
   const text = `My GroupTier picks for ${sessionName}:\n${lines.join('\n')}`;
 
-  await ctx.answerInlineQuery([
-    InlineQueryResultBuilder.article('tier-list', `My picks for ${sessionName}`, {
-      input_message_content: { message_text: text },
-      description: text.slice(0, 80),
-    }),
-  ]);
+  const result: InlineQueryResultArticle = {
+    type: 'article',
+    id: 'tier-list',
+    title: `My picks for ${sessionName}`,
+    description: text.slice(0, 80),
+    input_message_content: { message_text: text },
+  };
+
+  await ctx.answerInlineQuery([result]);
 });

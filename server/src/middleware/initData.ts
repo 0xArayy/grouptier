@@ -48,7 +48,8 @@ export async function initDataMiddleware(
     return;
   }
 
-  const initData = (request.headers['x-init-data'] as string) || request.body?.initData;
+  const body = request.body as Record<string, unknown> | undefined;
+  const initData = (request.headers['x-init-data'] as string) || (body?.initData as string | undefined);
   if (!initData) {
     reply.status(401).send({ error: 'Missing initData' });
     return;

@@ -1,0 +1,8 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "npm run build:railway"
+
+[deploy]
+startCommand = "node server/dist/index.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 30

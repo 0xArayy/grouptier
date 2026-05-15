@@ -6,7 +6,8 @@
     "dev:server": "cd server && npm run dev",
     "dev:client": "cd frontend && npm run dev",
     "build": "cd frontend && npm run build && cd ../server && npm run build",
-    "start": "cd server && npm start",
+    "build:railway": "cd frontend && npm install --include=dev && npm run build && cd ../server && npm install --include=dev && npm run build",
+    "start": "node server/dist/index.js",
     "install:all": "cd server && npm install && cd ../frontend && npm install"
   }
 }

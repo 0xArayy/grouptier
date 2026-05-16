@@ -8,13 +8,25 @@ export interface TelegramUser {
   username?: string;
 }
 
+export interface TelegramChat {
+  id: number;
+  type: string;
+  title?: string;
+}
+
 declare module 'fastify' {
   interface FastifyRequest {
     telegramUser: TelegramUser;
+    telegramChat: TelegramChat | null;
   }
 }
 
-function validateInitData(initData: string, botToken: string): TelegramUser | null {
+interface ValidatedInitData {
+  user: TelegramUser;
+  chat: TelegramChat | null;
+}
+
+function validateInitData(initData: string, botToken: string): ValidatedInitData | null {
   const params = new URLSearchParams(initData);
   const hash = params.get('hash');
   if (!hash) return null;
@@ -31,11 +43,24 @@ function validateInitData(initData: string, botToken: string): TelegramUser | nu
   const userRaw = params.get('user');
   if (!userRaw) return null;
 
+  let user: TelegramUser;
   try {
-    return JSON.parse(userRaw) as TelegramUser;
+    user = JSON.parse(userRaw) as TelegramUser;
   } catch {
     return null;
   }
+
+  let chat: TelegramChat | null = null;
+  const chatRaw = params.get('chat');
+  if (chatRaw) {
+    try {
+      chat = JSON.parse(chatRaw) as TelegramChat;
+    } catch {
+      // ignore malformed chat field
+    }
+  }
+
+  return { user, chat };
 }
 
 export async function initDataMiddleware(
@@ -58,14 +83,16 @@ export async function initDataMiddleware(
   // Allow bypass in dev mode with a fake user
   if (process.env.NODE_ENV !== 'production' && initData === 'dev') {
     request.telegramUser = { id: 1, first_name: 'Dev' };
+    request.telegramChat = { id: -1001234567890, type: 'supergroup', title: 'Dev Group' };
     return;
   }
 
-  const user = validateInitData(initData, botToken);
-  if (!user) {
+  const result = validateInitData(initData, botToken);
+  if (!result) {
     reply.status(401).send({ error: 'Invalid initData' });
     return;
   }
 
-  request.telegramUser = user;
+  request.telegramUser = result.user;
+  request.telegramChat = result.chat;
 }

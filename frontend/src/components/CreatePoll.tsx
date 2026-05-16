@@ -650,7 +650,21 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
   // ── Options editor ────────────────────────────────────────────────
   if (step === 'options') {
     return (
-      <div style={{ padding: '24px 16px', maxWidth: 400, margin: '0 auto' }}>
+      <div style={{ maxWidth: 400, margin: '0 auto' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '14px 16px 0',
+        }}>
+          <button
+            onClick={() => setStep('home')}
+            style={{ background: 'none', border: 'none', color: 'var(--text-hint)', fontSize: 20, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
+          >
+            ←
+          </button>
+        </div>
+        <div style={{ padding: '12px 16px 24px' }}>
         {editingName ? (
           <input
             autoFocus
@@ -892,6 +906,7 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
               </button>
             )}
           </div>
+        </div>
       </div>
     );
   }

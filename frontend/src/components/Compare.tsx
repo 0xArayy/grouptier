@@ -144,6 +144,7 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'transform 0.1s ease, opacity 0.2s ease',
     cursor: 'pointer',
     lineHeight: 1.3,
+    boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.06), 0 2px 8px rgba(0,0,0,0.15)',
   },
   vs: {
     fontSize: 14,
@@ -152,7 +153,7 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: 2,
   },
   errorToast: {
-    background: '#c62828',
+    background: 'var(--accent)',
     color: '#fff',
     padding: '12px 20px',
     borderRadius: 'var(--radius)',

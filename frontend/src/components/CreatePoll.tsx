@@ -135,20 +135,22 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
   const buttonStyle: React.CSSProperties = {
     width: '100%',
     padding: '12px 16px',
-    borderRadius: 12,
+    borderRadius: 'var(--radius-md)',
     border: 'none',
     background: 'var(--accent)',
     color: '#fff',
     fontSize: 15,
-    fontWeight: 600,
+    fontWeight: 700,
     cursor: busy ? 'not-allowed' : 'pointer',
     opacity: busy ? 0.6 : 1,
+    boxShadow: '0 2px 8px var(--accent-shadow)',
+    minHeight: 'var(--tap-target-min)',
   };
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: '12px 14px',
-    borderRadius: 10,
+    borderRadius: 'var(--radius-md)',
     border: '1px solid var(--surface)',
     background: 'var(--bg)',
     color: 'var(--text)',
@@ -177,7 +179,7 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
               style={{
                 flex: 1,
                 padding: '10px 8px',
-                borderRadius: 10,
+                borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--surface)',
                 background: 'var(--surface)',
                 color: 'var(--text)',
@@ -208,7 +210,7 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
           onKeyDown={e => e.key === 'Enter' && handleCreateSession()}
           autoFocus
         />
-        {error && <div style={{ color: '#e53e3e', fontSize: 13, marginTop: 8 }}>{error}</div>}
+        {error && <div style={{ color: 'var(--accent)', fontSize: 13, marginTop: 8 }}>{error}</div>}
         <div style={{ marginTop: 12 }}>
           <button style={buttonStyle} disabled={busy} onClick={handleCreateSession}>
             {busy ? 'Creating…' : 'Next →'}
@@ -260,7 +262,7 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
             {options.map((opt, i) => (
               <div key={i} style={{
                 padding: '8px 12px',
-                borderRadius: 8,
+                borderRadius: 'var(--radius-md)',
                 background: 'var(--surface)',
                 marginBottom: 6,
                 fontSize: 14,
@@ -285,11 +287,11 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
               disabled={!optionInput.trim() || busy}
               style={{
                 padding: '12px 16px',
-                borderRadius: 10,
+                borderRadius: 'var(--radius-md)',
                 border: 'none',
                 background: 'var(--accent)',
                 color: '#fff',
-                fontWeight: 600,
+                fontWeight: 700,
                 fontSize: 15,
                 cursor: (!optionInput.trim() || busy) ? 'not-allowed' : 'pointer',
                 opacity: (!optionInput.trim() || busy) ? 0.5 : 1,
@@ -300,7 +302,7 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
           </div>
         )}
 
-        {error && <div style={{ color: '#e53e3e', fontSize: 13, marginBottom: 10 }}>{error}</div>}
+        {error && <div style={{ color: 'var(--accent)', fontSize: 13, marginBottom: 10 }}>{error}</div>}
 
         <button
           style={{ ...buttonStyle, opacity: (options.length < 2 || busy) ? 0.5 : 1 }}

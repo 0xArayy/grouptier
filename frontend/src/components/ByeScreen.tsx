@@ -41,6 +41,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     fontWeight: 700,
     letterSpacing: 1,
+    boxShadow: '0 2px 8px var(--accent-shadow)',
   },
   option: {
     fontSize: 22,

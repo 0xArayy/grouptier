@@ -342,37 +342,35 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
         </div>
 
         {/* My saved polls shortcut */}
-        {(savedPolls.length > 0 || savedPollsLoading) && (
-          <div style={{ marginBottom: 20 }}>
-            <button
-              style={{
-                ...primaryBtn,
-                background: 'var(--surface)',
-                color: 'var(--text)',
-                boxShadow: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 8,
-              }}
-              disabled={busy || savedPollsLoading}
-              onClick={() => setStep('my-polls')}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 18 }}>⭐</span>
-                <span>Мои опросы</span>
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {savedPollsLoading ? (
-                  <span style={{ fontSize: 12, color: 'var(--text-hint)' }}>…</span>
-                ) : (
-                  <span style={{ fontSize: 12, color: 'var(--text-hint)', fontWeight: 500 }}>{savedPolls.length}</span>
-                )}
-                <span style={{ fontSize: 18, color: 'var(--text-hint)' }}>›</span>
-              </span>
-            </button>
-          </div>
-        )}
+        <div style={{ marginBottom: 20 }}>
+          <button
+            style={{
+              ...primaryBtn,
+              background: 'var(--surface)',
+              color: 'var(--text)',
+              boxShadow: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+            }}
+            disabled={busy}
+            onClick={() => setStep('my-polls')}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 18 }}>⭐</span>
+              <span>Мои опросы</span>
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {savedPollsLoading ? (
+                <span style={{ fontSize: 12, color: 'var(--text-hint)' }}>…</span>
+              ) : savedPolls.length > 0 ? (
+                <span style={{ fontSize: 12, color: 'var(--text-hint)', fontWeight: 500 }}>{savedPolls.length}</span>
+              ) : null}
+              <span style={{ fontSize: 18, color: 'var(--text-hint)' }}>›</span>
+            </span>
+          </button>
+        </div>
 
         <button
           style={primaryBtn}

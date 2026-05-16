@@ -13,6 +13,9 @@ interface TelegramWebApp {
   };
   switchInlineQuery?: (query: string, chooserTypes?: string[]) => void;
   close?: () => void;
+  // Bot API 7.7+ — suppresses Telegram's swipe-to-minimize gesture (iOS/Android)
+  disableVerticalSwipes?: () => void;
+  enableVerticalSwipes?: () => void;
 }
 
 interface Window {

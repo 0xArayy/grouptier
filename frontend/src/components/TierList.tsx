@@ -78,8 +78,9 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
 
   function onChipPointerDown(e: React.PointerEvent<HTMLSpanElement>, option: string, fromTier: Tier) {
     if (!canDrag) return;
-    // Don't call preventDefault — let touch-action:none on the chip handle scroll prevention.
     // Don't use setPointerCapture — attach to document instead for cross-WebView reliability.
+    // Suppress Telegram's native swipe-to-minimize gesture (Bot API 7.7+) so downward drags aren't cancelled.
+    window.Telegram?.WebApp?.disableVerticalSwipes?.();
 
     dragRef.current = { option, fromTier };
     setActiveOption(option);
@@ -93,6 +94,7 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
     }
 
     function commit() {
+      window.Telegram?.WebApp?.enableVerticalSwipes?.();
       const drag = dragRef.current;
       if (drag) {
         const target = overTierRef.current;
@@ -113,6 +115,7 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
 
     function cancel() {
       // OS interrupt — roll back without committing
+      window.Telegram?.WebApp?.enableVerticalSwipes?.();
       clearDragState();
       cleanup();
     }

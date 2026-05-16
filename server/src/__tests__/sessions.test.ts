@@ -157,7 +157,7 @@ describe('POST /api/sessions/:id/options', () => {
 
   it('adds option and returns updated list', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ status: 'collecting' }] }) // session check
+      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }) // session check
       .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // count check
       .mockResolvedValueOnce({ rows: [] }) // dup check
       .mockResolvedValueOnce({ rows: [] }) // insert
@@ -176,7 +176,7 @@ describe('POST /api/sessions/:id/options', () => {
 
   it('returns 422 on duplicate option', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ status: 'collecting' }] })
+      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] })
       .mockResolvedValueOnce({ rows: [{ count: '1' }] })
       .mockResolvedValueOnce({ rows: [{ '?column?': 1 }] }); // dup found
 
@@ -193,7 +193,7 @@ describe('POST /api/sessions/:id/options', () => {
 
   it('returns 422 when 12-option limit reached', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ status: 'collecting' }] })
+      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] })
       .mockResolvedValueOnce({ rows: [{ count: '12' }] });
 
     const res = await app.inject({

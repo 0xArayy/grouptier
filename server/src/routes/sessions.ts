@@ -30,11 +30,23 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       }
 
       const name = (request.body?.name ?? '').trim() || 'Untitled Session';
-      const res = await pool.query(
-        "INSERT INTO sessions (chat_id, name, status) VALUES ($1, $2, 'collecting') RETURNING id",
-        [chat.id, name],
-      );
-      return reply.status(201).send({ id: res.rows[0].id });
+      try {
+        const res = await pool.query(
+          "INSERT INTO sessions (chat_id, name, status) VALUES ($1, $2, 'collecting') RETURNING id",
+          [chat.id, name],
+        );
+        return reply.status(201).send({ id: res.rows[0].id });
+      } catch (err: unknown) {
+        if ((err as { code?: string }).code === '23505') {
+          // Concurrent INSERT raced past the SELECT — unique index caught it
+          const fallback = await pool.query(
+            "SELECT id FROM sessions WHERE chat_id = $1 AND status = 'collecting' LIMIT 1",
+            [chat.id],
+          );
+          return reply.status(409).send({ error: 'Session already exists', id: fallback.rows[0]?.id });
+        }
+        throw err;
+      }
     },
   );
 
@@ -149,6 +161,21 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         return reply.status(403).send({ error: 'Session is closed' });
       }
 
+      // Validate ranked_list items are actual session options (no injected/duplicate entries)
+      const validOptRes = await pool.query(
+        'SELECT text FROM options WHERE session_id = $1',
+        [id],
+      );
+      const validOptions = new Set<string>(validOptRes.rows.map((r: { text: string }) => r.text));
+      for (const opt of ranked_list) {
+        if (!validOptions.has(opt)) {
+          return reply.status(400).send({ error: `Invalid option: ${opt}` });
+        }
+      }
+      if (new Set(ranked_list).size !== ranked_list.length) {
+        return reply.status(400).send({ error: 'Duplicate options in ranked_list' });
+      }
+
       // Upsert result
       await pool.query(
         `INSERT INTO user_results (session_id, user_id, ranked_list)
@@ -208,12 +235,20 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'text is required' });
       }
 
+      const chat = request.telegramChat;
+      if (!chat) {
+        return reply.status(400).send({ error: 'No chat context. Open from a group.' });
+      }
+
       const sessionRes = await pool.query(
-        'SELECT status FROM sessions WHERE id = $1',
+        'SELECT status, chat_id FROM sessions WHERE id = $1',
         [id],
       );
       if (sessionRes.rows.length === 0) {
         return reply.status(404).send({ error: 'Session not found' });
+      }
+      if (sessionRes.rows[0].chat_id !== chat.id) {
+        return reply.status(403).send({ error: 'Forbidden' });
       }
       if (sessionRes.rows[0].status !== 'collecting') {
         return reply.status(403).send({ error: 'Session is not collecting options' });
@@ -252,6 +287,11 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const { id } = request.params;
 
+      const chat = request.telegramChat;
+      if (!chat) {
+        return reply.status(400).send({ error: 'No chat context. Open from a group.' });
+      }
+
       const sessionRes = await pool.query(
         'SELECT id, name, chat_id, status FROM sessions WHERE id = $1',
         [id],
@@ -260,6 +300,9 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: 'Session not found' });
       }
       const session = sessionRes.rows[0];
+      if (session.chat_id !== chat.id) {
+        return reply.status(403).send({ error: 'Forbidden' });
+      }
       if (session.status !== 'collecting') {
         return reply.status(409).send({ error: 'Session is not in collecting state' });
       }

@@ -511,6 +511,20 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
           )}
         </div>
 
+        {/* create new poll button */}
+        <div style={{ padding: '0 16px 32px' }}>
+          <button
+            style={{
+              ...primaryBtn,
+              opacity: busy ? 0.5 : 1,
+            }}
+            disabled={busy}
+            onClick={() => setStep('home')}
+          >
+            + Создать новый опрос
+          </button>
+        </div>
+
         {busy && (
           <div style={{
             position: 'fixed',
@@ -741,8 +755,7 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
         </button>
 
         {/* save template section */}
-        {options.length >= 2 && (
-          <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 12 }}>
             {saveSuccess && (
               <div style={{ fontSize: 13, color: '#7ED957', textAlign: 'center', marginBottom: 8, fontWeight: 600 }}>
                 ✓ Шаблон сохранён
@@ -807,7 +820,8 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
               </div>
             ) : (
               <button
-                onClick={() => setShowSaveForm(true)}
+                onClick={() => options.length >= 2 && setShowSaveForm(true)}
+                disabled={options.length < 2}
                 style={{
                   width: '100%',
                   padding: '11px 16px',
@@ -816,7 +830,8 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
                   background: 'transparent',
                   color: 'var(--text-hint)',
                   fontSize: 14,
-                  cursor: 'pointer',
+                  cursor: options.length < 2 ? 'not-allowed' : 'pointer',
+                  opacity: options.length < 2 ? 0.4 : 1,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -828,7 +843,6 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
               </button>
             )}
           </div>
-        )}
       </div>
     );
   }

@@ -79,6 +79,50 @@ export async function closeSession(sessionId: string): Promise<{ ok: boolean; wi
   return res.json();
 }
 
+export interface SavedPoll {
+  id: string;
+  name: string;
+  options: string[];
+  emoji: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function fetchSavedPolls(): Promise<SavedPoll[]> {
+  const res = await fetch(`${BASE}/saved-polls`, {
+    headers: { 'x-init-data': getInitData() },
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+export async function createSavedPoll(name: string, options: string[], emoji: string): Promise<{ id: string }> {
+  const res = await fetch(`${BASE}/saved-polls`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
+    body: JSON.stringify({ name, options, emoji }),
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+export async function updateSavedPoll(id: string, data: { name?: string; options?: string[]; emoji?: string }): Promise<void> {
+  const res = await fetch(`${BASE}/saved-polls/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+}
+
+export async function deleteSavedPoll(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/saved-polls/${id}`, {
+    method: 'DELETE',
+    headers: { 'x-init-data': getInitData() },
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+}
+
 export async function submitResults(sessionId: string, rankedList: string[]) {
   const res = await fetch(`${BASE}/sessions/${sessionId}/results`, {
     method: 'POST',

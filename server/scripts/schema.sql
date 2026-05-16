@@ -50,3 +50,15 @@ CREATE TABLE IF NOT EXISTS session_voters (
   user_id     BIGINT NOT NULL,
   PRIMARY KEY (session_id, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS saved_polls (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     BIGINT NOT NULL,
+  name        TEXT NOT NULL,
+  options     JSONB NOT NULL DEFAULT '[]',
+  emoji       TEXT NOT NULL DEFAULT '📝',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS saved_polls_user_id_idx ON saved_polls(user_id);

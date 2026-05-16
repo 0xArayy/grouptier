@@ -5,6 +5,7 @@ import Fastify from 'fastify';
 import fastifyCors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import { sessionRoutes } from './routes/sessions.js';
+import { savedPollRoutes } from './routes/savedPolls.js';
 import { pool } from './db/client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -60,6 +61,7 @@ await fastify.register(fastifyCors, { origin: true });
 fastify.get('/health', async () => ({ ok: true }));
 
 await fastify.register(sessionRoutes);
+await fastify.register(savedPollRoutes);
 
 // Serve React Mini App — only if dist exists
 const frontendDist = path.join(__dirname, '../../frontend/dist');

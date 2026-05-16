@@ -28,6 +28,7 @@
 **Context:** Fix options: (a) add a `message_sent BOOLEAN DEFAULT false` column — flip to true only after sendMessage succeeds; on load, treat `status='voting' AND message_sent=false` as effectively 'collecting'. Or (b) retry the rollback 3x with backoff. Option (a) requires a schema migration. Option (b) is a simpler code change.
 **Priority:** P3 (post-MVP hardening)
 **Depends on:** In-app poll creation shipped.
+**Completed:** v1.1.0 (2026-05-16) — message_sent column + effectiveStatus in GET + startup cleanup extended.
 
 ### [collecting-session-cleanup] Clean up stranded 'collecting' sessions
 **What:** Sessions created via Mini App but abandoned before "Start Voting" stay in 'collecting' status forever. No user sees them; they just accumulate in the DB.

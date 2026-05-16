@@ -122,10 +122,15 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         [id, userId],
       );
 
+      // A crash between status flip and sendMessage leaves status='voting' but
+      // message_sent=false — surface it as 'collecting' so the UI stays functional.
+      const effectiveStatus =
+        session.status === 'voting' && !session.message_sent ? 'collecting' : session.status;
+
       return {
         id: session.id,
         name: session.name ?? 'Untitled Session',
-        status: session.status,
+        status: effectiveStatus,
         options,
         voter_count: parseInt(voterCount.rows[0].count),
         result_count: parseInt(resultCount.rows[0].count),
@@ -329,7 +334,10 @@ export async function sessionRoutes(fastify: FastifyInstance) {
             },
           },
         );
-        await pool.query('UPDATE sessions SET message_id = $1 WHERE id = $2', [sent.message_id, id]);
+        await pool.query(
+          'UPDATE sessions SET message_id = $1, message_sent = true WHERE id = $2',
+          [sent.message_id, id],
+        );
         return { ok: true };
       } catch (err) {
         // Rollback status on sendMessage failure

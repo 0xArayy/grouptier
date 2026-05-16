@@ -15,6 +15,11 @@ CREATE INDEX IF NOT EXISTS sessions_chat_id_idx ON sessions (chat_id);
 CREATE UNIQUE INDEX IF NOT EXISTS sessions_one_collecting_per_chat
   ON sessions (chat_id) WHERE status = 'collecting';
 
+-- message_sent tracks whether the bot vote message was successfully delivered.
+-- If status='voting' AND message_sent=false the server crashed between the status
+-- flip and sendMessage — treat this session as 'collecting' until the message lands.
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS message_sent BOOLEAN NOT NULL DEFAULT false;
+
 CREATE TABLE IF NOT EXISTS options (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id  UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,

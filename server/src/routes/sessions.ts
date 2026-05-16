@@ -365,4 +365,48 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       }
     },
   );
+
+  // POST /api/sessions/:id/close — close session and announce winner in group
+  fastify.post<{ Params: { id: string } }>(
+    '/api/sessions/:id/close',
+    { preHandler: initDataMiddleware },
+    async (request, reply) => {
+      const { id } = request.params;
+
+      const res = await pool.query(
+        `UPDATE sessions SET status = 'closed'
+         WHERE id = $1 AND status = 'voting'
+         RETURNING id, name, chat_id`,
+        [id],
+      );
+      if (res.rows.length === 0) {
+        return reply.status(409).send({ error: 'Session is not in voting state' });
+      }
+      const { name, chat_id } = res.rows[0];
+
+      const resultsRes = await pool.query(
+        'SELECT ranked_list FROM user_results WHERE session_id = $1',
+        [id],
+      );
+
+      if (resultsRes.rows.length === 0) {
+        return { ok: true, winner: null };
+      }
+
+      const { computeBorda } = await import('../db/borda.js');
+      const borda = computeBorda(resultsRes.rows.map((r: { ranked_list: string[] }) => r.ranked_list));
+      const sessionName = name ?? 'Untitled Session';
+      const ranking = borda.map((r, i) => `${i + 1}. ${r.option} — ${r.score} pts`).join('\n');
+
+      bot.api
+        .sendMessage(
+          chat_id,
+          `🏆 *${sessionName}* winner: *${borda[0].option}*!\n\nFull group ranking:\n${ranking}`,
+          { parse_mode: 'Markdown' },
+        )
+        .catch((err: unknown) => console.error('close announcement failed:', err));
+
+      return { ok: true, winner: borda[0].option };
+    },
+  );
 }

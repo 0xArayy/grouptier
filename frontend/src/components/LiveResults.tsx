@@ -10,6 +10,8 @@ interface Props {
   voterCount: number;
   sessionClosed: boolean;
   onShare?: () => void;
+  onClose?: () => void;
+  closing?: boolean;
 }
 
 export function LiveResults({
@@ -19,6 +21,8 @@ export function LiveResults({
   voterCount,
   sessionClosed,
   onShare,
+  onClose,
+  closing,
 }: Props) {
   return (
     <div style={styles.container}>
@@ -48,6 +52,16 @@ export function LiveResults({
       {onShare && (
         <button style={styles.shareBtn} onClick={onShare}>
           Share my picks
+        </button>
+      )}
+
+      {onClose && !sessionClosed && (
+        <button
+          style={{ ...styles.closeBtn, opacity: closing ? 0.6 : 1 }}
+          onClick={onClose}
+          disabled={closing}
+        >
+          {closing ? 'Closing…' : '🔒 Close voting & announce winner'}
         </button>
       )}
     </div>
@@ -116,6 +130,19 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 14,
     color: 'var(--text-hint)',
     fontWeight: 500,
+  },
+  closeBtn: {
+    marginTop: 4,
+    padding: '14px',
+    background: 'transparent',
+    color: '#e53e3e',
+    borderRadius: 'var(--radius)',
+    fontSize: 15,
+    fontWeight: 600,
+    width: '100%',
+    minHeight: 'var(--tap-target-min)',
+    border: '1px solid #e53e3e',
+    cursor: 'pointer',
   },
   shareBtn: {
     marginTop: 8,

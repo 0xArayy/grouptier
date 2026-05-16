@@ -61,6 +61,15 @@ export async function fetchSession(sessionId: string) {
   return res.json();
 }
 
+export async function closeSession(sessionId: string): Promise<{ ok: boolean; winner: string | null }> {
+  const res = await fetch(`${BASE}/sessions/${sessionId}/close`, {
+    method: 'POST',
+    headers: { 'x-init-data': getInitData() },
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
 export async function submitResults(sessionId: string, rankedList: string[]) {
   const res = await fetch(`${BASE}/sessions/${sessionId}/results`, {
     method: 'POST',

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { fetchSession, submitResults, fetchActiveSession } from './api/client.ts';
+import { fetchSession, submitResults, fetchActiveSession, closeSession } from './api/client.ts';
 import { Compare } from './components/Compare.tsx';
 import { ByeScreen } from './components/ByeScreen.tsx';
 import { TierList } from './components/TierList.tsx';
@@ -41,6 +41,7 @@ export default function App() {
   const [tournament, setTournament] = useState<TournamentState | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [offline, setOffline] = useState(!navigator.onLine);
@@ -186,6 +187,20 @@ export default function App() {
       setSubmitError(String(err));
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleClose() {
+    if (!sessionId || closing) return;
+    setClosing(true);
+    try {
+      await closeSession(sessionId);
+      setSession(prev => prev ? { ...prev, status: 'closed' } : prev);
+      if (pollRef.current) clearInterval(pollRef.current);
+    } catch (err) {
+      console.error('close failed:', err);
+    } finally {
+      setClosing(false);
     }
   }
 
@@ -337,6 +352,8 @@ export default function App() {
           voterCount={session.voter_count}
           sessionClosed={session.status === 'closed'}
           onShare={submitted ? handleShare : undefined}
+          onClose={session.status === 'voting' ? handleClose : undefined}
+          closing={closing}
         />
       </>
     );

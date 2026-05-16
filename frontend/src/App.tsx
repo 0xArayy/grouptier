@@ -171,14 +171,13 @@ export default function App() {
     setScreen(nextMatchup.isBye ? 'bye' : 'compare');
   }
 
-  async function handleSubmit() {
-    if (!tournament || !sessionId || submitting) return;
+  async function handleSubmit(reorderedList: string[]) {
+    if (!sessionId || submitting) return;
     setSubmitting(true);
 
-    const rankedList = buildRankedList(tournament);
     setSubmitError('');
     try {
-      const data = await submitResults(sessionId, rankedList);
+      const data = await submitResults(sessionId, reorderedList);
       setSession(prev => prev ? { ...prev, ...data } : prev);
       setSubmitted(true);
       setScreen('live');

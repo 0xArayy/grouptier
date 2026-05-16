@@ -1,39 +1,106 @@
+import { useRef, useState } from 'react';
+
+type Tier = 'S' | 'A' | 'B' | 'C';
+
 interface TierRow {
-  tier: 'S' | 'A' | 'B' | 'C';
+  tier: Tier;
   options: string[];
 }
 
 interface Props {
   rankedList: string[];
   sessionClosed?: boolean;
-  onSubmit?: () => void;
+  onSubmit?: (reorderedList: string[]) => void;
   onViewGroup?: () => void;
   submitting?: boolean;
   submitError?: string;
 }
 
-const TIER_META: Record<string, { bg: string; text: string; shadow: string }> = {
+const TIER_META: Record<Tier, { bg: string; text: string; shadow: string }> = {
   S: { bg: 'var(--tier-s)', text: 'var(--tier-s-text)', shadow: '0 2px 0 rgba(0,0,0,0.22), 0 4px 0 rgba(0,0,0,0.10)' },
   A: { bg: 'var(--tier-a)', text: 'var(--tier-a-text)', shadow: '0 2px 0 rgba(0,0,0,0.22), 0 4px 0 rgba(0,0,0,0.10)' },
   B: { bg: 'var(--tier-b)', text: 'var(--tier-b-text)', shadow: '0 2px 0 rgba(255,255,255,0.4)' },
   C: { bg: 'var(--tier-c)', text: 'var(--tier-c-text)', shadow: '0 2px 0 rgba(0,0,0,0.22), 0 4px 0 rgba(0,0,0,0.10)' },
 };
 
-export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, submitting, submitError }: Props) {
+function buildRows(rankedList: string[]): TierRow[] {
   const n = rankedList.length;
   const tierSize = Math.ceil(n / 4);
+  return ([
+    { tier: 'S' as Tier, options: rankedList.slice(0, tierSize) },
+    { tier: 'A' as Tier, options: rankedList.slice(tierSize, tierSize * 2) },
+    { tier: 'B' as Tier, options: rankedList.slice(tierSize * 2, tierSize * 3) },
+    { tier: 'C' as Tier, options: rankedList.slice(tierSize * 3) },
+  ] as TierRow[]).filter(r => r.options.length > 0);
+}
 
-  const rows: TierRow[] = (
-    [
-      { tier: 'S', options: rankedList.slice(0, tierSize) },
-      { tier: 'A', options: rankedList.slice(tierSize, tierSize * 2) },
-      { tier: 'B', options: rankedList.slice(tierSize * 2, tierSize * 3) },
-      { tier: 'C', options: rankedList.slice(tierSize * 3) },
-    ] as TierRow[]
-  ).filter(r => r.options.length > 0);
+export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, submitting, submitError }: Props) {
+  const [rows, setRows] = useState<TierRow[]>(() => buildRows(rankedList));
 
-  const champion = rankedList[0];
+  // Drag state
+  const [activeOption, setActiveOption] = useState<string | null>(null);
+  const [floatPos, setFloatPos] = useState<{ x: number; y: number } | null>(null);
+  const [overTier, setOverTier] = useState<Tier | null>(null);
+  const dragRef = useRef<{ option: string; fromTier: Tier } | null>(null);
+  const rowRefs = useRef<Map<Tier, HTMLDivElement>>(new Map());
+
+  const champion = rows.find(r => r.tier === 'S')?.options[0] ?? rankedList[0];
   const nonSRows = rows.filter(r => r.tier !== 'S');
+  const canDrag = !sessionClosed && !submitting;
+
+  function onChipPointerDown(e: React.PointerEvent<HTMLSpanElement>, option: string, fromTier: Tier) {
+    if (!canDrag) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = { option, fromTier };
+    setActiveOption(option);
+    setFloatPos({ x: e.clientX, y: e.clientY });
+    setOverTier(fromTier);
+  }
+
+  function onChipPointerMove(e: React.PointerEvent<HTMLSpanElement>) {
+    if (!dragRef.current) return;
+    setFloatPos({ x: e.clientX, y: e.clientY });
+
+    let over: Tier | null = null;
+    for (const [tier, el] of rowRefs.current) {
+      const rect = el.getBoundingClientRect();
+      if (
+        e.clientY >= rect.top && e.clientY <= rect.bottom &&
+        e.clientX >= rect.left && e.clientX <= rect.right
+      ) {
+        over = tier;
+        break;
+      }
+    }
+    setOverTier(over);
+  }
+
+  function onChipPointerUp() {
+    const drag = dragRef.current;
+    if (!drag) return;
+
+    if (overTier && overTier !== drag.fromTier) {
+      setRows(prev => {
+        const next = prev.map(r => ({ ...r, options: [...r.options] }));
+        const src = next.find(r => r.tier === drag.fromTier);
+        if (src) src.options = src.options.filter(o => o !== drag.option);
+        const dst = next.find(r => r.tier === overTier);
+        if (dst) dst.options.push(drag.option);
+        return next.filter(r => r.options.length > 0);
+      });
+    }
+
+    dragRef.current = null;
+    setActiveOption(null);
+    setFloatPos(null);
+    setOverTier(null);
+  }
+
+  function handleSubmit() {
+    if (!onSubmit) return;
+    onSubmit(rows.flatMap(r => r.options));
+  }
 
   return (
     <div style={styles.container}>
@@ -55,29 +122,93 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
         <div style={styles.closedBanner}>🔒 Voting closed</div>
       )}
 
-      {/* A/B/C tier rows */}
+      {/* A/B/C tier rows — draggable chips */}
       <div style={styles.grid}>
         {nonSRows.map(({ tier, options }) => {
           const meta = TIER_META[tier];
+          const isOver = overTier === tier && activeOption !== null;
           return (
-            <div key={tier} style={styles.row}>
-              <div style={{
-                ...styles.tierLabel,
-                background: meta.bg,
-                color: meta.text,
-                textShadow: meta.shadow,
-              }}>
+            <div
+              key={tier}
+              ref={el => {
+                if (el) rowRefs.current.set(tier, el);
+                else rowRefs.current.delete(tier);
+              }}
+              style={{
+                ...styles.row,
+                outline: isOver ? '2px solid var(--accent)' : '2px solid transparent',
+                background: isOver ? 'color-mix(in srgb, var(--surface) 85%, var(--accent) 15%)' : 'var(--surface)',
+              }}
+            >
+              <div
+                style={{
+                  ...styles.tierLabel,
+                  background: meta.bg,
+                  color: meta.text,
+                  textShadow: meta.shadow,
+                }}
+              >
                 {tier}
               </div>
               <div style={styles.chips}>
-                {options.map(opt => (
-                  <span key={opt} style={styles.chip}>{opt}</span>
-                ))}
+                {options.map(opt => {
+                  const isDragging = activeOption === opt;
+                  return (
+                    <span
+                      key={opt}
+                      style={{
+                        ...styles.chip,
+                        opacity: isDragging ? 0.25 : 1,
+                        cursor: canDrag ? (isDragging ? 'grabbing' : 'grab') : 'default',
+                        touchAction: 'none',
+                        userSelect: 'none',
+                        transition: isDragging ? 'none' : 'opacity 0.15s',
+                      }}
+                      onPointerDown={e => onChipPointerDown(e, opt, tier)}
+                      onPointerMove={onChipPointerMove}
+                      onPointerUp={onChipPointerUp}
+                      onPointerCancel={onChipPointerUp}
+                    >
+                      {opt}
+                    </span>
+                  );
+                })}
+                {/* Empty-tier drop hint */}
+                {options.length === 0 && (
+                  <span style={styles.emptyHint}>drop here</span>
+                )}
               </div>
             </div>
           );
         })}
       </div>
+
+      {canDrag && nonSRows.length > 1 && (
+        <div style={styles.dragHint}>Hold &amp; drag chips to rearrange tiers</div>
+      )}
+
+      {/* Floating chip clone during drag */}
+      {floatPos && activeOption && (
+        <div
+          style={{
+            position: 'fixed',
+            left: floatPos.x - 40,
+            top: floatPos.y - 16,
+            zIndex: 1000,
+            pointerEvents: 'none',
+            background: 'var(--bg)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '3px 8px',
+            fontSize: 12,
+            fontWeight: 600,
+            color: 'var(--text)',
+            boxShadow: '0 6px 20px rgba(0,0,0,0.35)',
+            transform: 'scale(1.1) rotate(-2deg)',
+          }}
+        >
+          {activeOption}
+        </div>
+      )}
 
       {submitError && (
         <div style={{ color: 'var(--tier-s)', fontSize: 13, textAlign: 'center', padding: '4px 0' }}>
@@ -90,7 +221,7 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
         {onSubmit && !sessionClosed && (
           <button
             style={{ ...styles.submitBtn, opacity: submitting ? 0.7 : 1 }}
-            onClick={onSubmit}
+            onClick={handleSubmit}
             disabled={submitting}
           >
             {submitting ? 'Saving…' : 'Submit my picks'}
@@ -181,20 +312,20 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'stretch',
     borderRadius: 'var(--radius-md)',
     overflow: 'hidden',
-    background: 'var(--surface)',
     boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.06)',
+    transition: 'outline-color 0.1s, background 0.1s',
   },
   tierLabel: {
-    width: 44,
-    height: 44,
+    width: 56,
+    height: 56,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     fontFamily: 'var(--font-display)',
-    fontSize: 27,
+    fontSize: 35,
     fontWeight: 900,
     lineHeight: 1,
-    letterSpacing: -1,
+    letterSpacing: -1.5,
     flexShrink: 0,
   },
   chips: {
@@ -204,6 +335,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 6,
     padding: '8px 10px',
     alignItems: 'center',
+    minHeight: 56,
   },
   chip: {
     background: 'var(--bg)',
@@ -212,6 +344,20 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
     fontWeight: 600,
     color: 'var(--text)',
+  },
+  emptyHint: {
+    fontSize: 11,
+    color: 'var(--text-hint)',
+    fontStyle: 'italic',
+    opacity: 0.6,
+  },
+  dragHint: {
+    textAlign: 'center',
+    fontSize: 11,
+    color: 'var(--text-hint)',
+    opacity: 0.6,
+    padding: '0 14px',
+    marginTop: -4,
   },
   footer: {
     padding: '4px 14px 0',

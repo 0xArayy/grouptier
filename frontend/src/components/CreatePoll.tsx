@@ -7,6 +7,27 @@ interface Props {
 
 type Step = 'name' | 'options' | 'starting';
 
+const PRESETS: { emoji: string; label: string; name: string; options: string[] }[] = [
+  {
+    emoji: '🍕',
+    label: 'Food',
+    name: 'What should we eat?',
+    options: ['Pizza', 'Sushi', 'Burgers', 'Tacos', 'Ramen', 'Pasta', 'Thai', 'Salad'],
+  },
+  {
+    emoji: '🎮',
+    label: 'Games',
+    name: 'What should we play?',
+    options: ['Minecraft', 'Valorant', 'CS2', 'Among Us', 'Stardew Valley', 'Rocket League', 'Fortnite', 'League of Legends'],
+  },
+  {
+    emoji: '🎬',
+    label: 'Movies',
+    name: 'What genre tonight?',
+    options: ['Action', 'Comedy', 'Horror', 'Romance', 'Sci-Fi', 'Thriller', 'Animation', 'Documentary'],
+  },
+];
+
 export function CreatePoll({ onSessionReady }: Props) {
   const [step, setStep] = useState<Step>('name');
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -46,6 +67,33 @@ export function CreatePoll({ onSessionReady }: Props) {
       setOptionInput('');
     } catch (err: unknown) {
       setError(String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handlePreset(preset: typeof PRESETS[number]) {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      const { id } = await createSession(preset.name);
+      setSessionId(id);
+      setSessionName(preset.name);
+      const loaded: string[] = [];
+      for (const opt of preset.options) {
+        const { options: updated } = await addOption(id, opt);
+        loaded.push(...updated.filter(o => !loaded.includes(o)));
+      }
+      setOptions(loaded);
+      setStep('options');
+    } catch (err: unknown) {
+      const msg = String(err);
+      if (msg.includes('409')) {
+        setError('A session is already collecting in this group.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setBusy(false);
     }
@@ -96,10 +144,45 @@ export function CreatePoll({ onSessionReady }: Props) {
       <div style={{ padding: 24, maxWidth: 400, margin: '0 auto' }}>
         <div style={{ fontSize: 28, marginBottom: 8 }}>🗳️</div>
         <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Create a Poll</div>
-        <div style={{ fontSize: 14, color: 'var(--text-hint)', marginBottom: 24 }}>
+        <div style={{ fontSize: 14, color: 'var(--text-hint)', marginBottom: 20 }}>
           Name your poll — then add the options your group will rank.
         </div>
 
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-hint)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+          Quick start
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          {PRESETS.map(p => (
+            <button
+              key={p.label}
+              onClick={() => handlePreset(p)}
+              disabled={busy}
+              style={{
+                flex: 1,
+                padding: '10px 8px',
+                borderRadius: 10,
+                border: '1px solid var(--surface)',
+                background: 'var(--surface)',
+                color: 'var(--text)',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: busy ? 'not-allowed' : 'pointer',
+                opacity: busy ? 0.5 : 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <span style={{ fontSize: 20 }}>{p.emoji}</span>
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-hint)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+          Custom
+        </div>
         <input
           style={inputStyle}
           placeholder="Poll name (e.g. Best pizza topping)"
@@ -109,7 +192,7 @@ export function CreatePoll({ onSessionReady }: Props) {
           autoFocus
         />
         {error && <div style={{ color: '#e53e3e', fontSize: 13, marginTop: 8 }}>{error}</div>}
-        <div style={{ marginTop: 16 }}>
+        <div style={{ marginTop: 12 }}>
           <button style={buttonStyle} disabled={busy} onClick={handleCreateSession}>
             {busy ? 'Creating…' : 'Next →'}
           </button>

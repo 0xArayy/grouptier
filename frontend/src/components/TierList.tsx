@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type Tier = 'S' | 'A' | 'B' | 'C';
 
@@ -37,7 +37,7 @@ function buildRows(rankedList: string[]): TierRow[] {
 export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, submitting, submitError }: Props) {
   const [rows, setRows] = useState<TierRow[]>(() => buildRows(rankedList));
 
-  // Drag state — overTierRef is the ref-of-truth for event handlers (avoids stale closure);
+  // Drag state — overTierRef is the ref-of-truth for document event handlers;
   // overTier state drives the highlight re-render.
   const [activeOption, setActiveOption] = useState<string | null>(null);
   const [floatPos, setFloatPos] = useState<{ x: number; y: number } | null>(null);
@@ -45,11 +45,16 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
   const overTierRef = useRef<Tier | null>(null);
   const dragRef = useRef<{ option: string; fromTier: Tier } | null>(null);
   const rowRefs = useRef<Map<Tier, HTMLDivElement>>(new Map());
+  // Cleanup ref so useEffect can remove listeners on unmount
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   const champion = rows.find(r => r.tier === 'S')?.options[0] ?? rankedList[0];
   const nonSRows = rows.filter(r => r.tier !== 'S');
   // Drag only makes sense when there are multiple target tiers to move between.
   const canDrag = !sessionClosed && !submitting && nonSRows.length > 1;
+
+  // Remove document listeners on unmount (in case drag is in progress)
+  useEffect(() => () => { cleanupRef.current?.(); }, []);
 
   function setHoverTier(tier: Tier | null) {
     overTierRef.current = tier;
@@ -63,61 +68,68 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
     setHoverTier(null);
   }
 
+  function hitTestTier(x: number, y: number): Tier | null {
+    for (const [tier, el] of rowRefs.current) {
+      const rect = el.getBoundingClientRect();
+      if (y >= rect.top && y <= rect.bottom && x >= rect.left && x <= rect.right) {
+        return tier;
+      }
+    }
+    return null;
+  }
+
   function onChipPointerDown(e: React.PointerEvent<HTMLSpanElement>, option: string, fromTier: Tier) {
     if (!canDrag) return;
-    e.preventDefault();
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      return; // pointer capture failed; don't start drag
-    }
+    // Don't call preventDefault — let touch-action:none on the chip handle scroll prevention.
+    // Don't use setPointerCapture — attach to document instead for cross-WebView reliability.
+
     dragRef.current = { option, fromTier };
     setActiveOption(option);
     setFloatPos({ x: e.clientX, y: e.clientY });
     setHoverTier(fromTier);
-  }
 
-  function onChipPointerMove(e: React.PointerEvent<HTMLSpanElement>) {
-    if (!dragRef.current) return;
-    setFloatPos({ x: e.clientX, y: e.clientY });
+    function onDocMove(ev: PointerEvent) {
+      if (!dragRef.current) return;
+      setFloatPos({ x: ev.clientX, y: ev.clientY });
+      setHoverTier(hitTestTier(ev.clientX, ev.clientY));
+    }
 
-    let over: Tier | null = null;
-    for (const [tier, el] of rowRefs.current) {
-      const rect = el.getBoundingClientRect();
-      if (
-        e.clientY >= rect.top && e.clientY <= rect.bottom &&
-        e.clientX >= rect.left && e.clientX <= rect.right
-      ) {
-        over = tier;
-        break;
+    function commit() {
+      const drag = dragRef.current;
+      if (drag) {
+        const target = overTierRef.current;
+        if (target && target !== drag.fromTier) {
+          setRows(prev => {
+            const next = prev.map(r => ({ ...r, options: [...r.options] }));
+            const src = next.find(r => r.tier === drag.fromTier);
+            if (src) src.options = src.options.filter(o => o !== drag.option);
+            const dst = next.find(r => r.tier === target);
+            if (dst) dst.options.push(drag.option);
+            return next.filter(r => r.options.length > 0);
+          });
+        }
       }
-    }
-    setHoverTier(over);
-  }
-
-  function onChipPointerUp() {
-    const drag = dragRef.current;
-    if (!drag) return;
-
-    // Read from ref — not closure — to get the value from the last pointermove.
-    const target = overTierRef.current;
-    if (target && target !== drag.fromTier) {
-      setRows(prev => {
-        const next = prev.map(r => ({ ...r, options: [...r.options] }));
-        const src = next.find(r => r.tier === drag.fromTier);
-        if (src) src.options = src.options.filter(o => o !== drag.option);
-        const dst = next.find(r => r.tier === target);
-        if (dst) dst.options.push(drag.option);
-        return next.filter(r => r.options.length > 0);
-      });
+      clearDragState();
+      cleanup();
     }
 
-    clearDragState();
-  }
+    function cancel() {
+      // OS interrupt — roll back without committing
+      clearDragState();
+      cleanup();
+    }
 
-  function onChipPointerCancel() {
-    // OS interrupt (notification, call, home gesture) — roll back, do NOT commit the drop.
-    clearDragState();
+    function cleanup() {
+      document.removeEventListener('pointermove', onDocMove);
+      document.removeEventListener('pointerup', commit);
+      document.removeEventListener('pointercancel', cancel);
+      cleanupRef.current = null;
+    }
+
+    document.addEventListener('pointermove', onDocMove, { passive: true });
+    document.addEventListener('pointerup', commit);
+    document.addEventListener('pointercancel', cancel);
+    cleanupRef.current = cleanup;
   }
 
   function handleSubmit() {
@@ -188,9 +200,6 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
                         transition: isDragging ? 'none' : 'opacity 0.15s',
                       }}
                       onPointerDown={e => onChipPointerDown(e, opt, tier)}
-                      onPointerMove={onChipPointerMove}
-                      onPointerUp={onChipPointerUp}
-                      onPointerCancel={onChipPointerCancel}
                     >
                       {opt}
                     </span>

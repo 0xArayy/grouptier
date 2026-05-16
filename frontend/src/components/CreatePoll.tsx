@@ -60,7 +60,10 @@ const PRESETS: { emoji: string; label: string; name: string; options: string[] }
 ];
 
 export function CreatePoll({ onSessionReady, existingSession }: Props) {
-  const [step, setStep] = useState<Step>(existingSession ? 'options' : 'home');
+  // If a session already exists with options — go straight to editing.
+  // If it exists but is empty (bot pre-created via /newpoll) — show home so user can pick a preset.
+  const hasExistingOptions = (existingSession?.options.length ?? 0) > 0;
+  const [step, setStep] = useState<Step>(hasExistingOptions ? 'options' : 'home');
   const [sessionId, setSessionId] = useState<string | null>(existingSession?.id ?? null);
   const [sessionName, setSessionName] = useState(existingSession?.name ?? '');
   const [options, setOptions] = useState<string[]>(existingSession?.options ?? []);
@@ -91,10 +94,16 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
     setBusy(true);
     setError('');
     try {
-      const name = customName.trim() || 'Untitled Poll';
-      const { id } = await createSession(name);
-      setSessionId(id);
-      setSessionName(name);
+      const name = customName.trim() || 'Без названия';
+      if (sessionId) {
+        // Reuse the bot-pre-created session; update its name if the user typed one
+        if (customName.trim()) await updateSessionName(sessionId, name);
+        setSessionName(name);
+      } else {
+        const { id } = await createSession(name);
+        setSessionId(id);
+        setSessionName(name);
+      }
       setStep('options');
     } catch (err: unknown) {
       const msg = String(err);
@@ -124,8 +133,15 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
     setBusy(true);
     setError('');
     try {
-      const { id } = await createSession(preset.name);
-      setSessionId(id);
+      let id = sessionId;
+      if (id) {
+        // Reuse the bot-pre-created session; update its name to match the preset
+        await updateSessionName(id, preset.name);
+      } else {
+        const res = await createSession(preset.name);
+        id = res.id;
+        setSessionId(id);
+      }
       setSessionName(preset.name);
       const loaded: string[] = [];
       for (const opt of preset.options) {

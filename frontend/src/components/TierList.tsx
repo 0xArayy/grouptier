@@ -37,25 +37,44 @@ function buildRows(rankedList: string[]): TierRow[] {
 export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, submitting, submitError }: Props) {
   const [rows, setRows] = useState<TierRow[]>(() => buildRows(rankedList));
 
-  // Drag state
+  // Drag state — overTierRef is the ref-of-truth for event handlers (avoids stale closure);
+  // overTier state drives the highlight re-render.
   const [activeOption, setActiveOption] = useState<string | null>(null);
   const [floatPos, setFloatPos] = useState<{ x: number; y: number } | null>(null);
   const [overTier, setOverTier] = useState<Tier | null>(null);
+  const overTierRef = useRef<Tier | null>(null);
   const dragRef = useRef<{ option: string; fromTier: Tier } | null>(null);
   const rowRefs = useRef<Map<Tier, HTMLDivElement>>(new Map());
 
   const champion = rows.find(r => r.tier === 'S')?.options[0] ?? rankedList[0];
   const nonSRows = rows.filter(r => r.tier !== 'S');
-  const canDrag = !sessionClosed && !submitting;
+  // Drag only makes sense when there are multiple target tiers to move between.
+  const canDrag = !sessionClosed && !submitting && nonSRows.length > 1;
+
+  function setHoverTier(tier: Tier | null) {
+    overTierRef.current = tier;
+    setOverTier(tier);
+  }
+
+  function clearDragState() {
+    dragRef.current = null;
+    setActiveOption(null);
+    setFloatPos(null);
+    setHoverTier(null);
+  }
 
   function onChipPointerDown(e: React.PointerEvent<HTMLSpanElement>, option: string, fromTier: Tier) {
     if (!canDrag) return;
     e.preventDefault();
-    e.currentTarget.setPointerCapture(e.pointerId);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      return; // pointer capture failed; don't start drag
+    }
     dragRef.current = { option, fromTier };
     setActiveOption(option);
     setFloatPos({ x: e.clientX, y: e.clientY });
-    setOverTier(fromTier);
+    setHoverTier(fromTier);
   }
 
   function onChipPointerMove(e: React.PointerEvent<HTMLSpanElement>) {
@@ -73,28 +92,32 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
         break;
       }
     }
-    setOverTier(over);
+    setHoverTier(over);
   }
 
   function onChipPointerUp() {
     const drag = dragRef.current;
     if (!drag) return;
 
-    if (overTier && overTier !== drag.fromTier) {
+    // Read from ref — not closure — to get the value from the last pointermove.
+    const target = overTierRef.current;
+    if (target && target !== drag.fromTier) {
       setRows(prev => {
         const next = prev.map(r => ({ ...r, options: [...r.options] }));
         const src = next.find(r => r.tier === drag.fromTier);
         if (src) src.options = src.options.filter(o => o !== drag.option);
-        const dst = next.find(r => r.tier === overTier);
+        const dst = next.find(r => r.tier === target);
         if (dst) dst.options.push(drag.option);
         return next.filter(r => r.options.length > 0);
       });
     }
 
-    dragRef.current = null;
-    setActiveOption(null);
-    setFloatPos(null);
-    setOverTier(null);
+    clearDragState();
+  }
+
+  function onChipPointerCancel() {
+    // OS interrupt (notification, call, home gesture) — roll back, do NOT commit the drop.
+    clearDragState();
   }
 
   function handleSubmit() {
@@ -167,7 +190,7 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
                       onPointerDown={e => onChipPointerDown(e, opt, tier)}
                       onPointerMove={onChipPointerMove}
                       onPointerUp={onChipPointerUp}
-                      onPointerCancel={onChipPointerUp}
+                      onPointerCancel={onChipPointerCancel}
                     >
                       {opt}
                     </span>

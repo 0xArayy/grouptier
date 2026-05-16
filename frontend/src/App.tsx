@@ -36,6 +36,7 @@ function getSessionId(): string | null {
 
 export default function App() {
   const [sessionId, setSessionId] = useState<string | null>(getSessionId);
+  const [fromStartParam] = useState(() => !!getSessionId());
   const [screen, setScreen] = useState<Screen>('loading');
   const [session, setSession] = useState<SessionData | null>(null);
   const [tournament, setTournament] = useState<TournamentState | null>(null);
@@ -81,7 +82,8 @@ export default function App() {
         setSession(data);
 
         if (data.status === 'collecting') {
-          setScreen('waiting');
+          // If opened without a startapp param, the user wants to manage the poll
+          setScreen(fromStartParam ? 'waiting' : 'create');
           return;
         }
 
@@ -202,10 +204,13 @@ export default function App() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (screen === 'create') {
+    const existing = session?.status === 'collecting'
+      ? { id: session.id, name: session.name, options: session.options }
+      : undefined;
     return (
       <>
         {offline && <OfflineBanner />}
-        <CreatePoll onSessionReady={handlePollReady} />
+        <CreatePoll onSessionReady={handlePollReady} existingSession={existing} />
       </>
     );
   }

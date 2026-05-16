@@ -14,6 +14,22 @@ bot.catch((err) => {
   console.error('Bot error:', err);
 });
 
+// /newpoll — open Mini App to create a poll
+bot.command('newpoll', async (ctx) => {
+  if (!ctx.chat || ctx.chat.type === 'private') {
+    return ctx.reply('Use /newpoll in a group chat.');
+  }
+  const miniAppUrl = (process.env.MINI_APP_TGLINK ?? '').replace(/\/$/, '');
+  if (!miniAppUrl) {
+    return ctx.reply('Mini App link not configured.');
+  }
+  await ctx.reply('🗳️ Tap below to create a poll in the Mini App.', {
+    reply_markup: {
+      inline_keyboard: [[{ text: '🗳️ Create Poll →', url: miniAppUrl }]],
+    },
+  });
+});
+
 // /startsession [name]
 bot.command('startsession', async (ctx) => {
   if (!ctx.chat || ctx.chat.type === 'private') {

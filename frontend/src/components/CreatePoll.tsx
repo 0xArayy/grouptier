@@ -3,6 +3,7 @@ import { createSession, addOption, startVoting } from '../api/client.ts';
 
 interface Props {
   onSessionReady: (sessionId: string) => void;
+  existingSession?: { id: string; name: string; options: string[] };
 }
 
 type Step = 'name' | 'options' | 'starting';
@@ -28,11 +29,11 @@ const PRESETS: { emoji: string; label: string; name: string; options: string[] }
   },
 ];
 
-export function CreatePoll({ onSessionReady }: Props) {
-  const [step, setStep] = useState<Step>('name');
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [sessionName, setSessionName] = useState('');
-  const [options, setOptions] = useState<string[]>([]);
+export function CreatePoll({ onSessionReady, existingSession }: Props) {
+  const [step, setStep] = useState<Step>(existingSession ? 'options' : 'name');
+  const [sessionId, setSessionId] = useState<string | null>(existingSession?.id ?? null);
+  const [sessionName, setSessionName] = useState(existingSession?.name ?? '');
+  const [options, setOptions] = useState<string[]>(existingSession?.options ?? []);
   const [optionInput, setOptionInput] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);

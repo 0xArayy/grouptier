@@ -19,6 +19,13 @@ interface Props {
 
 type Step = 'home' | 'presets' | 'my-polls' | 'options' | 'starting';
 
+const EMOJI_PRESETS = [
+  '🍕','🍺','🎮','🎬','📺','🎵','🏖️','🎯',
+  '🎲','🏆','🎉','🔥','⭐','💡','🎭','🎨',
+  '🌍','🏅','🎸','🍜','🧩','🚀','💎','🎪',
+  '🍔','🥂','🎳','📸','🌮','🎤','🎺','🃏',
+];
+
 const PRESETS: { emoji: string; label: string; name: string; options: string[] }[] = [
   {
     emoji: '🍕',
@@ -89,6 +96,7 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
   const [savedPollsLoading, setSavedPollsLoading] = useState(false);
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [saveEmoji, setSaveEmoji] = useState('📝');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null); // id of template this session was loaded from
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -770,18 +778,59 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-hint)', marginBottom: 10 }}>
                   {savedId ? 'Обновить шаблон' : 'Сохранить как шаблон'}
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                  <input
-                    style={{ ...inputStyle, width: 56, flexShrink: 0, textAlign: 'center', fontSize: 22, padding: '8px 6px' }}
-                    value={saveEmoji}
-                    onChange={e => setSaveEmoji(e.target.value)}
-                    maxLength={4}
-                    title="Иконка"
-                  />
+                <div style={{ display: 'flex', gap: 8, marginBottom: showEmojiPicker ? 8 : 10 }}>
+                  <button
+                    onClick={() => setShowEmojiPicker(p => !p)}
+                    style={{
+                      width: 56,
+                      height: 48,
+                      flexShrink: 0,
+                      fontSize: 26,
+                      lineHeight: 1,
+                      borderRadius: 'var(--radius-md)',
+                      border: showEmojiPicker ? '2px solid var(--accent)' : '1px solid var(--surface)',
+                      background: 'var(--bg)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {saveEmoji}
+                  </button>
                   <div style={{ flex: 1, fontSize: 13, color: 'var(--text-hint)', display: 'flex', alignItems: 'center' }}>
                     «{sessionName}» · {options.length} вариантов
                   </div>
                 </div>
+                {showEmojiPicker && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(8, 1fr)',
+                    gap: 4,
+                    marginBottom: 10,
+                    padding: '8px',
+                    background: 'var(--bg)',
+                    borderRadius: 'var(--radius-md)',
+                  }}>
+                    {EMOJI_PRESETS.map(e => (
+                      <button
+                        key={e}
+                        onClick={() => { setSaveEmoji(e); setShowEmojiPicker(false); }}
+                        style={{
+                          fontSize: 22,
+                          lineHeight: 1,
+                          padding: '6px 0',
+                          border: 'none',
+                          background: saveEmoji === e ? 'var(--surface)' : 'transparent',
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     onClick={() => setShowSaveForm(false)}

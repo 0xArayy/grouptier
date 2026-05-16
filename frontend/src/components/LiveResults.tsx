@@ -14,6 +14,23 @@ interface Props {
   closing?: boolean;
 }
 
+const TIER_META = [
+  { tier: 'S', bg: 'var(--tier-s)', text: 'var(--tier-s-text)', shadow: '0 2px 0 rgba(0,0,0,0.22)' },
+  { tier: 'A', bg: 'var(--tier-a)', text: 'var(--tier-a-text)', shadow: '0 2px 0 rgba(0,0,0,0.22)' },
+  { tier: 'B', bg: 'var(--tier-b)', text: 'var(--tier-b-text)', shadow: '0 2px 0 rgba(255,255,255,0.4)' },
+  { tier: 'C', bg: 'var(--tier-c)', text: 'var(--tier-c-text)', shadow: '0 2px 0 rgba(0,0,0,0.22)' },
+];
+
+function assignTiers(ranking: BordaEntry[]) {
+  const n = ranking.length;
+  if (n === 0) return [];
+  const size = Math.ceil(n / 4);
+  return TIER_META.map((meta, i) => ({
+    ...meta,
+    items: ranking.slice(i * size, (i + 1) * size),
+  })).filter(t => t.items.length > 0);
+}
+
 export function LiveResults({
   sessionName,
   bordaRanking,
@@ -24,46 +41,92 @@ export function LiveResults({
   onClose,
   closing,
 }: Props) {
+  const tiers = assignTiers(bordaRanking);
+  const maxScore = bordaRanking[0]?.score ?? 1;
+  const voteProgress = voterCount > 0 ? (resultCount / voterCount) * 100 : 0;
+
   return (
     <div style={styles.container}>
-      <h2 style={styles.title}>{sessionName}</h2>
-      <div style={styles.subtitle}>
-        Group ranking · {resultCount} of {voterCount} voted
+      {/* Header */}
+      <div style={styles.headerRow}>
+        <div style={styles.headerText}>
+          <div style={styles.eyebrow}>{sessionName.toUpperCase()} · BORDA</div>
+          <div style={styles.title}>Group tier list</div>
+        </div>
+        {!sessionClosed && (
+          <div style={styles.liveBadge}>
+            <span style={styles.liveDot} />
+            LIVE
+          </div>
+        )}
+        {sessionClosed && (
+          <div style={styles.closedBadge}>🔒 FINAL</div>
+        )}
       </div>
 
-      {sessionClosed && (
-        <div style={styles.closedBanner}>🔒 Voting closed</div>
+      {/* Voter progress bar */}
+      {voterCount > 0 && (
+        <div style={styles.voterRow}>
+          <div style={styles.voterTrack}>
+            <div style={{ ...styles.voterFill, width: `${voteProgress}%` }} />
+          </div>
+          <span style={styles.voterCount}>{resultCount}/{voterCount} voted</span>
+        </div>
       )}
 
       {bordaRanking.length === 0 ? (
         <div style={styles.empty}>No votes yet. Be the first!</div>
       ) : (
-        <div style={styles.list}>
-          {bordaRanking.map((entry, i) => (
-            <div key={entry.option} style={styles.entry}>
-              <span style={styles.rank}>{i + 1}</span>
-              <span style={styles.option}>{entry.option}</span>
-              <span style={styles.score}>{entry.score} pts</span>
+        <div style={styles.tierRows}>
+          {tiers.map(({ tier, bg, text, shadow, items }) => (
+            <div key={tier} style={styles.tierRow}>
+              {/* TierBlockLetter */}
+              <div style={{
+                ...styles.tierBlock,
+                background: bg,
+                color: text,
+                textShadow: shadow,
+              }}>
+                {tier}
+              </div>
+              {/* Borda items with bars */}
+              <div style={styles.bordaItems}>
+                {items.map(entry => (
+                  <div key={entry.option} style={styles.bordaItem}>
+                    <span style={styles.itemName}>{entry.option}</span>
+                    <div style={styles.barTrack}>
+                      <div style={{
+                        ...styles.barFill,
+                        width: `${(entry.score / maxScore) * 100}%`,
+                        background: bg,
+                      }} />
+                    </div>
+                    <span style={styles.itemScore}>{entry.score}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {onShare && (
-        <button style={styles.shareBtn} onClick={onShare}>
-          Share my picks
-        </button>
-      )}
-
-      {onClose && !sessionClosed && (
-        <button
-          style={{ ...styles.closeBtn, opacity: closing ? 0.6 : 1 }}
-          onClick={onClose}
-          disabled={closing}
-        >
-          {closing ? 'Closing…' : '🔒 Close voting & announce winner'}
-        </button>
-      )}
+      {/* Footer buttons */}
+      <div style={styles.footer}>
+        {onShare && (
+          <button style={styles.shareBtn} onClick={onShare}>
+            ↗ Share
+          </button>
+        )}
+        {onClose && !sessionClosed && (
+          <button
+            style={{ ...styles.closeBtn, opacity: closing ? 0.6 : 1 }}
+            onClick={onClose}
+            disabled={closing}
+          >
+            {closing ? 'Closing…' : '🔒 Close & announce'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -72,88 +135,188 @@ const styles: Record<string, React.CSSProperties> = {
   container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 16,
-    padding: 16,
+    gap: 0,
+    padding: '0 0 16px',
     flex: 1,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 700,
-    textAlign: 'center',
+  headerRow: {
+    padding: '10px 16px 4px',
+    display: 'flex',
+    alignItems: 'flex-end',
+    gap: 8,
   },
-  subtitle: {
-    fontSize: 13,
+  headerText: {
+    flex: 1,
+  },
+  eyebrow: {
+    fontSize: 10,
+    fontWeight: 800,
+    letterSpacing: 1.5,
     color: 'var(--text-hint)',
-    textAlign: 'center',
   },
-  closedBanner: {
-    background: '#37474f',
-    color: '#cfd8dc',
-    padding: '10px 16px',
-    borderRadius: 'var(--radius)',
-    textAlign: 'center',
-    fontSize: 14,
-    fontWeight: 500,
+  title: {
+    fontSize: 18,
+    fontWeight: 900,
+    color: 'var(--text)',
+  },
+  liveBadge: {
+    fontSize: 10,
+    padding: '4px 8px 4px 6px',
+    borderRadius: 10,
+    background: 'var(--progress)',
+    color: '#fff',
+    fontWeight: 800,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    letterSpacing: 0.5,
+    flexShrink: 0,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    background: '#fff',
+    animation: 'gtPulse 1.2s infinite',
+  } as React.CSSProperties,
+  closedBadge: {
+    fontSize: 11,
+    padding: '4px 8px',
+    borderRadius: 10,
+    background: 'var(--surface)',
+    color: 'var(--text-hint)',
+    fontWeight: 700,
+    flexShrink: 0,
+  },
+  voterRow: {
+    padding: '0 16px 8px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  voterTrack: {
+    flex: 1,
+    height: 5,
+    borderRadius: 3,
+    background: 'var(--surface)',
+    overflow: 'hidden',
+  },
+  voterFill: {
+    height: '100%',
+    background: 'var(--progress)',
+    borderRadius: 3,
+    transition: 'width 0.4s ease',
+  },
+  voterCount: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: 'var(--text)',
+    fontVariantNumeric: 'tabular-nums',
   },
   empty: {
     textAlign: 'center',
     color: 'var(--text-hint)',
     marginTop: 32,
     fontSize: 15,
+    padding: '0 16px',
   },
-  list: {
+  tierRows: {
+    padding: '4px 14px',
     display: 'flex',
     flexDirection: 'column',
-    gap: 8,
+    gap: 4,
   },
-  entry: {
+  tierRow: {
+    display: 'flex',
+    alignItems: 'stretch',
+    borderRadius: 'var(--radius-md)',
+    overflow: 'hidden',
+    background: 'var(--surface)',
+    boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.06)',
+  },
+  tierBlock: {
+    width: 52,
+    height: 52,
     display: 'flex',
     alignItems: 'center',
-    gap: 12,
-    padding: '12px 16px',
-    background: 'var(--surface)',
-    borderRadius: 'var(--radius)',
+    justifyContent: 'center',
+    fontFamily: 'var(--font-display)',
+    fontWeight: 900,
+    fontSize: 32,
+    lineHeight: 1,
+    letterSpacing: -1,
+    flexShrink: 0,
   },
-  rank: {
-    fontSize: 18,
-    fontWeight: 800,
-    color: 'var(--accent)',
-    width: 28,
-    textAlign: 'center',
-  },
-  option: {
+  bordaItems: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: 500,
+    padding: '6px 8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    justifyContent: 'center',
   },
-  score: {
-    fontSize: 14,
-    color: 'var(--text-hint)',
-    fontWeight: 500,
+  bordaItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
   },
-  closeBtn: {
-    marginTop: 4,
-    padding: '14px',
-    background: 'transparent',
-    color: '#e53e3e',
-    borderRadius: 'var(--radius)',
-    fontSize: 15,
+  itemName: {
+    fontSize: 11,
     fontWeight: 600,
-    width: '100%',
-    minHeight: 'var(--tap-target-min)',
-    border: '1px solid #e53e3e',
-    cursor: 'pointer',
+    color: 'var(--text)',
+    width: 72,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  barTrack: {
+    flex: 1,
+    height: 5,
+    borderRadius: 3,
+    background: 'var(--bg)',
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: '100%',
+    borderRadius: 3,
+    transition: 'width 0.4s ease',
+  },
+  itemScore: {
+    fontSize: 10,
+    fontWeight: 700,
+    color: 'var(--text)',
+    width: 20,
+    textAlign: 'right' as const,
+    fontVariantNumeric: 'tabular-nums',
+    flexShrink: 0,
+  },
+  footer: {
+    padding: '8px 14px 0',
+    display: 'flex',
+    gap: 8,
   },
   shareBtn: {
-    marginTop: 8,
-    padding: '14px',
+    flex: 1,
+    padding: '12px',
     background: 'var(--surface)',
-    color: 'var(--text)',
-    borderRadius: 'var(--radius)',
-    fontSize: 15,
-    fontWeight: 600,
-    width: '100%',
+    color: 'var(--accent)',
+    borderRadius: 'var(--radius-md)',
+    fontSize: 14,
+    fontWeight: 700,
     minHeight: 'var(--tap-target-min)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    cursor: 'pointer',
+  },
+  closeBtn: {
+    flex: 1.4,
+    padding: '12px',
+    background: 'var(--accent)',
+    color: '#fff',
+    borderRadius: 'var(--radius-md)',
+    fontSize: 14,
+    fontWeight: 800,
+    minHeight: 'var(--tap-target-min)',
+    cursor: 'pointer',
+    boxShadow: '0 2px 8px var(--accent-shadow)',
   },
 };

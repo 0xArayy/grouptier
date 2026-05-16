@@ -123,8 +123,8 @@ bot.command('vote', async (ctx) => {
     return;
   }
 
-  // Store message_id for CP1 edits
-  await pool.query('UPDATE sessions SET message_id = $1 WHERE id = $2', [
+  // Store message_id and confirm message was delivered
+  await pool.query('UPDATE sessions SET message_id = $1, message_sent = true WHERE id = $2', [
     sent.message_id,
     session.id,
   ]);

@@ -19,13 +19,14 @@ bot.command('newpoll', async (ctx) => {
   if (!ctx.chat || ctx.chat.type === 'private') {
     return ctx.reply('Use /newpoll in a group chat.');
   }
-  const miniAppUrl = (process.env.MINI_APP_TGLINK ?? '').replace(/\/$/, '');
+  // web_app buttons pass the group chat context in initData (url buttons do not)
+  const miniAppUrl = (process.env.MINI_APP_URL ?? '').replace(/\/$/, '');
   if (!miniAppUrl) {
-    return ctx.reply('Mini App link not configured.');
+    return ctx.reply('Mini App URL not configured (set MINI_APP_URL).');
   }
   await ctx.reply('🗳️ Tap below to create a poll in the Mini App.', {
     reply_markup: {
-      inline_keyboard: [[{ text: '🗳️ Create Poll →', url: miniAppUrl }]],
+      inline_keyboard: [[{ text: '🗳️ Create Poll →', web_app: { url: miniAppUrl } }]],
     },
   });
 });

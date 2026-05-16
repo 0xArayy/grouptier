@@ -8,6 +8,7 @@ interface Props {
   sessionClosed?: boolean;
   onSubmit?: () => void;
   submitting?: boolean;
+  submitError?: string;
 }
 
 const TIER_COLORS: Record<string, { bg: string; text: string }> = {
@@ -17,7 +18,7 @@ const TIER_COLORS: Record<string, { bg: string; text: string }> = {
   C: { bg: 'var(--tier-c)', text: 'var(--tier-c-text)' },
 };
 
-export function TierList({ rankedList, sessionClosed, onSubmit, submitting }: Props) {
+export function TierList({ rankedList, sessionClosed, onSubmit, submitting, submitError }: Props) {
   const n = rankedList.length;
   const tierSize = Math.ceil(n / 4);
 
@@ -61,6 +62,11 @@ export function TierList({ rankedList, sessionClosed, onSubmit, submitting }: Pr
         ))}
       </div>
 
+      {submitError && (
+        <div style={{ color: '#e53e3e', fontSize: 13, textAlign: 'center', padding: '4px 0' }}>
+          {submitError}
+        </div>
+      )}
       {onSubmit && !sessionClosed && (
         <button
           style={{

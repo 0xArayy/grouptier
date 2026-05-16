@@ -41,6 +41,7 @@ export default function App() {
   const [tournament, setTournament] = useState<TournamentState | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [offline, setOffline] = useState(!navigator.onLine);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -174,6 +175,7 @@ export default function App() {
     setSubmitting(true);
 
     const rankedList = buildRankedList(tournament);
+    setSubmitError('');
     try {
       const data = await submitResults(sessionId, rankedList);
       setSession(prev => prev ? { ...prev, ...data } : prev);
@@ -181,8 +183,7 @@ export default function App() {
       setScreen('live');
       startPolling(sessionId);
     } catch (err) {
-      // Error shown inside TierList via re-thrown error
-      throw err;
+      setSubmitError(String(err));
     } finally {
       setSubmitting(false);
     }
@@ -319,6 +320,7 @@ export default function App() {
           sessionClosed={session?.status === 'closed'}
           onSubmit={handleSubmit}
           submitting={submitting}
+          submitError={submitError}
         />
       </>
     );

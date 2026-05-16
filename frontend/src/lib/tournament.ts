@@ -19,6 +19,7 @@ export interface TournamentState {
   champion: string | null;
   totalMatchups: number;
   completedMatchups: number;
+  currentRoundWinners: string[]; // winners accumulated in the current round
 }
 
 /**
@@ -65,6 +66,7 @@ export function createTournament(options: string[], userId: number): TournamentS
     champion: null,
     totalMatchups,
     completedMatchups: 0,
+    currentRoundWinners: [],
   };
 }
 
@@ -93,72 +95,70 @@ export function pick(
     state.rounds[0].length * 2 + (state.rounds[0].some(m => m.isBye) ? 1 : 0),
   )) || 1;
 
-  const eliminated: TierEntry[] = [
-    ...state.eliminated,
-    { option: loser, tier: assignTier(state.currentRound, numRounds) },
-  ];
+  // Don't record '__bye__' as an eliminated option — it's not a real entry.
+  const eliminated: TierEntry[] = loser === '__bye__'
+    ? [...state.eliminated]
+    : [...state.eliminated, { option: loser, tier: assignTier(state.currentRound, numRounds) }];
 
   const completedMatchups = state.completedMatchups + 1;
   const currentRound = state.currentRound;
   const currentMatchup = state.currentMatchup;
   const rounds = state.rounds.map(r => [...r]);
 
-  // Advance to next matchup or next round
-  let nextRound = currentRound;
-  let nextMatchup = currentMatchup + 1;
+  // Accumulate the winner for this matchup (byes advance optionA).
+  const roundWinner = winner === '__bye__'
+    ? state.rounds[currentRound][currentMatchup].optionA
+    : winner;
+  const currentRoundWinners = [...state.currentRoundWinners, roundWinner];
 
-  // Collect winners from current round to build next round
+  const nextMatchup = currentMatchup + 1;
   const currentRoundMatchups = rounds[currentRound];
 
-  if (nextMatchup >= currentRoundMatchups.length) {
-    // Collect all round winners (including byes)
-    const roundWinners: string[] = [];
-    for (let i = 0; i < currentRoundMatchups.length; i++) {
-      const m = currentRoundMatchups[i];
-      if (m.isBye) {
-        roundWinners.push(m.optionA);
-      } else if (i === currentMatchup) {
-        roundWinners.push(winner);
-      } else {
-        // Prior matchups — get from eliminated inverse (not ideal, passing through state)
-        // Actually we need to track round winners separately
-        roundWinners.push(m.optionA); // placeholder — handled below
-      }
-    }
-
-    // Build next round if more than 1 winner
-    if (roundWinners.length > 1) {
-      const nextRoundMatchups: Matchup[] = [];
-      for (let i = 0; i < roundWinners.length; i += 2) {
-        if (i + 1 < roundWinners.length) {
-          nextRoundMatchups.push({ optionA: roundWinners[i], optionB: roundWinners[i + 1], isBye: false });
-        } else {
-          nextRoundMatchups.push({ optionA: roundWinners[i], optionB: '', isBye: true });
-        }
-      }
-      rounds.push(nextRoundMatchups);
-      nextRound = currentRound + 1;
-      nextMatchup = 0;
-    } else {
-      // Tournament done — roundWinners[0] is champion
-      return {
-        ...state,
-        eliminated: [...eliminated, { option: roundWinners[0], tier: 'S' }],
-        champion: roundWinners[0],
-        completedMatchups,
-        rounds,
-      };
-    }
+  if (nextMatchup < currentRoundMatchups.length) {
+    return {
+      ...state,
+      rounds,
+      currentRound,
+      currentMatchup: nextMatchup,
+      eliminated,
+      champion: null,
+      completedMatchups,
+      currentRoundWinners,
+    };
   }
 
+  // All matchups in this round are done — build the next round.
+  if (currentRoundWinners.length > 1) {
+    const nextRoundMatchups: Matchup[] = [];
+    for (let i = 0; i < currentRoundWinners.length; i += 2) {
+      if (i + 1 < currentRoundWinners.length) {
+        nextRoundMatchups.push({ optionA: currentRoundWinners[i], optionB: currentRoundWinners[i + 1], isBye: false });
+      } else {
+        nextRoundMatchups.push({ optionA: currentRoundWinners[i], optionB: '', isBye: true });
+      }
+    }
+    rounds.push(nextRoundMatchups);
+    return {
+      ...state,
+      rounds,
+      currentRound: currentRound + 1,
+      currentMatchup: 0,
+      eliminated,
+      champion: null,
+      completedMatchups,
+      currentRoundWinners: [],
+    };
+  }
+
+  // Single winner — tournament over.
+  const champion = currentRoundWinners[0];
   return {
     ...state,
-    rounds,
-    currentRound: nextRound,
-    currentMatchup: nextMatchup,
-    eliminated,
-    champion: null,
+    eliminated: [...eliminated, { option: champion, tier: 'S' }],
+    champion,
     completedMatchups,
+    rounds,
+    currentRoundWinners: [],
   };
 }
 

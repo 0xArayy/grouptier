@@ -137,7 +137,7 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
               style={{
                 ...styles.row,
                 outline: isOver ? '2px solid var(--accent)' : '2px solid transparent',
-                background: isOver ? 'color-mix(in srgb, var(--surface) 85%, var(--accent) 15%)' : 'var(--surface)',
+                background: 'var(--surface)',
               }}
             >
               <div

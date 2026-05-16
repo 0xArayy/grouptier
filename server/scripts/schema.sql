@@ -11,6 +11,10 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE INDEX IF NOT EXISTS sessions_chat_id_idx ON sessions (chat_id);
 
+-- One collecting session per chat at a time (DB-level enforcement for the 409 race guard)
+CREATE UNIQUE INDEX IF NOT EXISTS sessions_one_collecting_per_chat
+  ON sessions (chat_id) WHERE status = 'collecting';
+
 CREATE TABLE IF NOT EXISTS options (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id  UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,

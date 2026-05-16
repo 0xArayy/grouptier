@@ -26,12 +26,12 @@ const TIER_META: Record<Tier, { bg: string; text: string; shadow: string }> = {
 function buildRows(rankedList: string[]): TierRow[] {
   const n = rankedList.length;
   const tierSize = Math.ceil(n / 4);
-  return ([
+  return [
     { tier: 'S' as Tier, options: rankedList.slice(0, tierSize) },
     { tier: 'A' as Tier, options: rankedList.slice(tierSize, tierSize * 2) },
     { tier: 'B' as Tier, options: rankedList.slice(tierSize * 2, tierSize * 3) },
     { tier: 'C' as Tier, options: rankedList.slice(tierSize * 3) },
-  ] as TierRow[]).filter(r => r.options.length > 0);
+  ] as TierRow[];
 }
 
 export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, submitting, submitError }: Props) {
@@ -48,10 +48,8 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
   // Cleanup ref so useEffect can remove listeners on unmount
   const cleanupRef = useRef<(() => void) | null>(null);
 
-  const champion = rows.find(r => r.tier === 'S')?.options[0] ?? rankedList[0];
-  const nonSRows = rows.filter(r => r.tier !== 'S');
   // Drag only makes sense when there are multiple target tiers to move between.
-  const canDrag = !sessionClosed && !submitting && nonSRows.length > 1;
+  const canDrag = !sessionClosed && !submitting && rows.length > 1;
 
   // Remove document listeners on unmount (in case drag is in progress)
   useEffect(() => () => { cleanupRef.current?.(); }, []);
@@ -105,7 +103,7 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
             if (src) src.options = src.options.filter(o => o !== drag.option);
             const dst = next.find(r => r.tier === target);
             if (dst) dst.options.push(drag.option);
-            return next.filter(r => r.options.length > 0);
+            return next;
           });
         }
       }
@@ -139,27 +137,13 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
 
   return (
     <div style={styles.container}>
-      {/* Hero champion banner */}
-      {champion && (
-        <div style={styles.heroBanner}>
-          <div style={styles.heroInner}>
-            <div style={styles.heroEmoji}>🏆</div>
-            <div style={styles.heroInfo}>
-              <div style={styles.heroEyebrow}>YOUR S TIER · CHAMPION</div>
-              <div style={styles.heroName}>{champion.toUpperCase()}</div>
-              <div style={styles.heroSub}>Beat everyone in your bracket</div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {sessionClosed && (
         <div style={styles.closedBanner}>🔒 Voting closed</div>
       )}
 
-      {/* A/B/C tier rows — draggable chips */}
+      {/* All tier rows — draggable chips */}
       <div style={styles.grid}>
-        {nonSRows.map(({ tier, options }) => {
+        {rows.map(({ tier, options }) => {
           const meta = TIER_META[tier];
           const isOver = overTier === tier && activeOption !== null;
           return (
@@ -215,7 +199,7 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
         })}
       </div>
 
-      {canDrag && nonSRows.length > 1 && (
+      {canDrag && rows.length > 1 && (
         <div style={styles.dragHint}>Hold &amp; drag chips to rearrange tiers</div>
       )}
 
@@ -276,52 +260,6 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 8,
     padding: '0 0 16px',
     flex: 1,
-  },
-  heroBanner: {
-    margin: '12px 14px 4px',
-    borderRadius: 'var(--radius-xl)',
-    overflow: 'hidden',
-    background: 'linear-gradient(135deg, #FF4D4D 0%, #FF7A52 100%)',
-    color: '#fff',
-    boxShadow: '0 8px 24px var(--accent-shadow)',
-  },
-  heroInner: {
-    padding: '14px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-  },
-  heroEmoji: {
-    fontSize: 44,
-    lineHeight: 1,
-    flexShrink: 0,
-  },
-  heroInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  heroEyebrow: {
-    fontSize: 10,
-    fontWeight: 800,
-    letterSpacing: 1.5,
-    opacity: 0.85,
-  },
-  heroName: {
-    fontSize: 20,
-    fontWeight: 900,
-    lineHeight: 1,
-    marginTop: 3,
-    fontFamily: 'var(--font-display)',
-    letterSpacing: -0.3,
-    textShadow: '0 1px 0 rgba(0,0,0,0.18)',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  heroSub: {
-    fontSize: 11,
-    marginTop: 4,
-    opacity: 0.9,
   },
   closedBanner: {
     background: 'var(--surface)',

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createSession, addOption, startVoting } from '../api/client.ts';
+import { createSession, addOption, startVoting, updateSessionName } from '../api/client.ts';
 
 interface Props {
   onSessionReady: (sessionId: string) => void;
@@ -37,6 +37,22 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
   const [optionInput, setOptionInput] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(existingSession?.name ?? '');
+
+  async function handleSaveName() {
+    if (!sessionId || !nameInput.trim() || nameInput.trim() === sessionName) {
+      setEditingName(false);
+      return;
+    }
+    try {
+      await updateSessionName(sessionId, nameInput.trim());
+      setSessionName(nameInput.trim());
+    } catch {
+      setNameInput(sessionName); // revert on error
+    }
+    setEditingName(false);
+  }
 
   async function handleCreateSession() {
     if (busy) return;
@@ -205,7 +221,36 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
   if (step === 'options') {
     return (
       <div style={{ padding: 24, maxWidth: 400, margin: '0 auto' }}>
-        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>{sessionName || 'Your Poll'}</div>
+        {editingName ? (
+          <input
+            autoFocus
+            style={{
+              fontSize: 16,
+              fontWeight: 700,
+              width: '100%',
+              border: 'none',
+              borderBottom: '2px solid var(--accent)',
+              background: 'transparent',
+              color: 'var(--text)',
+              padding: '2px 0',
+              marginBottom: 2,
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+            value={nameInput}
+            onChange={e => setNameInput(e.target.value)}
+            onBlur={handleSaveName}
+            onKeyDown={e => e.key === 'Enter' && handleSaveName()}
+          />
+        ) : (
+          <div
+            onClick={() => { setNameInput(sessionName); setEditingName(true); }}
+            style={{ fontSize: 16, fontWeight: 700, marginBottom: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            {sessionName || 'Untitled Poll'}
+            <span style={{ fontSize: 12, color: 'var(--text-hint)', fontWeight: 400 }}>✏️</span>
+          </div>
+        )}
         <div style={{ fontSize: 13, color: 'var(--text-hint)', marginBottom: 20 }}>
           Add 2–12 options, then start voting.
         </div>

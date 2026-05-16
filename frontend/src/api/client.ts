@@ -26,6 +26,15 @@ export async function fetchActiveSession(): Promise<{ id: string; name: string; 
   return res.json();
 }
 
+export async function updateSessionName(sessionId: string, name: string): Promise<void> {
+  const res = await fetch(`${BASE}/sessions/${sessionId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+}
+
 export async function addOption(sessionId: string, text: string): Promise<{ options: string[] }> {
   const res = await fetch(`${BASE}/sessions/${sessionId}/options`, {
     method: 'POST',

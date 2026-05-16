@@ -228,6 +228,28 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     },
   );
 
+  // PATCH /api/sessions/:id — update session name
+  fastify.patch<{ Params: { id: string }; Body: { name: string } }>(
+    '/api/sessions/:id',
+    { preHandler: initDataMiddleware },
+    async (request, reply) => {
+      const { id } = request.params;
+      const name = (request.body?.name ?? '').trim();
+      if (!name) {
+        return reply.status(400).send({ error: 'name is required' });
+      }
+
+      const res = await pool.query(
+        "UPDATE sessions SET name = $1 WHERE id = $2 AND status = 'collecting' RETURNING id",
+        [name, id],
+      );
+      if (res.rows.length === 0) {
+        return reply.status(404).send({ error: 'Session not found or not in collecting state' });
+      }
+      return { ok: true };
+    },
+  );
+
   // POST /api/sessions/:id/options — add option (dedup + limit 12)
   fastify.post<{ Params: { id: string }; Body: { text: string } }>(
     '/api/sessions/:id/options',

@@ -35,3 +35,4 @@
 **Context:** Simple cron or startup cleanup: `DELETE FROM sessions WHERE status='collecting' AND created_at < NOW() - INTERVAL '24 hours'`. No schema change needed. Could run on server startup (idempotent) or as a scheduled job.
 **Priority:** P3
 **Depends on:** In-app poll creation shipped.
+**Completed:** v1.0.0 (2026-05-16) — startup cleanup added to server/src/index.ts

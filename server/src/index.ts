@@ -33,6 +33,16 @@ if (existsSync(schemaPath)) {
   console.warn('schema.sql not found — skipping auto-init');
 }
 
+// Clean up abandoned collecting sessions older than 24 h.
+// Without this a stranded session blocks new session creation in the same chat
+// (unique index sessions_one_collecting_per_chat).
+const cleaned = await pool.query(
+  "DELETE FROM sessions WHERE status = 'collecting' AND created_at < NOW() - INTERVAL '24 hours' RETURNING id",
+);
+if (cleaned.rowCount && cleaned.rowCount > 0) {
+  console.log(`✓ Cleaned up ${cleaned.rowCount} stranded collecting session(s)`);
+}
+
 // Import bot AFTER env check so grammy never gets an empty token
 const { bot } = await import('./bot/bot.js');
 

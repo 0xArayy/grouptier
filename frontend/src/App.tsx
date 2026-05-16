@@ -42,7 +42,19 @@ export default function App() {
   const [errorMsg, setErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [offline, setOffline] = useState(!navigator.onLine);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const goOffline = () => setOffline(true);
+    const goOnline = () => setOffline(false);
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online', goOnline);
+    return () => {
+      window.removeEventListener('offline', goOffline);
+      window.removeEventListener('online', goOnline);
+    };
+  }, []);
 
   // Initial load
   useEffect(() => {
@@ -190,40 +202,64 @@ export default function App() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (screen === 'create') {
-    return <CreatePoll onSessionReady={handlePollReady} />;
+    return (
+      <>
+        {offline && <OfflineBanner />}
+        <CreatePoll onSessionReady={handlePollReady} />
+      </>
+    );
   }
 
   if (screen === 'loading') {
-    return <FullCenter><Spinner /></FullCenter>;
+    return (
+      <>
+        {offline && <OfflineBanner />}
+        <CompareSkeleton />
+      </>
+    );
   }
 
   if (screen === 'error') {
     return (
-      <FullCenter>
-        <div style={{ textAlign: 'center', padding: 24 }}>
-          <div style={{ fontSize: 32, marginBottom: 16 }}>⚠️</div>
-          <div style={{ color: 'var(--text-hint)', fontSize: 15 }}>{errorMsg}</div>
-          <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-hint)' }}>
-            Open this link from Telegram.
+      <>
+        {offline && <OfflineBanner />}
+        <FullCenter>
+          <div style={{ textAlign: 'center', padding: 24 }}>
+            <div style={{ fontSize: 32, marginBottom: 16 }}>⚠️</div>
+            <div style={{ color: 'var(--text-hint)', fontSize: 15 }}>{errorMsg}</div>
+            <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-hint)' }}>
+              Open this link from Telegram.
+            </div>
           </div>
-        </div>
-      </FullCenter>
+        </FullCenter>
+      </>
     );
   }
 
   if (screen === 'waiting') {
+    const optCount = session?.options.length ?? 0;
+    const isEmpty = optCount === 0;
     return (
-      <FullCenter>
-        <div style={{ textAlign: 'center', padding: 24 }}>
-          <div style={{ fontSize: 32, marginBottom: 16 }}>⏳</div>
-          <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
-            {session?.name ?? 'Session'}
+      <>
+        {offline && <OfflineBanner />}
+        <FullCenter>
+          <div style={{ textAlign: 'center', padding: 24, maxWidth: 320 }}>
+            <div style={{ fontSize: 36, marginBottom: 16 }}>{isEmpty ? '📭' : '⏳'}</div>
+            <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+              {session?.name ?? 'Session'}
+            </div>
+            {isEmpty ? (
+              <div style={{ color: 'var(--text-hint)', fontSize: 15, lineHeight: 1.5 }}>
+                No options added yet. The group admin can add options and start voting from the Mini App.
+              </div>
+            ) : (
+              <div style={{ color: 'var(--text-hint)', fontSize: 15, lineHeight: 1.5 }}>
+                {optCount} option{optCount !== 1 ? 's' : ''} added. Waiting for admin to start voting.
+              </div>
+            )}
           </div>
-          <div style={{ color: 'var(--text-hint)', fontSize: 15 }}>
-            Waiting for options… Admin must use /vote to start.
-          </div>
-        </div>
-      </FullCenter>
+        </FullCenter>
+      </>
     );
   }
 
@@ -231,49 +267,108 @@ export default function App() {
     const matchup = tournament.rounds[tournament.currentRound][tournament.currentMatchup];
     const numRounds = tournament.rounds.length;
     return (
-      <Compare
-        key={`${tournament.currentRound}-${tournament.currentMatchup}`}
-        matchup={matchup}
-        currentRound={tournament.currentRound}
-        totalRounds={numRounds}
-        completedMatchups={tournament.completedMatchups}
-        totalMatchups={tournament.totalMatchups}
-        onPick={handlePick}
-      />
+      <>
+        {offline && <OfflineBanner />}
+        <Compare
+          key={`${tournament.currentRound}-${tournament.currentMatchup}`}
+          matchup={matchup}
+          currentRound={tournament.currentRound}
+          totalRounds={numRounds}
+          completedMatchups={tournament.completedMatchups}
+          totalMatchups={tournament.totalMatchups}
+          onPick={handlePick}
+        />
+      </>
     );
   }
 
   if (screen === 'bye' && tournament) {
     const matchup = tournament.rounds[tournament.currentRound][tournament.currentMatchup];
-    return <ByeScreen option={matchup.optionA} onDone={handleByeDone} />;
+    return (
+      <>
+        {offline && <OfflineBanner />}
+        <ByeScreen option={matchup.optionA} onDone={handleByeDone} />
+      </>
+    );
   }
 
   if (screen === 'tierlist' && tournament) {
     const rankedList = buildRankedList(tournament);
     return (
-      <TierList
-        rankedList={rankedList}
-        sessionClosed={session?.status === 'closed'}
-        onSubmit={handleSubmit}
-        submitting={submitting}
-      />
+      <>
+        {offline && <OfflineBanner />}
+        <TierList
+          rankedList={rankedList}
+          sessionClosed={session?.status === 'closed'}
+          onSubmit={handleSubmit}
+          submitting={submitting}
+        />
+      </>
     );
   }
 
   if (screen === 'live' && session) {
     return (
-      <LiveResults
-        sessionName={session.name}
-        bordaRanking={session.borda_ranking}
-        resultCount={session.result_count}
-        voterCount={session.voter_count}
-        sessionClosed={session.status === 'closed'}
-        onShare={submitted ? handleShare : undefined}
-      />
+      <>
+        {offline && <OfflineBanner />}
+        <LiveResults
+          sessionName={session.name}
+          bordaRanking={session.borda_ranking}
+          resultCount={session.result_count}
+          voterCount={session.voter_count}
+          sessionClosed={session.status === 'closed'}
+          onShare={submitted ? handleShare : undefined}
+        />
+      </>
     );
   }
 
   return <FullCenter><Spinner /></FullCenter>;
+}
+
+function OfflineBanner() {
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 100,
+      background: '#c62828',
+      color: '#fff',
+      fontSize: 13,
+      fontWeight: 500,
+      textAlign: 'center',
+      padding: '8px 16px',
+    }}>
+      No internet connection
+    </div>
+  );
+}
+
+function CompareSkeleton() {
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      padding: '24px 16px',
+      gap: 24,
+      flex: 1,
+    }}>
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+        <div className="skeleton" style={{ width: 100, height: 14 }} />
+        <div className="skeleton" style={{ width: '100%', height: 4 }} />
+        <div className="skeleton" style={{ width: 40, height: 12 }} />
+      </div>
+      <div className="skeleton" style={{ width: 160, height: 24 }} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 400, alignItems: 'center' }}>
+        <div className="skeleton" style={{ width: '100%', height: 80 }} />
+        <div className="skeleton" style={{ width: 32, height: 16, borderRadius: 4 }} />
+        <div className="skeleton" style={{ width: '100%', height: 80 }} />
+      </div>
+    </div>
+  );
 }
 
 function FullCenter({ children }: { children: React.ReactNode }) {

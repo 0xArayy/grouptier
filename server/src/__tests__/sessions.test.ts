@@ -146,6 +146,26 @@ describe('GET /api/sessions/:id', () => {
 
     expect(res.statusCode).toBe(404);
   });
+
+  it('surfaces voting+message_sent=false as collecting (crash recovery)', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', status: 'voting', message_sent: false }] })
+      .mockResolvedValueOnce({ rows: [] }) // register voter
+      .mockResolvedValueOnce({ rows: [] }) // options
+      .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // voter count
+      .mockResolvedValueOnce({ rows: [{ count: '0' }] }) // result count
+      .mockResolvedValueOnce({ rows: [] }) // ranked lists
+      .mockResolvedValueOnce({ rows: [] }); // my_result
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/sessions/${SESSION_ID}`,
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).status).toBe('collecting');
+  });
 });
 
 describe('POST /api/sessions/:id/options', () => {
@@ -230,8 +250,8 @@ describe('POST /api/sessions/:id/vote', () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, status: 'collecting' }] })
       .mockResolvedValueOnce({ rows: [{ count: '3' }] }) // option count
-      .mockResolvedValueOnce({ rows: [] }) // update status
-      .mockResolvedValueOnce({ rows: [] }); // update message_id
+      .mockResolvedValueOnce({ rows: [] }) // update status to voting
+      .mockResolvedValueOnce({ rows: [] }); // update message_id + message_sent=true
 
     mockSendMessage.mockResolvedValueOnce({ message_id: 999 });
 
@@ -244,6 +264,10 @@ describe('POST /api/sessions/:id/vote', () => {
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).ok).toBe(true);
     expect(mockSendMessage).toHaveBeenCalledOnce();
+    expect(mockQuery).toHaveBeenCalledWith(
+      'UPDATE sessions SET message_id = $1, message_sent = true WHERE id = $2',
+      [999, SESSION_ID],
+    );
   });
 
   it('rolls back and returns 502 when sendMessage fails', async () => {

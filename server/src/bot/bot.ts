@@ -14,19 +14,32 @@ bot.catch((err) => {
   console.error('Bot error:', err);
 });
 
-// /newpoll — open Mini App to create a poll
+// /newpoll — create session and open Mini App manage screen
 bot.command('newpoll', async (ctx) => {
   if (!ctx.chat || ctx.chat.type === 'private') {
     return ctx.reply('Use /newpoll in a group chat.');
   }
-  // web_app buttons pass the group chat context in initData (url buttons do not)
-  const miniAppUrl = (process.env.MINI_APP_URL ?? '').replace(/\/$/, '');
-  if (!miniAppUrl) {
-    return ctx.reply('Mini App URL not configured (set MINI_APP_URL).');
+
+  // Check for existing collecting session
+  const existing = await pool.query(
+    "SELECT id FROM sessions WHERE chat_id = $1 AND status = 'collecting' LIMIT 1",
+    [ctx.chat.id],
+  );
+  let sessionId: string;
+  if (existing.rows.length > 0) {
+    sessionId = existing.rows[0].id;
+  } else {
+    const res = await pool.query(
+      "INSERT INTO sessions (chat_id, name, status) VALUES ($1, 'Untitled Poll', 'collecting') RETURNING id",
+      [ctx.chat.id],
+    );
+    sessionId = res.rows[0].id;
   }
-  await ctx.reply('🗳️ Tap below to create a poll in the Mini App.', {
+
+  const manageUrl = buildVoteUrl(sessionId);
+  await ctx.reply('🗳️ Tap below to set up your poll in the Mini App.', {
     reply_markup: {
-      inline_keyboard: [[{ text: '🗳️ Create Poll →', web_app: { url: miniAppUrl } }]],
+      inline_keyboard: [[{ text: '🗳️ Set Up Poll →', url: manageUrl }]],
     },
   });
 });

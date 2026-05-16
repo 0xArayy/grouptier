@@ -241,9 +241,6 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       }
 
       const chat = request.telegramChat;
-      if (!chat) {
-        return reply.status(400).send({ error: 'No chat context. Open from a group.' });
-      }
 
       const sessionRes = await pool.query(
         'SELECT status, chat_id FROM sessions WHERE id = $1',
@@ -252,7 +249,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       if (sessionRes.rows.length === 0) {
         return reply.status(404).send({ error: 'Session not found' });
       }
-      if (sessionRes.rows[0].chat_id !== chat.id) {
+      if (chat && sessionRes.rows[0].chat_id !== chat.id) {
         return reply.status(403).send({ error: 'Forbidden' });
       }
       if (sessionRes.rows[0].status !== 'collecting') {
@@ -293,9 +290,6 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       const { id } = request.params;
 
       const chat = request.telegramChat;
-      if (!chat) {
-        return reply.status(400).send({ error: 'No chat context. Open from a group.' });
-      }
 
       const sessionRes = await pool.query(
         'SELECT id, name, chat_id, status FROM sessions WHERE id = $1',
@@ -305,7 +299,9 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: 'Session not found' });
       }
       const session = sessionRes.rows[0];
-      if (session.chat_id !== chat.id) {
+      // Enforce ownership only when chat context is available (url-button Mini App
+      // launches may not include chat in initData).
+      if (chat && session.chat_id !== chat.id) {
         return reply.status(403).send({ error: 'Forbidden' });
       }
       if (session.status !== 'collecting') {

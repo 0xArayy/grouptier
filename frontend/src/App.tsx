@@ -195,8 +195,22 @@ export default function App() {
   }
 
   function handlePollReady(newSessionId: string) {
+    // Don't rely on useEffect — sessionId may already equal newSessionId
+    // (e.g. /newpoll opens Mini App with startapp=id, then user starts voting).
     setSessionId(newSessionId);
     setScreen('loading');
+    fetchSession(newSessionId)
+      .then((data: SessionData) => {
+        setSession(data);
+        if (data.options.length < 2) { setScreen('waiting'); return; }
+        if (data.my_result) { setScreen('live'); setSubmitted(true); startPolling(newSessionId); return; }
+        if (data.status === 'closed') { setScreen('live'); return; }
+        const t = createTournament(data.options, getUserId());
+        setTournament(t);
+        const m = t.rounds[t.currentRound][t.currentMatchup];
+        setScreen(m.isBye ? 'bye' : 'compare');
+      })
+      .catch((err: unknown) => { setErrorMsg(String(err)); setScreen('error'); });
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────

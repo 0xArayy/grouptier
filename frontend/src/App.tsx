@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { fetchSession, submitResults } from './api/client.ts';
+import { fetchSession, submitResults, fetchActiveSession } from './api/client.ts';
 import { Compare } from './components/Compare.tsx';
 import { ByeScreen } from './components/ByeScreen.tsx';
 import { TierList } from './components/TierList.tsx';
 import { LiveResults } from './components/LiveResults.tsx';
+import { CreatePoll } from './components/CreatePoll.tsx';
 import { createTournament, pick, buildRankedList } from './lib/tournament.ts';
 import type { TournamentState } from './lib/tournament.ts';
 
-type Screen = 'loading' | 'error' | 'waiting' | 'compare' | 'bye' | 'tierlist' | 'live';
+type Screen = 'loading' | 'error' | 'waiting' | 'compare' | 'bye' | 'tierlist' | 'live' | 'create';
 
 interface SessionData {
   id: string;
@@ -34,7 +35,7 @@ function getSessionId(): string | null {
 }
 
 export default function App() {
-  const sessionId = getSessionId();
+  const [sessionId, setSessionId] = useState<string | null>(getSessionId);
   const [screen, setScreen] = useState<Screen>('loading');
   const [session, setSession] = useState<SessionData | null>(null);
   const [tournament, setTournament] = useState<TournamentState | null>(null);
@@ -46,8 +47,20 @@ export default function App() {
   // Initial load
   useEffect(() => {
     if (!sessionId) {
-      setErrorMsg('No session ID. Open this from a Telegram group.');
-      setScreen('error');
+      // No session in URL — check if one exists in the group, else show CreatePoll
+      fetchActiveSession()
+        .then(active => {
+          setSessionId(active.id);
+        })
+        .catch((err: unknown) => {
+          const msg = String(err);
+          if (msg.includes('404')) {
+            setScreen('create');
+          } else {
+            setErrorMsg(msg);
+            setScreen('error');
+          }
+        });
       return;
     }
 
@@ -169,7 +182,16 @@ export default function App() {
     window.Telegram?.WebApp?.switchInlineQuery?.(sessionId, ['groups']);
   }
 
+  function handlePollReady(newSessionId: string) {
+    setSessionId(newSessionId);
+    setScreen('loading');
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
+
+  if (screen === 'create') {
+    return <CreatePoll onSessionReady={handlePollReady} />;
+  }
 
   if (screen === 'loading') {
     return <FullCenter><Spinner /></FullCenter>;

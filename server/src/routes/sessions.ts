@@ -304,6 +304,43 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     },
   );
 
+  // DELETE /api/sessions/:id/options/:text — remove an option while still collecting
+  fastify.delete<{ Params: { id: string; text: string } }>(
+    '/api/sessions/:id/options/:text',
+    { preHandler: initDataMiddleware },
+    async (request, reply) => {
+      const { id, text } = request.params;
+      const decoded = decodeURIComponent(text).trim();
+
+      const chat = request.telegramChat;
+
+      const sessionRes = await pool.query(
+        'SELECT status, chat_id FROM sessions WHERE id = $1',
+        [id],
+      );
+      if (sessionRes.rows.length === 0) {
+        return reply.status(404).send({ error: 'Session not found' });
+      }
+      if (chat && sessionRes.rows[0].chat_id !== chat.id) {
+        return reply.status(403).send({ error: 'Forbidden' });
+      }
+      if (sessionRes.rows[0].status !== 'collecting') {
+        return reply.status(403).send({ error: 'Session is not collecting options' });
+      }
+
+      await pool.query(
+        'DELETE FROM options WHERE session_id = $1 AND LOWER(text) = LOWER($2)',
+        [id, decoded],
+      );
+
+      const allRes = await pool.query(
+        'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
+        [id],
+      );
+      return { options: allRes.rows.map((r: { text: string }) => r.text) };
+    },
+  );
+
   // POST /api/sessions/:id/vote — flip to voting, send bot message, rollback on failure
   fastify.post<{ Params: { id: string } }>(
     '/api/sessions/:id/vote',

@@ -45,6 +45,15 @@ export async function addOption(sessionId: string, text: string): Promise<{ opti
   return res.json();
 }
 
+export async function removeOption(sessionId: string, text: string): Promise<{ options: string[] }> {
+  const res = await fetch(`${BASE}/sessions/${sessionId}/options/${encodeURIComponent(text)}`, {
+    method: 'DELETE',
+    headers: { 'x-init-data': getInitData() },
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
 export async function startVoting(sessionId: string): Promise<void> {
   const res = await fetch(`${BASE}/sessions/${sessionId}/vote`, {
     method: 'POST',

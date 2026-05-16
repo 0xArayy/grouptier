@@ -1,42 +1,74 @@
 import { useState } from 'react';
-import { createSession, addOption, startVoting, updateSessionName } from '../api/client.ts';
+import { createSession, addOption, removeOption, startVoting, updateSessionName } from '../api/client.ts';
 
 interface Props {
   onSessionReady: (sessionId: string) => void;
   existingSession?: { id: string; name: string; options: string[] };
 }
 
-type Step = 'name' | 'options' | 'starting';
+type Step = 'home' | 'presets' | 'options' | 'starting';
 
 const PRESETS: { emoji: string; label: string; name: string; options: string[] }[] = [
   {
     emoji: '🍕',
-    label: 'Food',
-    name: 'What should we eat?',
-    options: ['Pizza', 'Sushi', 'Burgers', 'Tacos', 'Ramen', 'Pasta', 'Thai', 'Salad'],
+    label: 'Еда',
+    name: 'Что будем есть?',
+    options: ['Пицца', 'Суши', 'Бургеры', 'Тако', 'Рамен', 'Паста', 'Тайская', 'Салат'],
   },
   {
     emoji: '🎮',
-    label: 'Games',
-    name: 'What should we play?',
+    label: 'Игры',
+    name: 'Во что сыграем?',
     options: ['Minecraft', 'Valorant', 'CS2', 'Among Us', 'Stardew Valley', 'Rocket League', 'Fortnite', 'League of Legends'],
   },
   {
     emoji: '🎬',
-    label: 'Movies',
-    name: 'What genre tonight?',
-    options: ['Action', 'Comedy', 'Horror', 'Romance', 'Sci-Fi', 'Thriller', 'Animation', 'Documentary'],
+    label: 'Кино',
+    name: 'Какой жанр сегодня?',
+    options: ['Боевик', 'Комедия', 'Ужасы', 'Романтика', 'Фантастика', 'Триллер', 'Анимация', 'Документалка'],
+  },
+  {
+    emoji: '📺',
+    label: 'Сериал',
+    name: 'Какой сериал смотрим?',
+    options: ['Breaking Bad', 'Game of Thrones', 'The Bear', 'Severance', 'Succession', 'The Wire', 'Chernobyl', 'Dark'],
+  },
+  {
+    emoji: '🎵',
+    label: 'Музыка',
+    name: 'Какую музыку ставим?',
+    options: ['Хип-хоп', 'Поп', 'Рок', 'Электронная', 'Джаз', 'R&B', 'Классика', 'Инди'],
+  },
+  {
+    emoji: '🏖️',
+    label: 'Отдых',
+    name: 'Куда едем?',
+    options: ['Море', 'Горы', 'Город', 'Дача', 'Кемпинг', 'Экскурсии', 'Спа', 'Остаёмся дома'],
+  },
+  {
+    emoji: '🎯',
+    label: 'Досуг',
+    name: 'Чем займёмся?',
+    options: ['Боулинг', 'Кино', 'Бар', 'Парк', 'Квест', 'Настолки', 'Каток', 'Кафе'],
+  },
+  {
+    emoji: '🍺',
+    label: 'Напитки',
+    name: 'Что пьём?',
+    options: ['Пиво', 'Вино', 'Коктейли', 'Виски', 'Текила', 'Просекко', 'Безалкогольное', 'Чай'],
   },
 ];
 
 export function CreatePoll({ onSessionReady, existingSession }: Props) {
-  const [step, setStep] = useState<Step>(existingSession ? 'options' : 'name');
+  const [step, setStep] = useState<Step>(existingSession ? 'options' : 'home');
   const [sessionId, setSessionId] = useState<string | null>(existingSession?.id ?? null);
   const [sessionName, setSessionName] = useState(existingSession?.name ?? '');
   const [options, setOptions] = useState<string[]>(existingSession?.options ?? []);
   const [optionInput, setOptionInput] = useState('');
+  const [customName, setCustomName] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [removingOption, setRemovingOption] = useState<string | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(existingSession?.name ?? '');
 
@@ -49,26 +81,24 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
       await updateSessionName(sessionId, nameInput.trim());
       setSessionName(nameInput.trim());
     } catch {
-      setNameInput(sessionName); // revert on error
+      setNameInput(sessionName);
     }
     setEditingName(false);
   }
 
-  async function handleCreateSession() {
+  async function handleCreateCustom() {
     if (busy) return;
     setBusy(true);
     setError('');
     try {
-      const { id } = await createSession(sessionName.trim() || 'Untitled Poll');
+      const name = customName.trim() || 'Untitled Poll';
+      const { id } = await createSession(name);
       setSessionId(id);
+      setSessionName(name);
       setStep('options');
     } catch (err: unknown) {
       const msg = String(err);
-      if (msg.includes('409')) {
-        setError('A session is already collecting in this group.');
-      } else {
-        setError(msg);
-      }
+      setError(msg.includes('409') ? 'В этой группе уже идёт сбор вариантов.' : msg);
     } finally {
       setBusy(false);
     }
@@ -106,13 +136,23 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
       setStep('options');
     } catch (err: unknown) {
       const msg = String(err);
-      if (msg.includes('409')) {
-        setError('A session is already collecting in this group.');
-      } else {
-        setError(msg);
-      }
+      setError(msg.includes('409') ? 'В этой группе уже идёт сбор вариантов.' : msg);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleRemoveOption(text: string) {
+    if (!sessionId || busy) return;
+    setRemovingOption(text);
+    setError('');
+    try {
+      const { options: updated } = await removeOption(sessionId, text);
+      setOptions(updated);
+    } catch (err: unknown) {
+      setError(String(err));
+    } finally {
+      setRemovingOption(null);
     }
   }
 
@@ -132,9 +172,9 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
     }
   }
 
-  const buttonStyle: React.CSSProperties = {
+  const primaryBtn: React.CSSProperties = {
     width: '100%',
-    padding: '12px 16px',
+    padding: '13px 16px',
     borderRadius: 'var(--radius-md)',
     border: 'none',
     background: 'var(--accent)',
@@ -158,71 +198,173 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
     boxSizing: 'border-box',
   };
 
-  if (step === 'name') {
+  // ── Home ──────────────────────────────────────────────────────────
+  if (step === 'home') {
     return (
-      <div style={{ padding: 24, maxWidth: 400, margin: '0 auto' }}>
+      <div style={{ padding: '24px 16px', maxWidth: 400, margin: '0 auto' }}>
         <div style={{ fontSize: 28, marginBottom: 8 }}>🗳️</div>
-        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Create a Poll</div>
-        <div style={{ fontSize: 14, color: 'var(--text-hint)', marginBottom: 20 }}>
-          Name your poll — then add the options your group will rank.
+        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Создать опрос</div>
+        <div style={{ fontSize: 14, color: 'var(--text-hint)', marginBottom: 24 }}>
+          Выбери тему — группа проголосует и выберет лучший вариант.
+        </div>
+
+        <button
+          style={primaryBtn}
+          disabled={busy}
+          onClick={() => setStep('presets')}
+        >
+          Выбрать тему →
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0' }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--surface)' }} />
+          <span style={{ fontSize: 12, color: 'var(--text-hint)', fontWeight: 500 }}>или</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--surface)' }} />
         </div>
 
         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-hint)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
-          Quick start
-        </div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          {PRESETS.map(p => (
-            <button
-              key={p.label}
-              onClick={() => handlePreset(p)}
-              disabled={busy}
-              style={{
-                flex: 1,
-                padding: '10px 8px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--surface)',
-                background: 'var(--surface)',
-                color: 'var(--text)',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: busy ? 'not-allowed' : 'pointer',
-                opacity: busy ? 0.5 : 1,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 4,
-              }}
-            >
-              <span style={{ fontSize: 20 }}>{p.emoji}</span>
-              {p.label}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-hint)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
-          Custom
+          Свой вариант
         </div>
         <input
           style={inputStyle}
-          placeholder="Poll name (e.g. Best pizza topping)"
-          value={sessionName}
-          onChange={e => setSessionName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleCreateSession()}
+          placeholder="Название опроса…"
+          value={customName}
+          onChange={e => setCustomName(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleCreateCustom()}
           autoFocus
         />
         {error && <div style={{ color: 'var(--accent)', fontSize: 13, marginTop: 8 }}>{error}</div>}
-        <div style={{ marginTop: 12 }}>
-          <button style={buttonStyle} disabled={busy} onClick={handleCreateSession}>
-            {busy ? 'Creating…' : 'Next →'}
+        <div style={{ marginTop: 10 }}>
+          <button
+            style={{
+              ...primaryBtn,
+              background: 'var(--surface)',
+              color: 'var(--text)',
+              boxShadow: 'none',
+              opacity: busy ? 0.5 : 1,
+            }}
+            disabled={busy}
+            onClick={handleCreateCustom}
+          >
+            {busy ? 'Создаём…' : 'Создать пустой опрос'}
           </button>
         </div>
       </div>
     );
   }
 
+  // ── Preset picker ─────────────────────────────────────────────────
+  if (step === 'presets') {
+    return (
+      <div style={{ maxWidth: 400, margin: '0 auto' }}>
+        {/* sticky header */}
+        <div style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          background: 'var(--bg)',
+          padding: '14px 16px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          borderBottom: '1px solid var(--surface)',
+        }}>
+          <button
+            onClick={() => setStep('home')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-hint)',
+              fontSize: 20,
+              cursor: 'pointer',
+              padding: '0 4px',
+              lineHeight: 1,
+            }}
+          >
+            ←
+          </button>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>Выбери тему</div>
+        </div>
+
+        {error && (
+          <div style={{ padding: '10px 16px', color: 'var(--accent)', fontSize: 13 }}>{error}</div>
+        )}
+
+        {/* preset cards */}
+        <div style={{ padding: '12px 16px 32px' }}>
+          {PRESETS.map(p => (
+            <button
+              key={p.label}
+              onClick={() => handlePreset(p)}
+              disabled={busy}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 14,
+                padding: '14px 12px',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--surface)',
+                background: 'var(--surface)',
+                cursor: busy ? 'not-allowed' : 'pointer',
+                opacity: busy ? 0.5 : 1,
+                marginBottom: 10,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: 36, lineHeight: 1, flexShrink: 0, marginTop: 2 }}>{p.emoji}</span>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
+                  {p.name}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {p.options.map(opt => (
+                    <span
+                      key={opt}
+                      style={{
+                        fontSize: 12,
+                        padding: '3px 8px',
+                        borderRadius: 'var(--radius-full)',
+                        background: 'var(--bg)',
+                        color: 'var(--text-hint)',
+                        fontWeight: 500,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {opt}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <span style={{ fontSize: 18, color: 'var(--text-hint)', flexShrink: 0, marginLeft: 'auto', alignSelf: 'center' }}>›</span>
+            </button>
+          ))}
+        </div>
+
+        {/* loading overlay */}
+        {busy && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.35)',
+            gap: 12,
+          }}>
+            <div style={{ fontSize: 36 }}>⏳</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>Загружаем варианты…</div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Options editor ────────────────────────────────────────────────
   if (step === 'options') {
     return (
-      <div style={{ padding: 24, maxWidth: 400, margin: '0 auto' }}>
+      <div style={{ padding: '24px 16px', maxWidth: 400, margin: '0 auto' }}>
         {editingName ? (
           <input
             autoFocus
@@ -249,25 +391,47 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
             onClick={() => { setNameInput(sessionName); setEditingName(true); }}
             style={{ fontSize: 16, fontWeight: 700, marginBottom: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
           >
-            {sessionName || 'Untitled Poll'}
+            {sessionName || 'Без названия'}
             <span style={{ fontSize: 12, color: 'var(--text-hint)', fontWeight: 400 }}>✏️</span>
           </div>
         )}
         <div style={{ fontSize: 13, color: 'var(--text-hint)', marginBottom: 20 }}>
-          Add 2–12 options, then start voting.
+          Добавь или удали варианты, затем запускай.
         </div>
 
         {options.length > 0 && (
           <div style={{ marginBottom: 16 }}>
             {options.map((opt, i) => (
               <div key={i} style={{
-                padding: '8px 12px',
+                padding: '9px 12px',
                 borderRadius: 'var(--radius-md)',
                 background: 'var(--surface)',
                 marginBottom: 6,
                 fontSize: 14,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
               }}>
-                {i + 1}. {opt}
+                <span style={{ color: 'var(--text)' }}>{i + 1}. {opt}</span>
+                <button
+                  onClick={() => handleRemoveOption(opt)}
+                  disabled={removingOption === opt || busy}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-hint)',
+                    cursor: (removingOption === opt || busy) ? 'not-allowed' : 'pointer',
+                    fontSize: 18,
+                    lineHeight: 1,
+                    padding: '2px 4px',
+                    opacity: removingOption === opt ? 0.3 : 0.5,
+                    flexShrink: 0,
+                  }}
+                  aria-label={`Удалить ${opt}`}
+                >
+                  ×
+                </button>
               </div>
             ))}
           </div>
@@ -277,7 +441,7 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
             <input
               style={{ ...inputStyle, flex: 1 }}
-              placeholder="Add an option…"
+              placeholder="Добавить вариант…"
               value={optionInput}
               onChange={e => setOptionInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAddOption()}
@@ -305,20 +469,21 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
         {error && <div style={{ color: 'var(--accent)', fontSize: 13, marginBottom: 10 }}>{error}</div>}
 
         <button
-          style={{ ...buttonStyle, opacity: (options.length < 2 || busy) ? 0.5 : 1 }}
+          style={{ ...primaryBtn, opacity: (options.length < 2 || busy) ? 0.5 : 1 }}
           disabled={options.length < 2 || busy}
           onClick={handleStartVoting}
         >
-          Start Voting ({options.length} option{options.length !== 1 ? 's' : ''})
+          Запустить голосование ({options.length} вар{options.length === 1 ? 'иант' : options.length < 5 ? 'ианта' : 'иантов'})
         </button>
       </div>
     );
   }
 
+  // ── Starting ──────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', flexDirection: 'column', gap: 12 }}>
       <div style={{ fontSize: 32 }}>📢</div>
-      <div style={{ fontSize: 16, fontWeight: 600 }}>Opening vote in your group…</div>
+      <div style={{ fontSize: 16, fontWeight: 600 }}>Открываем голосование в группе…</div>
     </div>
   );
 }

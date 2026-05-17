@@ -2,6 +2,13 @@
 
 All notable changes to GroupTier are documented here.
 
+## [1.0.3.0] - 2026-05-17
+
+### Added
+- Any poll participant can now save the poll as a reusable template directly from the results screen, after submitting their tier list.
+- "💾 Сохранить" button on LiveResults screen expands an inline form with a name input and 32-emoji icon picker.
+- sessionStorage dedup guard: re-visiting the results screen shows "Сохранено ✓" if the template was already saved this session.
+
 ## [1.0.2.0] - 2026-05-17
 
 ### Added

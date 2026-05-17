@@ -6,6 +6,12 @@
 
 ## Completed
 
+### [save-from-results] Save template from results screen
+**Completed:** v1.0.3.0 (2026-05-17)
+- Any poll participant can save the poll as a template from LiveResults after submitting their tier list.
+- "💾 Сохранить" button on LiveResults expands inline name + emoji-picker form.
+- sessionStorage guard (keyed by userId+sessionId) prevents duplicate saves on revisit.
+
 ### [saved-polls] Save and reuse custom poll templates
 **Completed:** v1.0.2.0 (2026-05-17)
 - Users can save a custom poll as a reusable template with a name, options list, and emoji icon.

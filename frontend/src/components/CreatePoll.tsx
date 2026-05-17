@@ -441,7 +441,7 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
           borderBottom: '1px solid var(--surface)',
         }}>
           <button
-            onClick={() => setStep('home')}
+            onClick={() => { setSessionId(null); setOptions([]); setError(''); setStep('home'); }}
             style={{ background: 'none', border: 'none', color: 'var(--text-hint)', fontSize: 20, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
           >
             ←
@@ -569,7 +569,7 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
           borderBottom: '1px solid var(--surface)',
         }}>
           <button
-            onClick={() => setStep('home')}
+            onClick={() => { setSessionId(null); setOptions([]); setError(''); setStep('home'); }}
             style={{
               background: 'none',
               border: 'none',

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { fetchSession, submitResults, fetchActiveSession, closeSession } from './api/client.ts';
+import { fetchSession, submitResults, fetchActiveSession, closeSession, createSavedPoll } from './api/client.ts';
 import { Compare } from './components/Compare.tsx';
 import { ByeScreen } from './components/ByeScreen.tsx';
 import { TierList } from './components/TierList.tsx';
@@ -209,6 +209,13 @@ export default function App() {
     window.Telegram?.WebApp?.switchInlineQuery?.(sessionId, ['groups']);
   }
 
+  async function handleSaveTemplate(name: string, emoji: string) {
+    const opts = session?.options ?? []; // snapshot before await — prevents polling race
+    const trimmed = opts.map(o => o.trim()).filter(Boolean);
+    await createSavedPoll(name, trimmed, emoji);
+    sessionStorage.setItem(`saved-tmpl-${getUserId()}-${sessionId}`, '1');
+  }
+
   function handlePollReady(newSessionId: string) {
     // Don't rely on useEffect — sessionId may already equal newSessionId
     // (e.g. /newpoll opens Mini App with startapp=id, then user starts voting).
@@ -341,6 +348,9 @@ export default function App() {
   }
 
   if (screen === 'live' && session) {
+    const initialSaved = sessionId
+      ? sessionStorage.getItem(`saved-tmpl-${getUserId()}-${sessionId}`) === '1'
+      : false;
     return (
       <>
         {offline && <OfflineBanner />}
@@ -353,6 +363,9 @@ export default function App() {
           onShare={submitted ? handleShare : undefined}
           onClose={session.status === 'voting' ? handleClose : undefined}
           closing={closing}
+          onSaveTemplate={submitted ? handleSaveTemplate : undefined}
+          sessionId={sessionId ?? undefined}
+          initialSaved={initialSaved}
         />
       </>
     );

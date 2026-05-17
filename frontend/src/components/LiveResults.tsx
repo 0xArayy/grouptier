@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 interface BordaEntry {
   option: string;
   score: number;
@@ -12,6 +14,9 @@ interface Props {
   onShare?: () => void;
   onClose?: () => void;
   closing?: boolean;
+  onSaveTemplate?: (name: string, emoji: string) => Promise<void>;
+  sessionId?: string;
+  initialSaved?: boolean;
 }
 
 const TIER_META = [
@@ -19,6 +24,13 @@ const TIER_META = [
   { tier: 'A', bg: 'var(--tier-a)', text: 'var(--tier-a-text)', shadow: '0 2px 0 rgba(0,0,0,0.22)' },
   { tier: 'B', bg: 'var(--tier-b)', text: 'var(--tier-b-text)', shadow: '0 2px 0 rgba(255,255,255,0.4)' },
   { tier: 'C', bg: 'var(--tier-c)', text: 'var(--tier-c-text)', shadow: '0 2px 0 rgba(0,0,0,0.22)' },
+];
+
+const EMOJI_PRESETS = [
+  '🍕','🍺','🎮','🎬','📺','🎵','🏖️','🎯',
+  '🎲','🏆','🎉','🔥','⭐','💡','🎭','🎨',
+  '🌍','🏅','🎸','🍜','🧩','🚀','💎','🎪',
+  '🍔','🥂','🎳','📸','🌮','🎤','🎺','🃏',
 ];
 
 function assignTiers(ranking: BordaEntry[]) {
@@ -40,10 +52,49 @@ export function LiveResults({
   onShare,
   onClose,
   closing,
+  onSaveTemplate,
+  initialSaved = false,
 }: Props) {
   const tiers = assignTiers(bordaRanking);
   const maxScore = bordaRanking[0]?.score ?? 1;
   const voteProgress = voterCount > 0 ? (resultCount / voterCount) * 100 : 0;
+
+  const defaultName = sessionName || 'Мои опрос';
+  const [showSaveForm, setShowSaveForm] = useState(false);
+  const [saveName, setSaveName] = useState(defaultName);
+  const [saveEmoji, setSaveEmoji] = useState('📝');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(initialSaved);
+  const [saveError, setSaveError] = useState('');
+
+  function openSaveForm() {
+    setSaveName(defaultName);
+    setSaveEmoji('📝');
+    setSaveError('');
+    setShowSaveForm(true);
+  }
+
+  function cancelSave() {
+    setShowSaveForm(false);
+    setSaveName(defaultName);
+    setSaveEmoji('📝');
+    setSaveError('');
+  }
+
+  async function confirmSave() {
+    if (!onSaveTemplate || saving) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      await onSaveTemplate(saveName.trim() || defaultName, saveEmoji);
+      setShowSaveForm(false);
+      setSaved(true);
+    } catch {
+      setSaveError('Не удалось сохранить. Попробуйте ещё раз.');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div style={styles.container}>
@@ -80,7 +131,6 @@ export function LiveResults({
         <div style={styles.tierRows}>
           {tiers.map(({ tier, bg, text, shadow, items }) => (
             <div key={tier} style={styles.tierRow}>
-              {/* TierBlockLetter */}
               <div style={{
                 ...styles.tierBlock,
                 background: bg,
@@ -89,7 +139,6 @@ export function LiveResults({
               }}>
                 {tier}
               </div>
-              {/* Borda items with bars */}
               <div style={styles.bordaItems}>
                 {items.map(entry => (
                   <div key={entry.option} style={styles.bordaItem}>
@@ -110,11 +159,65 @@ export function LiveResults({
         </div>
       )}
 
+      {/* Save template form — above footer */}
+      {onSaveTemplate && showSaveForm && (
+        <div style={styles.saveForm}>
+          <input
+            style={styles.saveNameInput}
+            value={saveName}
+            onChange={e => setSaveName(e.target.value)}
+            maxLength={100}
+            placeholder="Название шаблона"
+          />
+          <div style={styles.emojiGrid}>
+            {EMOJI_PRESETS.map(e => (
+              <button
+                key={e}
+                style={{
+                  ...styles.emojiCell,
+                  background: saveEmoji === e ? 'var(--bg)' : 'transparent',
+                  outline: saveEmoji === e ? '2px solid var(--accent)' : '2px solid transparent',
+                }}
+                onClick={() => setSaveEmoji(e)}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+          {saveError && <div style={styles.saveError}>{saveError}</div>}
+          <div style={styles.saveFormBtns}>
+            <button
+              style={{ ...styles.saveConfirmBtn, opacity: saving ? 0.6 : 1 }}
+              onClick={confirmSave}
+              disabled={saving}
+            >
+              {saving ? 'Сохранение…' : 'Сохранить шаблон'}
+            </button>
+            <button style={styles.saveCancelBtn} onClick={cancelSave} disabled={saving}>
+              Отмена
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Footer buttons */}
       <div style={styles.footer}>
         {onShare && (
           <button style={styles.shareBtn} onClick={onShare}>
             ↗ Share
+          </button>
+        )}
+        {onSaveTemplate && (
+          <button
+            style={{
+              ...styles.saveBtn,
+              opacity: saved ? 0.7 : 1,
+              cursor: saved ? 'default' : 'pointer',
+            }}
+            onClick={saved ? undefined : openSaveForm}
+            disabled={saved}
+          >
+            {saved ? 'Сохранено ✓' : '💾 Сохранить'}
           </button>
         )}
         {onClose && !sessionClosed && (
@@ -138,6 +241,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 0,
     padding: '0 0 16px',
     flex: 1,
+    overflowY: 'auto',
   },
   headerRow: {
     padding: '10px 16px 4px',
@@ -291,6 +395,75 @@ const styles: Record<string, React.CSSProperties> = {
     fontVariantNumeric: 'tabular-nums',
     flexShrink: 0,
   },
+  saveForm: {
+    margin: '8px 14px 0',
+    padding: '12px 14px',
+    background: 'var(--surface)',
+    borderRadius: 'var(--radius-md)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+  },
+  saveNameInput: {
+    width: '100%',
+    padding: '10px 12px',
+    background: 'var(--bg)',
+    border: '1px solid transparent',
+    borderRadius: 8,
+    fontSize: 14,
+    fontWeight: 600,
+    color: 'var(--text)',
+    boxSizing: 'border-box' as const,
+  },
+  emojiGrid: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: 4,
+  },
+  emojiCell: {
+    width: 36,
+    height: 36,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 20,
+    borderRadius: 6,
+    cursor: 'pointer',
+    outlineOffset: 1,
+  },
+  saveError: {
+    fontSize: 12,
+    color: 'var(--tier-s)',
+    textAlign: 'center' as const,
+  },
+  saveFormBtns: {
+    display: 'flex',
+    gap: 8,
+  },
+  saveConfirmBtn: {
+    flex: 1,
+    padding: '12px',
+    background: 'var(--accent)',
+    color: '#fff',
+    borderRadius: 10,
+    fontSize: 14,
+    fontWeight: 800,
+    minHeight: 'var(--tap-target-min)',
+    cursor: 'pointer',
+    boxShadow: '0 2px 8px var(--accent-shadow)',
+    transition: 'opacity 0.15s',
+  },
+  saveCancelBtn: {
+    flex: 1,
+    padding: '12px',
+    background: 'var(--bg)',
+    color: 'var(--text-hint)',
+    borderRadius: 10,
+    fontSize: 14,
+    fontWeight: 700,
+    minHeight: 'var(--tap-target-min)',
+    cursor: 'pointer',
+  },
   footer: {
     padding: '8px 14px 0',
     display: 'flex',
@@ -306,6 +479,17 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     minHeight: 'var(--tap-target-min)',
     cursor: 'pointer',
+  },
+  saveBtn: {
+    flex: 1,
+    padding: '12px',
+    background: 'var(--surface)',
+    color: 'var(--accent)',
+    borderRadius: 'var(--radius-md)',
+    fontSize: 14,
+    fontWeight: 700,
+    minHeight: 'var(--tap-target-min)',
+    transition: 'opacity 0.15s',
   },
   closeBtn: {
     flex: 1.4,

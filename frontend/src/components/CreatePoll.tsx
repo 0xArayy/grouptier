@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   createSession,
   addOption,
   removeOption,
   startVoting,
   updateSessionName,
+  fetchSession,
   fetchSavedPolls,
   createSavedPoll,
   updateSavedPoll,
@@ -101,6 +102,57 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
   const [savedId, setSavedId] = useState<string | null>(null); // id of template this session was loaded from
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // live sync state
+  const [externalEdit, setExternalEdit] = useState(false);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const externalEditTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const busyRef = useRef(busy);
+  useEffect(() => { busyRef.current = busy; }, [busy]);
+
+  // poll for option changes from other users when on the options step
+  useEffect(() => {
+    if (step !== 'options' || !sessionId) {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+      return;
+    }
+
+    pollIntervalRef.current = setInterval(async () => {
+      if (busyRef.current) return;
+      try {
+        const data = await fetchSession(sessionId);
+        setOptions(prev => {
+          const prevSet = new Set(prev);
+          const changed =
+            prev.length !== data.options.length ||
+            (data.options as string[]).some((o: string) => !prevSet.has(o));
+          if (!changed) return prev;
+          setExternalEdit(true);
+          if (externalEditTimerRef.current) clearTimeout(externalEditTimerRef.current);
+          externalEditTimerRef.current = setTimeout(() => setExternalEdit(false), 3000);
+          return data.options as string[];
+        });
+      } catch {
+        // silent — keep polling
+      }
+    }, 2500);
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [step, sessionId]);
+
+  useEffect(() => {
+    return () => {
+      if (externalEditTimerRef.current) clearTimeout(externalEditTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     loadSavedPolls();
@@ -703,9 +755,28 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
             <span style={{ fontSize: 12, color: 'var(--text-hint)', fontWeight: 400 }}>✏️</span>
           </div>
         )}
-        <div style={{ fontSize: 13, color: 'var(--text-hint)', marginBottom: 20 }}>
+        <div style={{ fontSize: 13, color: 'var(--text-hint)', marginBottom: externalEdit ? 10 : 20 }}>
           Добавь или удали варианты, затем запускай.
         </div>
+
+        {externalEdit && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '7px 12px',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--surface)',
+            fontSize: 13,
+            color: 'var(--text-hint)',
+            fontWeight: 500,
+            marginBottom: 14,
+            animation: 'fadeIn 0.2s ease',
+          }}>
+            <span style={{ animation: 'gtPulse 1.2s infinite', display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
+            Кто-то редактирует список…
+          </div>
+        )}
 
         {options.length > 0 && (
           <div style={{ marginBottom: 16 }}>

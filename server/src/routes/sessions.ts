@@ -290,17 +290,24 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         'SELECT 1 FROM options WHERE session_id = $1 AND LOWER(text) = LOWER($2)',
         [id, text],
       );
-      if (dupRes.rows.length > 0) {
-        return reply.status(422).send({ error: 'Duplicate option' });
-      }
-
-      await pool.query('INSERT INTO options (session_id, text) VALUES ($1, $2)', [id, text]);
 
       const allRes = await pool.query(
         'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
         [id],
       );
-      return reply.status(201).send({ options: allRes.rows.map((r: { text: string }) => r.text) });
+
+      if (dupRes.rows.length > 0) {
+        // Duplicate from concurrent add — return current list silently
+        return reply.status(200).send({ options: allRes.rows.map((r: { text: string }) => r.text) });
+      }
+
+      await pool.query('INSERT INTO options (session_id, text) VALUES ($1, $2)', [id, text]);
+
+      const afterRes = await pool.query(
+        'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
+        [id],
+      );
+      return reply.status(201).send({ options: afterRes.rows.map((r: { text: string }) => r.text) });
     },
   );
 

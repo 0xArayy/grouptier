@@ -124,7 +124,13 @@ Fastify (port 3000)
   /*                                  → serves React Mini App (frontend/dist/)
 
 React Mini App (Vite)
-  No startapp param → fetchActiveSession → CreatePoll (name + options) or manage existing
+  No startapp param → fetchActiveSession → CreatePoll (5-step flow) or manage existing
+    CreatePoll steps:
+      home      → preset categories + "Мои опросы" button + create custom button
+      presets   → 8 preset categories (Еда, Игры, Кино, Сериал, Музыка, Отдых, Досуг, Напитки)
+      my-polls  → user's saved templates list + create button
+      options   → add/remove options, save-as-template form with emoji picker, back button
+      starting  → session being created
   startapp=<id>     → fetchSession → route by status:
     collecting      → CreatePoll manage mode (add options, rename, start voting)
     voting          → Compare screen (pairwise tournament) → Bye screen → TierList → LiveResults
@@ -152,9 +158,14 @@ All endpoints require `x-init-data` header (Telegram WebApp initData, or `dev` i
 | `GET` | `/api/sessions/:id` | user | Session state + Borda |
 | `PATCH` | `/api/sessions/:id` | — | Update name (collecting only) |
 | `POST` | `/api/sessions/:id/options` | — | Add option |
+| `DELETE` | `/api/sessions/:id/options/:text` | — | Remove an option (collecting only) |
 | `POST` | `/api/sessions/:id/vote` | — | Start voting |
 | `POST` | `/api/sessions/:id/results` | user | Submit ranked list |
 | `POST` | `/api/sessions/:id/close` | — | Close + announce winner |
+| `GET` | `/api/saved-polls` | user | List current user's saved poll templates |
+| `POST` | `/api/saved-polls` | user | Create saved poll template (`{ name, options, emoji }`) |
+| `PUT` | `/api/saved-polls/:id` | user | Update saved poll template |
+| `DELETE` | `/api/saved-polls/:id` | user | Delete saved poll template |
 
 > Chat context = `chat` field present in initData. Provided when Mini App is opened via `web_app` button or from group menu. Ownership is enforced when available; session UUID provides auth otherwise.
 
@@ -172,12 +183,14 @@ options        — id, session_id, text, created_at
 user_results   — id, session_id, user_id, ranked_list (JSONB), created_at
 session_voters — session_id, user_id (tracks who opened the Mini App)
 comparisons    — id, session_id, user_id, winner, loser, created_at (unused, reserved)
+saved_polls    — id, user_id, name, options (JSONB), emoji, created_at, updated_at
 ```
 
 Key constraints:
 - `sessions_one_collecting_per_chat` — partial unique index prevents two active sessions per chat
 - `user_results (session_id, user_id)` — unique, upserted on re-vote
 - `message_sent` — crash-recovery flag: `voting + message_sent=false` → surfaced as `collecting`
+- `saved_polls_user_id_idx` — index on `saved_polls(user_id)` for fast per-user lookups
 
 ## Tech Stack
 

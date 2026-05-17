@@ -658,7 +658,7 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
           padding: '14px 16px 0',
         }}>
           <button
-            onClick={() => setStep('home')}
+            onClick={() => { setSessionId(null); setOptions([]); setStep('home'); }}
             style={{ background: 'none', border: 'none', color: 'var(--text-hint)', fontSize: 20, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
           >
             ←

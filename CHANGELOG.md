@@ -2,6 +2,20 @@
 
 All notable changes to GroupTier are documented here.
 
+## [1.0.2.0] - 2026-05-17
+
+### Added
+- Saved poll templates: save any custom poll with a name, options list, and emoji icon for reuse via "Мои опросы".
+- Emoji picker grid (32 options) for choosing a template icon when saving a poll.
+- 5 new preset categories: Сериал, Музыка, Отдых, Досуг, Напитки (8 presets total).
+- Back button on the options step to return to the home screen.
+- `DELETE /api/sessions/:id/options/:text` endpoint to remove options while collecting.
+- Full saved-polls CRUD API: `GET/POST /api/saved-polls`, `PUT/DELETE /api/saved-polls/:id`.
+
+### Changed
+- CreatePoll home screen now shows "Мои опросы" button alongside preset categories.
+- CreatePoll now has a 5-step flow: home → presets / my-polls → options → starting.
+
 ## [1.0.1.0] - 2026-05-16
 
 ### Added

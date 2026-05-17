@@ -2,15 +2,22 @@
 
 ## Remaining
 
-### [drag-to-rearrange] Implement drag-to-rearrange on personal tier list
-**What:** After the tournament completes, let users drag items between tiers before submitting.
-**Why:** The TierMaker format is viral specifically because of the drag-and-arrange moment — static display is less shareable.
-**Context:** Cut from MVP because dnd-kit on Telegram's WebView has known vertical-drag vs swipe-to-close conflicts. Needs mobile-specific testing in Telegram's WebView (not just a browser). Start with `@dnd-kit/core` and test drag direction carefully.
-**Depends on:** Deploy to Railway and test on real mobile first.
-
 ---
 
 ## Completed
+
+### [saved-polls] Save and reuse custom poll templates
+**Completed:** v1.0.2.0 (2026-05-17)
+- Users can save a custom poll as a reusable template with a name, options list, and emoji icon.
+- Templates are accessible from the "Мои опросы" screen (new step in the CreatePoll flow).
+- Emoji picker grid (32 options) for choosing a template icon when saving.
+- Full CRUD API: `GET/POST /api/saved-polls`, `PUT/DELETE /api/saved-polls/:id`, backed by `saved_polls` table.
+
+### [drag-to-rearrange] Drag chips between tier rows on personal tier list
+**Completed:** v1.0.1.0 (2026-05-16)
+- Users can hold a chip and drag it between tier rows (A/B/C) on the TierList screen before submitting their picks.
+- Works with both touch and mouse via pointer events.
+- TierList passes the user's final reordered list to the server on submit.
 
 ### [in-app-poll-creation] Create and manage polls from Mini App
 **Completed:** v1.2.0 (2026-05-16)

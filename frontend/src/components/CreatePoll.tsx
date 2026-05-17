@@ -177,6 +177,10 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
     try {
       let id = sessionId;
       if (id) {
+        for (const opt of options) {
+          await removeOption(id, opt);
+        }
+        setOptions([]);
         await updateSessionName(id, preset.name);
       } else {
         const res = await createSession(preset.name);
@@ -207,6 +211,10 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
     try {
       let id = sessionId;
       if (id) {
+        for (const opt of options) {
+          await removeOption(id, opt);
+        }
+        setOptions([]);
         await updateSessionName(id, poll.name);
       } else {
         const res = await createSession(poll.name);
@@ -441,7 +449,7 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
           borderBottom: '1px solid var(--surface)',
         }}>
           <button
-            onClick={() => { setSessionId(null); setOptions([]); setError(''); setStep('home'); }}
+            onClick={() => { setError(''); setStep('home'); }}
             style={{ background: 'none', border: 'none', color: 'var(--text-hint)', fontSize: 20, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
           >
             ←
@@ -569,7 +577,7 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
           borderBottom: '1px solid var(--surface)',
         }}>
           <button
-            onClick={() => { setSessionId(null); setOptions([]); setError(''); setStep('home'); }}
+            onClick={() => { setError(''); setStep('home'); }}
             style={{
               background: 'none',
               border: 'none',
@@ -658,7 +666,7 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
           padding: '14px 16px 0',
         }}>
           <button
-            onClick={() => { setSessionId(null); setOptions([]); setStep('home'); }}
+            onClick={() => { setError(''); setStep('home'); }}
             style={{ background: 'none', border: 'none', color: 'var(--text-hint)', fontSize: 20, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
           >
             ←

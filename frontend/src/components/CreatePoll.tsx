@@ -266,9 +266,9 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
             Не удалось отправить сообщение в группу. Попробуй ещё раз.
           </div>
           <button
-            onClick={() => { setStep('options'); setBusy(false); setError(''); }}
+            onClick={() => { setStartingTimedOut(false); setStep('options'); setError(''); }}
             style={{ marginTop: 8, padding: '12px 24px', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}
-          >Назад к вариантам</button>
+          >Попробовать снова</button>
         </>
       ) : (
         <>

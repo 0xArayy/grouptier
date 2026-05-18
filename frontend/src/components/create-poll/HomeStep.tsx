@@ -40,39 +40,41 @@ export function HomeStep({
         Выбери тему — группа проголосует и выберет лучший вариант.
       </div>
 
-      <div style={{ marginBottom: 20 }}>
-        <button
-          style={{
-            ...primaryBtn,
-            background: 'var(--surface)',
-            color: 'var(--text)',
-            boxShadow: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-          }}
-          disabled={busy}
-          onClick={onNavigateMyPolls}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 18 }}>⭐</span>
-            <span>Мои опросы</span>
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {savedPollsLoading ? (
-              <span style={{ fontSize: 12, color: 'var(--text-hint)' }}>…</span>
-            ) : savedPolls.length > 0 ? (
-              <span style={{ fontSize: 12, color: 'var(--text-hint)', fontWeight: 500 }}>{savedPolls.length}</span>
-            ) : null}
-            <span style={{ fontSize: 18, color: 'var(--text-hint)' }}>›</span>
-          </span>
-        </button>
-      </div>
-
       <button style={primaryBtn} disabled={busy} onClick={onNavigatePresets}>
         Выбрать тему →
       </button>
+
+      {savedPolls.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <button
+            style={{
+              ...primaryBtn,
+              background: 'var(--surface)',
+              color: 'var(--text)',
+              boxShadow: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+            }}
+            disabled={busy}
+            onClick={onNavigateMyPolls}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 18 }}>⭐</span>
+              <span>Мои опросы</span>
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {savedPollsLoading ? (
+                <span style={{ fontSize: 12, color: 'var(--text-hint)' }}>…</span>
+              ) : (
+                <span style={{ fontSize: 12, color: 'var(--text-hint)', fontWeight: 500 }}>{savedPolls.length}</span>
+              )}
+              <span style={{ fontSize: 18, color: 'var(--text-hint)' }}>›</span>
+            </span>
+          </button>
+        </div>
+      )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0' }}>
         <div style={{ flex: 1, height: 1, background: 'var(--surface)' }} />

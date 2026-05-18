@@ -15,7 +15,19 @@ Every component uses `style={...}` objects. Large surface area — separate PR a
 REST polling at 3s is acceptable but will not scale. Upgrade path: WebSocket + Redis pub/sub. Week-2 infrastructure.
 
 ### [contributing] Add CONTRIBUTING.md
-No onboarding docs exist. Include: env setup, schema auto-init, dev mode bypass, test runner.
+No onboarding docs exist. Include: env setup, schema auto-init, dev mode bypass, test runner. Also: Telegram stub mode (`TELEGRAM_STUB=true`) so TTHW doesn't require a real bot token.
+
+### [error-envelope] Standardize API error response shape
+Currently mixed: `{ error, id }` for 409 session conflict, bare string for other 409s, `{ error }` for 400s. Adopt `{ error: string, code?: string }` everywhere and document it.
+
+### [test-mocks] Migrate sessions.test.ts from positional to query-text mocks
+74 tests chain `mockResolvedValueOnce` by position — fragile when query order changes. Consider matching by SQL substring to decouple test assertions from query ordering.
+
+### [options-unknown-session] GET /api/sessions/:id/options returns [] for unknown session
+Should return 404 instead of empty array so callers can distinguish "no options" from "no session".
+
+### [shared-constants] Export MAX_NAME_LENGTH / MAX_OPTION_TEXT_LENGTH from shared lib
+Currently defined only in sessions.ts; frontend has no corresponding constant. Extract to a shared constants file so a limit change propagates everywhere.
 
 ### [bot-legacy-cleanup] Delete legacy bot commands
 /startsession, /addoption, /vote, /closesession are superseded by /newpoll + Mini App flow. Commented in code-health PR, deletion deferred.

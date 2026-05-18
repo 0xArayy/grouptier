@@ -127,6 +127,7 @@ describe('pick + buildRankedList', () => {
     const ranked = buildRankedList(t);
     expect(ranked).toHaveLength(6);
     expect(ranked).not.toContain('__bye__');
+    expect(ranked[0]).toBe(t.champion);
     expect(realPicks).toBe(5);
   });
 });

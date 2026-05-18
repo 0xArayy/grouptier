@@ -105,10 +105,7 @@ export function pick(
   const currentMatchup = state.currentMatchup;
   const rounds = state.rounds.map(r => [...r]);
 
-  // Accumulate the winner for this matchup (byes advance optionA).
-  const roundWinner = winner === '__bye__'
-    ? state.rounds[currentRound][currentMatchup].optionA
-    : winner;
+  const roundWinner = winner;
   const currentRoundWinners = [...state.currentRoundWinners, roundWinner];
 
   const nextMatchup = currentMatchup + 1;

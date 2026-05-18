@@ -268,11 +268,11 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
           <button
             onClick={() => { setStartingTimedOut(false); setBusy(false); setStep('options'); setError(''); }}
             style={{ marginTop: 8, padding: '12px 24px', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}
-          >Попробовать снова</button>
+          >Вернуться к вариантам</button>
         </>
       ) : (
         <>
-          <div style={{ fontSize: 32 }}>📢</div>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid var(--surface)', borderTopColor: 'var(--accent)', animation: 'spin 0.9s linear infinite' }} />
           <div style={{ fontSize: 16, fontWeight: 600 }}>Открываем голосование в группе…</div>
         </>
       )}

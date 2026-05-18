@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { EMOJI_PRESETS } from '../lib/constants.ts';
+import { DEFAULT_SAVE_EMOJI, EMOJI_PRESETS } from '../lib/constants.ts';
 
 interface BordaEntry {
   option: string;
@@ -16,11 +16,8 @@ interface Props {
   onClose?: () => void;
   closing?: boolean;
   onSaveTemplate?: (name: string, emoji: string) => Promise<void>;
-  sessionId?: string;
   initialSaved?: boolean;
 }
-
-const DEFAULT_SAVE_EMOJI = '📝';
 
 const TIER_META = [
   { tier: 'S', bg: 'var(--tier-s)', text: 'var(--tier-s-text)', shadow: '0 2px 0 rgba(0,0,0,0.22)' },
@@ -56,7 +53,7 @@ export function LiveResults({
   const maxScore = bordaRanking[0]?.score ?? 1;
   const voteProgress = voterCount > 0 ? (resultCount / voterCount) * 100 : 0;
 
-  const defaultName = sessionName || 'Мои опрос';
+  const defaultName = sessionName || 'Без названия';
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [saveName, setSaveName] = useState(defaultName);
   const [saveEmoji, setSaveEmoji] = useState(DEFAULT_SAVE_EMOJI);

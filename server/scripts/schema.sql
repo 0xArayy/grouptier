@@ -27,15 +27,6 @@ CREATE TABLE IF NOT EXISTS options (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS comparisons (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id  UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-  user_id     BIGINT NOT NULL,
-  winner      TEXT NOT NULL,
-  loser       TEXT NOT NULL,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
 CREATE TABLE IF NOT EXISTS user_results (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id   UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,

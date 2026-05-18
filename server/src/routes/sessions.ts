@@ -3,11 +3,11 @@ import { pool } from '../db/client.js';
 import { initDataMiddleware } from '../middleware/initData.js';
 import { computeBorda } from '../db/borda.js';
 import { bot } from '../bot/bot.js';
+import { buildVoteUrl } from '../lib/urls.js';
 
-function buildVoteUrl(sessionId: string): string {
-  const tgLink = (process.env.MINI_APP_TGLINK ?? '').replace(/\/$/, '');
-  return `${tgLink}?startapp=${sessionId}`;
-}
+const MAX_NAME_LENGTH = 100;
+const MAX_OPTION_TEXT_LENGTH = 100;
+const MAX_OPTIONS = 12;
 
 export async function sessionRoutes(fastify: FastifyInstance) {
   // POST /api/sessions — create session from Mini App (chat_id from validated initData)
@@ -29,7 +29,11 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         return reply.status(409).send({ error: 'Session already exists', id: existing.rows[0].id });
       }
 
-      const name = (request.body?.name ?? '').trim() || 'Untitled Session';
+      const rawName = (request.body?.name ?? '').trim();
+      if (rawName.length > MAX_NAME_LENGTH) {
+        return reply.status(400).send({ error: 'Name must be 100 characters or fewer' });
+      }
+      const name = rawName || 'Untitled Session';
       try {
         const res = await pool.query(
           "INSERT INTO sessions (chat_id, name, status) VALUES ($1, $2, 'collecting') RETURNING id",
@@ -88,39 +92,20 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       }
       const session = sessionRes.rows[0];
 
-      // Register voter (idempotent)
+      // Register voter first (voter COUNT depends on this INSERT)
       await pool.query(
         'INSERT INTO session_voters (session_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
         [id, userId],
       );
 
-      const optionsRes = await pool.query(
-        'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
-        [id],
-      );
+      const [optionsRes, voterCount, resultCount, resultsRes] = await Promise.all([
+        pool.query('SELECT text FROM options WHERE session_id = $1 ORDER BY created_at', [id]),
+        pool.query('SELECT COUNT(*) FROM session_voters WHERE session_id = $1', [id]),
+        pool.query('SELECT COUNT(*) FROM user_results WHERE session_id = $1', [id]),
+        pool.query('SELECT user_id, ranked_list FROM user_results WHERE session_id = $1', [id]),
+      ]);
       const options = optionsRes.rows.map((r: { text: string }) => r.text);
-
-      const voterCount = await pool.query(
-        'SELECT COUNT(*) FROM session_voters WHERE session_id = $1',
-        [id],
-      );
-      const resultCount = await pool.query(
-        'SELECT COUNT(*) FROM user_results WHERE session_id = $1',
-        [id],
-      );
-
-      // Fetch all submitted ranked_lists for live Borda
-      const resultsRes = await pool.query(
-        'SELECT ranked_list FROM user_results WHERE session_id = $1',
-        [id],
-      );
-      const borda = computeBorda(resultsRes.rows.map((r: { ranked_list: string[] }) => r.ranked_list));
-
-      // Check if current user already voted
-      const myResult = await pool.query(
-        'SELECT ranked_list FROM user_results WHERE session_id = $1 AND user_id = $2',
-        [id, userId],
-      );
+      const borda = computeBorda(resultsRes.rows.map((r: { user_id: number; ranked_list: string[] }) => r.ranked_list));
 
       // A crash between status flip and sendMessage leaves status='voting' but
       // message_sent=false — surface it as 'collecting' so the UI stays functional.
@@ -135,7 +120,8 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         voter_count: parseInt(voterCount.rows[0].count),
         result_count: parseInt(resultCount.rows[0].count),
         borda_ranking: borda,
-        my_result: myResult.rows[0]?.ranked_list ?? null,
+        // pg returns BIGINT user_id as string; loose == matches against JS number
+        my_result: (resultsRes.rows.find((r: { user_id: number; ranked_list: string[] }) => r.user_id == userId)?.ranked_list) ?? null,
       };
     },
   );
@@ -194,6 +180,9 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       if (new Set(ranked_list).size !== ranked_list.length) {
         return reply.status(400).send({ error: 'Duplicate options in ranked_list' });
       }
+      if (ranked_list.length !== validOptions.size) {
+        return reply.status(400).send({ error: `ranked_list must contain all ${validOptions.size} options, got ${ranked_list.length}` });
+      }
 
       // Upsert result
       await pool.query(
@@ -209,23 +198,16 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         [id, userId],
       );
 
-      // Fetch updated Borda
-      const resultsRes = await pool.query(
-        'SELECT ranked_list FROM user_results WHERE session_id = $1',
-        [id],
-      );
+      const [resultsRes, voterCountRes] = await Promise.all([
+        pool.query('SELECT ranked_list FROM user_results WHERE session_id = $1', [id]),
+        pool.query('SELECT COUNT(*) FROM session_voters WHERE session_id = $1', [id]),
+      ]);
       const borda = computeBorda(resultsRes.rows.map((r: { ranked_list: string[] }) => r.ranked_list));
-
-      // CP1: update bot message vote count
-      const voterCount = await pool.query(
-        'SELECT COUNT(*) FROM session_voters WHERE session_id = $1',
-        [id],
-      );
       const resultCount = resultsRes.rows.length;
-      const totalVoters = parseInt(voterCount.rows[0].count);
+      const totalVoters = parseInt(voterCountRes.rows[0].count);
 
       if (session.message_id) {
-        const miniAppUrl = `${(process.env.MINI_APP_TGLINK ?? '').replace(/\/$/, '')}?startapp=${id}`;
+        const miniAppUrl = buildVoteUrl(id);
         const text =
           `🗳️ Voting open for ${session.name ?? 'Untitled Session'}!\n\n` +
           `${resultCount} of ${totalVoters} voted`;
@@ -252,6 +234,9 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       if (!name) {
         return reply.status(400).send({ error: 'name is required' });
       }
+      if (name.length > MAX_NAME_LENGTH) {
+        return reply.status(400).send({ error: 'Name must be 100 characters or fewer' });
+      }
 
       const res = await pool.query(
         "UPDATE sessions SET name = $1 WHERE id = $2 AND status = 'collecting' RETURNING id",
@@ -275,6 +260,9 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       if (!text) {
         return reply.status(400).send({ error: 'text is required' });
       }
+      if (text.length > MAX_OPTION_TEXT_LENGTH) {
+        return reply.status(400).send({ error: 'Option text must be 100 characters or fewer' });
+      }
 
       const chat = request.telegramChat;
 
@@ -296,7 +284,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         'SELECT COUNT(*) FROM options WHERE session_id = $1',
         [id],
       );
-      if (parseInt(countRes.rows[0].count) >= 12) {
+      if (parseInt(countRes.rows[0].count) >= MAX_OPTIONS) {
         return reply.status(422).send({ error: 'Max 12 options reached' });
       }
 
@@ -450,7 +438,6 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         return { ok: true, winner: null };
       }
 
-      const { computeBorda } = await import('../db/borda.js');
       const borda = computeBorda(resultsRes.rows.map((r: { ranked_list: string[] }) => r.ranked_list));
       const sessionName = name ?? 'Untitled Session';
       const ranking = borda.map((r, i) => `${i + 1}. ${r.option} — ${r.score} pts`).join('\n');

@@ -32,6 +32,18 @@ Currently defined only in sessions.ts; frontend has no corresponding constant. E
 ### [bot-legacy-cleanup] Delete legacy bot commands
 /startsession, /addoption, /vote, /closesession are superseded by /newpoll + Mini App flow. Commented in code-health PR, deletion deferred.
 
+### [auth-ownership-checks] Add ownership checks to session mutation endpoints
+`POST /close`, `PATCH /:id` (rename), `POST /:id/vote` have no chat_id/creator guard — any authenticated user who knows a session UUID can close or rename another group's session. `POST /vote` also bypasses the check when telegramChat is null (URL-button launches).
+
+### [auth-date-expiry] Validate auth_date in Telegram initData
+HMAC is verified but `auth_date` is never checked. Captured initData is a permanent API credential. Should reject initData older than 24h per Telegram docs.
+
+### [options-race] Fix TOCTOU race in POST /options count check
+Count check and insert are non-atomic — two concurrent requests at 11/12 options both pass the guard and yield 13. Needs a DB-level CHECK constraint or a SELECT...FOR UPDATE lock.
+
+### [markdown-injection] Escape user content in bot Markdown messages
+`session.name` and option text are inserted raw into `parse_mode: 'Markdown'` messages. Underscores trigger italic, asterisks break bold spans. Apply `escapeMarkdown()` to all user-provided strings in bot announcements.
+
 ---
 
 ## Completed

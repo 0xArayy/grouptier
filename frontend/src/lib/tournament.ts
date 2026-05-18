@@ -167,7 +167,6 @@ export function pick(
  * Options within the same tier are ordered by elimination order (last eliminated first).
  */
 export function buildRankedList(state: TournamentState): string[] {
-  const champion = state.champion;
   const tierOrder: Tier[] = ['S', 'A', 'B', 'C'];
 
   const result: string[] = [];
@@ -177,11 +176,6 @@ export function buildRankedList(state: TournamentState): string[] {
       .map(e => e.option)
       .reverse(); // last eliminated = better within tier
     result.push(...inTier);
-  }
-
-  // Champion may not be in eliminated — put S-tier ones first
-  if (champion && !result.includes(champion)) {
-    result.unshift(champion);
   }
 
   return result;

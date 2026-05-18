@@ -58,63 +58,36 @@ export default function App() {
     };
   }, []);
 
-  // Initial load
-  useEffect(() => {
-    if (!sessionId) {
-      // No session in URL — check if one exists in the group, else show CreatePoll
-      fetchActiveSession()
-        .then(active => {
-          setSessionId(active.id);
-        })
-        .catch((err: unknown) => {
-          const msg = String(err);
-          if (msg.includes('404')) {
-            setScreen('create');
-          } else {
-            setErrorMsg(msg);
-            setScreen('error');
-          }
-        });
-      return;
-    }
-
-    fetchSession(sessionId)
+  function loadSession(id: string) {
+    fetchSession(id)
       .then((data: SessionData) => {
         setSession(data);
-
-        if (data.status === 'collecting') {
-          setScreen('create');
-          return;
-        }
-
-        if (data.options.length < 2) {
-          setScreen('waiting');
-          return;
-        }
-
-        if (data.my_result) {
-          // Already voted — go straight to live
-          setScreen('live');
-          setSubmitted(true);
-          startPolling(sessionId);
-          return;
-        }
-
-        if (data.status === 'closed') {
-          setScreen('live');
-          return;
-        }
-
-        // Start tournament
+        if (data.status === 'collecting') { setScreen('create'); return; }
+        if (data.options.length < 2) { setScreen('waiting'); return; }
+        if (data.my_result) { setScreen('live'); setSubmitted(true); startPolling(id); return; }
+        if (data.status === 'closed') { setScreen('live'); return; }
         const t = createTournament(data.options, getUserId());
         setTournament(t);
         const m = t.rounds[t.currentRound][t.currentMatchup];
         setScreen(m.isBye ? 'bye' : 'compare');
       })
-      .catch((err: unknown) => {
-        setErrorMsg(String(err));
-        setScreen('error');
-      });
+      .catch((err: unknown) => { setErrorMsg(String(err)); setScreen('error'); });
+  }
+
+  // Initial load
+  useEffect(() => {
+    if (!sessionId) {
+      // No session in URL — check if one exists in the group, else show CreatePoll
+      fetchActiveSession()
+        .then(active => { setSessionId(active.id); })
+        .catch((err: unknown) => {
+          const msg = String(err);
+          if (msg.includes('404')) setScreen('create');
+          else { setErrorMsg(msg); setScreen('error'); }
+        });
+      return;
+    }
+    loadSession(sessionId);
   }, [sessionId]);
 
   function startPolling(sid: string) {
@@ -205,7 +178,6 @@ export default function App() {
 
   function handleShare() {
     if (!sessionId) return;
-    // CP4: share button only after submission (we're on live screen = already submitted)
     window.Telegram?.WebApp?.switchInlineQuery?.(sessionId, ['groups']);
   }
 
@@ -217,22 +189,8 @@ export default function App() {
   }
 
   function handlePollReady(newSessionId: string) {
-    // Don't rely on useEffect — sessionId may already equal newSessionId
-    // (e.g. /newpoll opens Mini App with startapp=id, then user starts voting).
-    setSessionId(newSessionId);
     setScreen('loading');
-    fetchSession(newSessionId)
-      .then((data: SessionData) => {
-        setSession(data);
-        if (data.options.length < 2) { setScreen('waiting'); return; }
-        if (data.my_result) { setScreen('live'); setSubmitted(true); startPolling(newSessionId); return; }
-        if (data.status === 'closed') { setScreen('live'); return; }
-        const t = createTournament(data.options, getUserId());
-        setTournament(t);
-        const m = t.rounds[t.currentRound][t.currentMatchup];
-        setScreen(m.isBye ? 'bye' : 'compare');
-      })
-      .catch((err: unknown) => { setErrorMsg(String(err)); setScreen('error'); });
+    setSessionId(newSessionId); // triggers useEffect([sessionId]) → loadSession
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -364,7 +322,6 @@ export default function App() {
           onClose={session.status === 'voting' ? handleClose : undefined}
           closing={closing}
           onSaveTemplate={submitted ? handleSaveTemplate : undefined}
-          sessionId={sessionId ?? undefined}
           initialSaved={initialSaved}
         />
       </>

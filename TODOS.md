@@ -2,6 +2,24 @@
 
 ## Remaining
 
+### [rate-limiting] Rate limiting on voting endpoints
+Telegram bots are public surfaces — no rate limit means anyone with valid initData can hammer the tournament logic. Needs infrastructure decision (Redis token bucket or Fastify rate-limit plugin).
+
+### [cors-lockdown] Restrict CORS to production domain
+Currently `origin: true` (all origins). Lock down to `MINI_APP_TGLINK` domain once that's finalized.
+
+### [css-modules] Migrate inline styles to CSS modules
+Every component uses `style={...}` objects. Large surface area — separate PR after code-health cleanup lands.
+
+### [websocket] Replace polling with WebSocket for real-time results
+REST polling at 3s is acceptable but will not scale. Upgrade path: WebSocket + Redis pub/sub. Week-2 infrastructure.
+
+### [contributing] Add CONTRIBUTING.md
+No onboarding docs exist. Include: env setup, schema auto-init, dev mode bypass, test runner.
+
+### [bot-legacy-cleanup] Delete legacy bot commands
+/startsession, /addoption, /vote, /closesession are superseded by /newpoll + Mini App flow. Commented in code-health PR, deletion deferred.
+
 ---
 
 ## Completed

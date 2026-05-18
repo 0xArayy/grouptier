@@ -62,6 +62,14 @@ export async function startVoting(sessionId: string): Promise<void> {
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
 }
 
+export async function fetchSessionOptions(sessionId: string): Promise<{ options: string[] }> {
+  const res = await fetch(`${BASE}/sessions/${sessionId}/options`, {
+    headers: { 'x-init-data': getInitData() },
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
 export async function fetchSession(sessionId: string) {
   const res = await fetch(`${BASE}/sessions/${sessionId}`, {
     headers: { 'x-init-data': getInitData() },

@@ -140,6 +140,20 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     },
   );
 
+  // GET /api/sessions/:id/options — lightweight poll-friendly options fetch (no voter registration)
+  fastify.get<{ Params: { id: string } }>(
+    '/api/sessions/:id/options',
+    { preHandler: initDataMiddleware },
+    async (request, reply) => {
+      const { id } = request.params;
+      const res = await pool.query(
+        'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
+        [id],
+      );
+      return { options: res.rows.map((r: { text: string }) => r.text) };
+    },
+  );
+
   // POST /api/sessions/:id/results — submit personal ranked list
   fastify.post<{ Params: { id: string }; Body: { ranked_list: string[]; initData?: string } }>(
     '/api/sessions/:id/results',
@@ -291,13 +305,12 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         [id, text],
       );
 
-      const allRes = await pool.query(
-        'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
-        [id],
-      );
-
       if (dupRes.rows.length > 0) {
         // Duplicate from concurrent add — return current list silently
+        const allRes = await pool.query(
+          'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
+          [id],
+        );
         return reply.status(200).send({ options: allRes.rows.map((r: { text: string }) => r.text) });
       }
 

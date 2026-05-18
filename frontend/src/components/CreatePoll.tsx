@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
+import { EMOJI_PRESETS } from '../lib/constants.ts';
 import {
   createSession,
   addOption,
   removeOption,
   startVoting,
   updateSessionName,
-  fetchSession,
+  fetchSessionOptions,
   fetchSavedPolls,
   createSavedPoll,
   updateSavedPoll,
@@ -20,12 +21,6 @@ interface Props {
 
 type Step = 'home' | 'presets' | 'my-polls' | 'options' | 'starting';
 
-const EMOJI_PRESETS = [
-  '🍕','🍺','🎮','🎬','📺','🎵','🏖️','🎯',
-  '🎲','🏆','🎉','🔥','⭐','💡','🎭','🎨',
-  '🌍','🏅','🎸','🍜','🧩','🚀','💎','🎪',
-  '🍔','🥂','🎳','📸','🌮','🎤','🎺','🃏',
-];
 
 const PRESETS: { emoji: string; label: string; name: string; options: string[] }[] = [
   {
@@ -123,12 +118,12 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
     pollIntervalRef.current = setInterval(async () => {
       if (busyRef.current) return;
       try {
-        const data = await fetchSession(sessionId);
+        const data = await fetchSessionOptions(sessionId);
         setOptions(prev => {
           const prevSet = new Set(prev);
           const changed =
             prev.length !== data.options.length ||
-            (data.options as string[]).some((o: string) => !prevSet.has(o));
+            data.options.some((o: string) => !prevSet.has(o));
           if (!changed) return prev;
           setExternalEdit(true);
           if (externalEditTimerRef.current) clearTimeout(externalEditTimerRef.current);

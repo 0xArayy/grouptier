@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { EMOJI_PRESETS } from '../lib/constants.ts';
 
 interface BordaEntry {
   option: string;
@@ -19,6 +20,8 @@ interface Props {
   initialSaved?: boolean;
 }
 
+const DEFAULT_SAVE_EMOJI = '📝';
+
 const TIER_META = [
   { tier: 'S', bg: 'var(--tier-s)', text: 'var(--tier-s-text)', shadow: '0 2px 0 rgba(0,0,0,0.22)' },
   { tier: 'A', bg: 'var(--tier-a)', text: 'var(--tier-a-text)', shadow: '0 2px 0 rgba(0,0,0,0.22)' },
@@ -26,12 +29,6 @@ const TIER_META = [
   { tier: 'C', bg: 'var(--tier-c)', text: 'var(--tier-c-text)', shadow: '0 2px 0 rgba(0,0,0,0.22)' },
 ];
 
-const EMOJI_PRESETS = [
-  '🍕','🍺','🎮','🎬','📺','🎵','🏖️','🎯',
-  '🎲','🏆','🎉','🔥','⭐','💡','🎭','🎨',
-  '🌍','🏅','🎸','🍜','🧩','🚀','💎','🎪',
-  '🍔','🥂','🎳','📸','🌮','🎤','🎺','🃏',
-];
 
 function assignTiers(ranking: BordaEntry[]) {
   const n = ranking.length;
@@ -62,23 +59,25 @@ export function LiveResults({
   const defaultName = sessionName || 'Мои опрос';
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [saveName, setSaveName] = useState(defaultName);
-  const [saveEmoji, setSaveEmoji] = useState('📝');
+  const [saveEmoji, setSaveEmoji] = useState(DEFAULT_SAVE_EMOJI);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(initialSaved);
   const [saveError, setSaveError] = useState('');
 
-  function openSaveForm() {
+  function resetSaveForm() {
     setSaveName(defaultName);
-    setSaveEmoji('📝');
+    setSaveEmoji(DEFAULT_SAVE_EMOJI);
     setSaveError('');
+  }
+
+  function openSaveForm() {
+    resetSaveForm();
     setShowSaveForm(true);
   }
 
   function cancelSave() {
     setShowSaveForm(false);
-    setSaveName(defaultName);
-    setSaveEmoji('📝');
-    setSaveError('');
+    resetSaveForm();
   }
 
   async function confirmSave() {

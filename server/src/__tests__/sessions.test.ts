@@ -37,7 +37,7 @@ const SESSION_ID = '00000000-0000-0000-0000-000000000001';
 describe('POST /api/sessions', () => {
   let app: FastifyInstance;
   beforeEach(async () => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     app = await buildApp();
   });
 
@@ -58,6 +58,20 @@ describe('POST /api/sessions', () => {
     expect(JSON.parse(res.body).id).toBe(SESSION_ID);
   });
 
+  it('returns 400 when name exceeds 100 characters', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] }); // no existing session
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/sessions',
+      headers: { 'x-init-data': 'dev' },
+      payload: { name: 'a'.repeat(101) },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toBe('Name must be 100 characters or fewer');
+  });
+
   it('returns 409 when collecting session already exists', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [{ id: SESSION_ID }] });
 
@@ -76,7 +90,7 @@ describe('POST /api/sessions', () => {
 describe('GET /api/sessions/active', () => {
   let app: FastifyInstance;
   beforeEach(async () => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     app = await buildApp();
   });
 
@@ -111,7 +125,7 @@ describe('GET /api/sessions/active', () => {
 describe('GET /api/sessions/:id', () => {
   let app: FastifyInstance;
   beforeEach(async () => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     app = await buildApp();
   });
 
@@ -122,8 +136,7 @@ describe('GET /api/sessions/:id', () => {
       .mockResolvedValueOnce({ rows: [] }) // options
       .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // voter count
       .mockResolvedValueOnce({ rows: [{ count: '0' }] }) // result count
-      .mockResolvedValueOnce({ rows: [] }) // ranked lists
-      .mockResolvedValueOnce({ rows: [] }); // my_result
+      .mockResolvedValueOnce({ rows: [] }); // user_results (provides both borda + my_result via JS filter)
 
     const res = await app.inject({
       method: 'GET',
@@ -154,8 +167,7 @@ describe('GET /api/sessions/:id', () => {
       .mockResolvedValueOnce({ rows: [] }) // options
       .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // voter count
       .mockResolvedValueOnce({ rows: [{ count: '0' }] }) // result count
-      .mockResolvedValueOnce({ rows: [] }) // ranked lists
-      .mockResolvedValueOnce({ rows: [] }); // my_result
+      .mockResolvedValueOnce({ rows: [] }); // user_results (provides both borda + my_result via JS filter)
 
     const res = await app.inject({
       method: 'GET',
@@ -166,12 +178,32 @@ describe('GET /api/sessions/:id', () => {
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).status).toBe('collecting');
   });
+
+  it('returns my_result for current user when they have submitted', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', status: 'voting', message_sent: true }] })
+      .mockResolvedValueOnce({ rows: [] }) // register voter
+      .mockResolvedValueOnce({ rows: [{ text: 'Alpha' }, { text: 'Beta' }] }) // options
+      .mockResolvedValueOnce({ rows: [{ count: '2' }] }) // voter count
+      .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // result count
+      // pg returns BIGINT user_id as string; loose == in route matches against number 42
+      .mockResolvedValueOnce({ rows: [{ user_id: '42', ranked_list: ['Alpha', 'Beta'] }] });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/sessions/${SESSION_ID}`,
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).my_result).toEqual(['Alpha', 'Beta']);
+  });
 });
 
 describe('POST /api/sessions/:id/options', () => {
   let app: FastifyInstance;
   beforeEach(async () => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     app = await buildApp();
   });
 
@@ -194,11 +226,12 @@ describe('POST /api/sessions/:id/options', () => {
     expect(JSON.parse(res.body).options).toContain('Sushi');
   });
 
-  it('returns 422 on duplicate option', async () => {
+  it('returns 200 with current options on duplicate option', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] })
       .mockResolvedValueOnce({ rows: [{ count: '1' }] })
-      .mockResolvedValueOnce({ rows: [{ '?column?': 1 }] }); // dup found
+      .mockResolvedValueOnce({ rows: [{ '?column?': 1 }] }) // dup found
+      .mockResolvedValueOnce({ rows: [{ text: 'Pizza' }] }); // current options
 
     const res = await app.inject({
       method: 'POST',
@@ -207,8 +240,8 @@ describe('POST /api/sessions/:id/options', () => {
       payload: { text: 'Pizza' },
     });
 
-    expect(res.statusCode).toBe(422);
-    expect(JSON.parse(res.body).error).toBe('Duplicate option');
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).options).toEqual(['Pizza']);
   });
 
   it('returns 422 when 12-option limit reached', async () => {
@@ -227,6 +260,18 @@ describe('POST /api/sessions/:id/options', () => {
     expect(JSON.parse(res.body).error).toBe('Max 12 options reached');
   });
 
+  it('returns 400 when option text exceeds 100 characters', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/sessions/${SESSION_ID}/options`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { text: 'a'.repeat(101) },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toBe('Option text must be 100 characters or fewer');
+  });
+
   it('returns 400 when text is empty', async () => {
     const res = await app.inject({
       method: 'POST',
@@ -242,7 +287,7 @@ describe('POST /api/sessions/:id/options', () => {
 describe('POST /api/sessions/:id/vote', () => {
   let app: FastifyInstance;
   beforeEach(async () => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     app = await buildApp();
   });
 
@@ -305,5 +350,232 @@ describe('POST /api/sessions/:id/vote', () => {
     });
 
     expect(res.statusCode).toBe(422);
+  });
+
+  it('returns 409 when session is not in collecting state', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, status: 'voting' }] });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/sessions/${SESSION_ID}/vote`,
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(409);
+  });
+});
+
+describe('PATCH /api/sessions/:id', () => {
+  let app: FastifyInstance;
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    app = await buildApp();
+  });
+
+  it('returns 400 when name exceeds 100 characters', async () => {
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/sessions/${SESSION_ID}`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { name: 'a'.repeat(101) },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toBe('Name must be 100 characters or fewer');
+  });
+
+  it('updates session name and returns ok', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: SESSION_ID }] });
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/sessions/${SESSION_ID}`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { name: 'New Name' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).ok).toBe(true);
+  });
+
+  it('returns 404 when session not found or not in collecting state', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/sessions/${SESSION_ID}`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { name: 'New Name' },
+    });
+
+    expect(res.statusCode).toBe(404);
+  });
+});
+
+describe('POST /api/sessions/:id/results', () => {
+  let app: FastifyInstance;
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    app = await buildApp();
+  });
+
+  it('returns 400 when ranked_list length does not match option count', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ status: 'voting', name: 'Poll', message_id: null, chat_id: -1001 }] })
+      .mockResolvedValueOnce({ rows: [{ text: 'A' }, { text: 'B' }, { text: 'C' }] }); // 3 options
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/sessions/${SESSION_ID}/results`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { ranked_list: ['A', 'B'] }, // missing 'C'
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toMatch(/ranked_list must contain all/);
+  });
+
+  it('returns 403 when session is closed', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ status: 'closed', name: 'Poll', message_id: null, chat_id: -1001 }] });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/sessions/${SESSION_ID}/results`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { ranked_list: ['A', 'B'] },
+    });
+
+    expect(res.statusCode).toBe(403);
+    expect(JSON.parse(res.body).error).toBe('Session is closed');
+  });
+
+  it('submits result and returns borda ranking', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ status: 'voting', name: 'Poll', message_id: null, chat_id: -1001 }] })
+      .mockResolvedValueOnce({ rows: [{ text: 'A' }, { text: 'B' }] }) // options
+      .mockResolvedValueOnce({ rows: [] }) // upsert user_results
+      .mockResolvedValueOnce({ rows: [] }) // insert session_voters
+      .mockResolvedValueOnce({ rows: [{ ranked_list: ['A', 'B'] }] }) // all results
+      .mockResolvedValueOnce({ rows: [{ count: '1' }] }); // voter count
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/sessions/${SESSION_ID}/results`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { ranked_list: ['A', 'B'] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).borda_ranking).toBeDefined();
+    expect(JSON.parse(res.body).result_count).toBe(1);
+  });
+});
+
+describe('GET /api/sessions/:id/options', () => {
+  let app: FastifyInstance;
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    app = await buildApp();
+  });
+
+  it('returns options list', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ text: 'Pizza' }, { text: 'Sushi' }] });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/sessions/${SESSION_ID}/options`,
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).options).toEqual(['Pizza', 'Sushi']);
+  });
+});
+
+describe('DELETE /api/sessions/:id/options/:text', () => {
+  let app: FastifyInstance;
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    app = await buildApp();
+  });
+
+  it('removes option and returns remaining list', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }) // session check
+      .mockResolvedValueOnce({ rows: [] }) // delete
+      .mockResolvedValueOnce({ rows: [{ text: 'Pizza' }] }); // remaining options
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/sessions/${SESSION_ID}/options/${encodeURIComponent('Sushi')}`,
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).options).toEqual(['Pizza']);
+  });
+
+  it('returns 403 when session is not collecting', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ status: 'voting', chat_id: -1001 }] });
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/sessions/${SESSION_ID}/options/${encodeURIComponent('Sushi')}`,
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+describe('POST /api/sessions/:id/close', () => {
+  let app: FastifyInstance;
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    app = await buildApp();
+  });
+
+  it('closes session and returns winner', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001 }] }) // atomic update
+      .mockResolvedValueOnce({ rows: [{ ranked_list: ['A', 'B'] }, { ranked_list: ['B', 'A'] }] }); // results
+    mockSendMessage.mockResolvedValueOnce({ message_id: 1 });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/sessions/${SESSION_ID}/close`,
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).ok).toBe(true);
+    expect(JSON.parse(res.body).winner).toBeTruthy();
+  });
+
+  it('returns 409 when session is not in voting state', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] }); // update returns nothing
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/sessions/${SESSION_ID}/close`,
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('returns winner=null when no votes have been cast', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001 }] }) // atomic update
+      .mockResolvedValueOnce({ rows: [] }); // no results
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/sessions/${SESSION_ID}/close`,
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).winner).toBeNull();
   });
 });

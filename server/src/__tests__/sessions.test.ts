@@ -186,7 +186,7 @@ describe('GET /api/sessions/:id', () => {
       .mockResolvedValueOnce({ rows: [{ text: 'Alpha' }, { text: 'Beta' }] }) // options
       .mockResolvedValueOnce({ rows: [{ count: '2' }] }) // voter count
       .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // result count
-      // pg returns BIGINT user_id as string; loose == in route matches against number 42
+      // pg returns BIGINT user_id as string; String() coercion ensures type-safe match against JS number
       .mockResolvedValueOnce({ rows: [{ user_id: '42', ranked_list: ['Alpha', 'Beta'] }] });
 
     const res = await app.inject({

@@ -2,18 +2,15 @@ import { Bot } from 'grammy';
 import type { InlineQueryResultArticle } from 'grammy/types';
 import { pool } from '../db/client.js';
 import { computeBorda } from '../db/borda.js';
+import { buildVoteUrl } from '../lib/urls.js';
 
 export const bot = new Bot(process.env.BOT_TOKEN ?? '');
-
-function buildVoteUrl(sessionId: string): string {
-  const tgLink = (process.env.MINI_APP_TGLINK ?? '').replace(/\/$/, '');
-  return `${tgLink}?startapp=${sessionId}`;
-}
 
 bot.catch((err) => {
   console.error('Bot error:', err);
 });
 
+// Primary flow: /newpoll → Mini App (CreatePoll → OptionsStep → LiveResults)
 // /newpoll — create session and open Mini App manage screen
 bot.command('newpoll', async (ctx) => {
   if (!ctx.chat || ctx.chat.type === 'private') {
@@ -44,12 +41,20 @@ bot.command('newpoll', async (ctx) => {
   });
 });
 
-// /startsession [name]
+// LEGACY — superseded by /newpoll flow
 bot.command('startsession', async (ctx) => {
   if (!ctx.chat || ctx.chat.type === 'private') {
     return ctx.reply('Use /startsession in a group chat.');
   }
   const name = ctx.match?.trim() || 'Untitled Session';
+
+  const existing = await pool.query(
+    "SELECT id FROM sessions WHERE chat_id = $1 AND status = 'collecting' LIMIT 1",
+    [ctx.chat.id],
+  );
+  if (existing.rows.length > 0) {
+    return ctx.reply('There is already an active session in this group. Use /newpoll to manage it.');
+  }
 
   const res = await pool.query(
     `INSERT INTO sessions (chat_id, name, status)
@@ -65,6 +70,7 @@ bot.command('startsession', async (ctx) => {
   );
 });
 
+// LEGACY — superseded by /newpoll flow
 // /addoption <text>
 bot.command('addoption', async (ctx) => {
   if (!ctx.chat || ctx.chat.type === 'private') return;
@@ -109,6 +115,7 @@ bot.command('addoption', async (ctx) => {
   await ctx.reply(`✅ Added! Current options:\n${list}`);
 });
 
+// LEGACY — superseded by /newpoll flow
 // /vote — lock options and send Mini App link
 bot.command('vote', async (ctx) => {
   if (!ctx.chat || ctx.chat.type === 'private') return;
@@ -160,6 +167,7 @@ bot.command('vote', async (ctx) => {
   ]);
 });
 
+// LEGACY — superseded by /newpoll flow
 // /closesession — announce winner
 bot.command('closesession', async (ctx) => {
   if (!ctx.chat || ctx.chat.type === 'private') return;
@@ -203,7 +211,7 @@ bot.command('closesession', async (ctx) => {
   );
 });
 
-// CP4: inline query — share personal tier list
+// inline query — share personal tier list
 bot.on('inline_query', async (ctx) => {
   const query = ctx.inlineQuery.query;
   const parts = query.split(':');
@@ -213,15 +221,13 @@ bot.on('inline_query', async (ctx) => {
   const sessionId = parts[0];
   const requesterId = ctx.from.id; // Use actual sender, not spoofable query param
 
-  const resResult = await pool.query(
-    'SELECT ranked_list FROM user_results WHERE session_id = $1 AND user_id = $2',
-    [sessionId, requesterId],
-  );
+  const [resResult, sessionRes] = await Promise.all([
+    pool.query('SELECT ranked_list FROM user_results WHERE session_id = $1 AND user_id = $2', [sessionId, requesterId]),
+    pool.query('SELECT name FROM sessions WHERE id = $1', [sessionId]),
+  ]);
   if (resResult.rows.length === 0) {
     return ctx.answerInlineQuery([]);
   }
-
-  const sessionRes = await pool.query('SELECT name FROM sessions WHERE id = $1', [sessionId]);
   const sessionName = sessionRes.rows[0]?.name ?? 'Untitled Session';
   const rankedList: string[] = resResult.rows[0].ranked_list;
 

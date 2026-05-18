@@ -50,6 +50,7 @@ All full-run tests (N=4, N=8, N=6) verify list length and uniqueness but never c
 ### [gtPulse-undefined] Define @keyframes gtPulse in index.css
 `OptionsStep.tsx:113` and `LiveResults.tsx:280` use `animation: 'gtPulse 1.2s infinite'` but `@keyframes gtPulse` is never defined anywhere in CSS. Elements render static. Add `@keyframes gtPulse { 0%,100% { opacity:1 } 50% { opacity:0.3 } }` to `frontend/src/index.css`.
 
+
 ---
 
 ## Completed

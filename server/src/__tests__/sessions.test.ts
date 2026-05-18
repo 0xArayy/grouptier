@@ -579,3 +579,135 @@ describe('POST /api/sessions/:id/close', () => {
     expect(JSON.parse(res.body).winner).toBeNull();
   });
 });
+
+describe('POST /api/sessions/:id/results — validation', () => {
+  let app: FastifyInstance;
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    app = await buildApp();
+  });
+
+  it('returns 400 when ranked_list is not an array', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ status: 'voting', name: 'Poll', message_id: null, chat_id: -1001 }] })
+      .mockResolvedValueOnce({ rows: [{ text: 'A' }, { text: 'B' }] });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/sessions/${SESSION_ID}/results`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { ranked_list: 'not-an-array' as unknown as string[] },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toMatch(/ranked_list/);
+  });
+
+  it('returns 400 when ranked_list contains an invalid option', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ status: 'voting', name: 'Poll', message_id: null, chat_id: -1001 }] })
+      .mockResolvedValueOnce({ rows: [{ text: 'A' }, { text: 'B' }] });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/sessions/${SESSION_ID}/results`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { ranked_list: ['A', 'INJECTED'] },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toMatch(/Invalid option/);
+  });
+
+  it('returns 400 when ranked_list has duplicates', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ status: 'voting', name: 'Poll', message_id: null, chat_id: -1001 }] })
+      .mockResolvedValueOnce({ rows: [{ text: 'A' }, { text: 'B' }] });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/sessions/${SESSION_ID}/results`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { ranked_list: ['A', 'A'] },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toBe('Duplicate options in ranked_list');
+  });
+
+  it('returns 404 when session not found', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/sessions/${SESSION_ID}/results`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { ranked_list: ['A', 'B'] },
+    });
+
+    expect(res.statusCode).toBe(404);
+    expect(JSON.parse(res.body).error).toBe('Session not found');
+  });
+});
+
+describe('PATCH /api/sessions/:id — validation', () => {
+  let app: FastifyInstance;
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    app = await buildApp();
+  });
+
+  it('returns 400 when name is empty', async () => {
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/sessions/${SESSION_ID}`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { name: '  ' },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toBe('name is required');
+  });
+});
+
+describe('POST /api/sessions/:id/vote — not found', () => {
+  let app: FastifyInstance;
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    app = await buildApp();
+  });
+
+  it('returns 404 when session not found', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/sessions/${SESSION_ID}/vote`,
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(404);
+    expect(JSON.parse(res.body).error).toBe('Session not found');
+  });
+});
+
+describe('DELETE /api/sessions/:id/options/:text — not found', () => {
+  let app: FastifyInstance;
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    app = await buildApp();
+  });
+
+  it('returns 404 when session not found', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/sessions/${SESSION_ID}/options/${encodeURIComponent('Sushi')}`,
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(404);
+    expect(JSON.parse(res.body).error).toBe('Session not found');
+  });
+});

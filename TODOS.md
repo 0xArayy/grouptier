@@ -15,10 +15,34 @@ Every component uses `style={...}` objects. Large surface area — separate PR a
 REST polling at 3s is acceptable but will not scale. Upgrade path: WebSocket + Redis pub/sub. Week-2 infrastructure.
 
 ### [contributing] Add CONTRIBUTING.md
-No onboarding docs exist. Include: env setup, schema auto-init, dev mode bypass, test runner.
+No onboarding docs exist. Include: env setup, schema auto-init, dev mode bypass, test runner. Also: Telegram stub mode (`TELEGRAM_STUB=true`) so TTHW doesn't require a real bot token.
+
+### [error-envelope] Standardize API error response shape
+Currently mixed: `{ error, id }` for 409 session conflict, bare string for other 409s, `{ error }` for 400s. Adopt `{ error: string, code?: string }` everywhere and document it.
+
+### [test-mocks] Migrate sessions.test.ts from positional to query-text mocks
+74 tests chain `mockResolvedValueOnce` by position — fragile when query order changes. Consider matching by SQL substring to decouple test assertions from query ordering.
+
+### [options-unknown-session] GET /api/sessions/:id/options returns [] for unknown session
+Should return 404 instead of empty array so callers can distinguish "no options" from "no session".
+
+### [shared-constants] Export MAX_NAME_LENGTH / MAX_OPTION_TEXT_LENGTH from shared lib
+Currently defined only in sessions.ts; frontend has no corresponding constant. Extract to a shared constants file so a limit change propagates everywhere.
 
 ### [bot-legacy-cleanup] Delete legacy bot commands
 /startsession, /addoption, /vote, /closesession are superseded by /newpoll + Mini App flow. Commented in code-health PR, deletion deferred.
+
+### [auth-ownership-checks] Add ownership checks to session mutation endpoints
+`POST /close`, `PATCH /:id` (rename), `POST /:id/vote` have no chat_id/creator guard — any authenticated user who knows a session UUID can close or rename another group's session. `POST /vote` also bypasses the check when telegramChat is null (URL-button launches).
+
+### [auth-date-expiry] Validate auth_date in Telegram initData
+HMAC is verified but `auth_date` is never checked. Captured initData is a permanent API credential. Should reject initData older than 24h per Telegram docs.
+
+### [options-race] Fix TOCTOU race in POST /options count check
+Count check and insert are non-atomic — two concurrent requests at 11/12 options both pass the guard and yield 13. Needs a DB-level CHECK constraint or a SELECT...FOR UPDATE lock.
+
+### [markdown-injection] Escape user content in bot Markdown messages
+`session.name` and option text are inserted raw into `parse_mode: 'Markdown'` messages. Underscores trigger italic, asterisks break bold spans. Apply `escapeMarkdown()` to all user-provided strings in bot announcements.
 
 ---
 

@@ -91,4 +91,43 @@ describe('pick + buildRankedList', () => {
     const ranked = buildRankedList(t);
     expect(ranked[0]).toBe(t.champion);
   });
+
+  it('N=8 full run — 3 rounds, ranked list complete, no byes in output', () => {
+    const opts = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    let t = createTournament(opts, 42);
+
+    while (!t.champion) {
+      const m = t.rounds[t.currentRound][t.currentMatchup];
+      t = pick(t, m.optionA, m.isBye ? '__bye__' : m.optionB);
+    }
+
+    const ranked = buildRankedList(t);
+    expect(ranked).toHaveLength(8);
+    expect(new Set(ranked).size).toBe(8);
+    opts.forEach(o => expect(ranked).toContain(o));
+    expect(ranked).not.toContain('__bye__');
+    expect(ranked[0]).toBe(t.champion);
+  });
+
+  it('N=6 full run — 3 rounds with byes, bracket advances correctly', () => {
+    const opts = ['A', 'B', 'C', 'D', 'E', 'F'];
+    let t = createTournament(opts, 7);
+    let realPicks = 0;
+
+    while (!t.champion) {
+      const m = t.rounds[t.currentRound][t.currentMatchup];
+      if (m.isBye) {
+        t = pick(t, m.optionA, '__bye__');
+      } else {
+        t = pick(t, m.optionA, m.optionB);
+        realPicks++;
+      }
+    }
+
+    const ranked = buildRankedList(t);
+    expect(ranked).toHaveLength(6);
+    expect(ranked).not.toContain('__bye__');
+    expect(ranked[0]).toBe(t.champion);
+    expect(realPicks).toBe(5);
+  });
 });

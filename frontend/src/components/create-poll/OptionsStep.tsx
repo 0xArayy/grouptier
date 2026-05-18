@@ -141,24 +141,32 @@ export function OptionsStep({
         )}
 
         {options.length < 12 && (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <input
-              style={{ ...inputStyle, flex: 1 }}
-              placeholder="Добавить вариант…"
-              value={optionInput}
-              onChange={e => setOptionInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && onAddOption()}
-            />
-            <button
-              onClick={onAddOption}
-              disabled={!optionInput.trim() || busy}
-              style={{
-                padding: '12px 16px', borderRadius: 'var(--radius-md)', border: 'none',
-                background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 15,
-                cursor: (!optionInput.trim() || busy) ? 'not-allowed' : 'pointer',
-                opacity: (!optionInput.trim() || busy) ? 0.5 : 1,
-              }}
-            >+</button>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                style={{ ...inputStyle, flex: 1 }}
+                placeholder="Добавить вариант…"
+                maxLength={100}
+                value={optionInput}
+                onChange={e => setOptionInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && onAddOption()}
+              />
+              <button
+                onClick={onAddOption}
+                disabled={!optionInput.trim() || busy}
+                style={{
+                  padding: '12px 16px', borderRadius: 'var(--radius-md)', border: 'none',
+                  background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 15,
+                  cursor: (!optionInput.trim() || busy) ? 'not-allowed' : 'pointer',
+                  opacity: (!optionInput.trim() || busy) ? 0.5 : 1,
+                }}
+              >+</button>
+            </div>
+            {optionInput.length >= 80 && (
+              <div style={{ fontSize: 12, textAlign: 'right', marginTop: 4, color: optionInput.length >= 100 ? 'var(--accent)' : 'var(--text-hint)' }}>
+                {optionInput.length}/100
+              </div>
+            )}
           </div>
         )}
 

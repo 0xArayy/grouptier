@@ -120,8 +120,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         voter_count: parseInt(voterCount.rows[0].count),
         result_count: parseInt(resultCount.rows[0].count),
         borda_ranking: borda,
-        // pg returns BIGINT user_id as string; loose == matches against JS number
-        my_result: (resultsRes.rows.find((r: { user_id: number; ranked_list: string[] }) => r.user_id == userId)?.ranked_list) ?? null,
+        my_result: (resultsRes.rows.find((r: { user_id: number; ranked_list: string[] }) => String(r.user_id) === String(userId))?.ranked_list) ?? null,
       };
     },
   );

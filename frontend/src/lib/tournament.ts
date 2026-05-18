@@ -92,7 +92,7 @@ export function pick(
   loser: string,
 ): TournamentState {
   const numRounds = Math.ceil(Math.log2(
-    state.rounds[0].length * 2 + (state.rounds[0].some(m => m.isBye) ? 1 : 0),
+    state.rounds[0].length * 2 - (state.rounds[0].some(m => m.isBye) ? 1 : 0),
   )) || 1;
 
   // Don't record '__bye__' as an eliminated option — it's not a real entry.

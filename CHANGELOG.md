@@ -2,6 +2,29 @@
 
 All notable changes to GroupTier are documented here.
 
+## [1.0.3.2] - 2026-05-18
+
+### Fixed
+- Option numbers (1, 2, 3…) no longer disappear on the poll setup screen — map index was missing from the options list renderer.
+- Test suite mock queue isolation: switched to `vi.resetAllMocks()` so queued mock return values from one test cannot bleed into the next.
+
+### Changed
+- Poll setup UI split into focused sub-components (`HomeStep`, `PresetsStep`, `MyPollsStep`, `OptionsStep`) — same UX, easier to maintain.
+- `buildVoteUrl` extracted into a shared `server/src/lib/urls.ts` module, eliminating duplicate implementations in the route handler and bot.
+- `DEFAULT_SAVE_EMOJI` and `EMOJI_PRESETS` now come from a single `constants.ts` — removed duplicate local declarations.
+- `MAX_NAME_LENGTH` (100), `MAX_OPTION_TEXT_LENGTH` (100), and `MAX_OPTIONS` (12) extracted as named constants in the session routes.
+- GET `/api/sessions/:id` parallelizes 4 DB queries instead of 5; POST `/api/sessions/:id/results` parallelizes Borda fetch and voter count; bot inline query parallelizes user result and session lookups.
+
+### Added
+- Test coverage expanded from 58 → 74 tests: all session routes now covered including DELETE options, POST close, GET options, PATCH name, and POST results success/error paths. Also covers the pg BIGINT→string loose equality path for `my_result`.
+
+## [1.0.3.1] - 2026-05-18
+
+### Changed
+- Shared `EMOJI_PRESETS` constant between CreatePoll and LiveResults (removed duplication).
+- Frontend polls options at 3 s instead of 2 s to reduce server load.
+- GET `/api/sessions/:id` no longer issues a redundant separate query for the current user's result — fetched in the same parallel batch.
+
 ## [1.0.3.0] - 2026-05-17
 
 ### Added

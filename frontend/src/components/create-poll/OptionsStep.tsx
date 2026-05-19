@@ -67,6 +67,16 @@ export function OptionsStep({
 
   return (
     <div style={{ maxWidth: 400, margin: '0 auto' }}>
+      {busy && options.length === 0 && (
+        <div style={{
+          position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.45)', gap: 12, zIndex: 100,
+        }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.25)', borderTopColor: '#fff', animation: 'spin 0.9s linear infinite' }} />
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>Загружаем варианты…</div>
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 0' }}>
         <button
           onClick={onBack}

@@ -134,29 +134,49 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
   }
 
   async function loadOptionSet(name: string, pollOptions: string[], savedPollId: string | null) {
-    if (busy) return;
+    if (busyRef.current) return;
+    busyRef.current = true; // synchronous guard — prevents polling race before setBusy re-renders
     setBusy(true); setError('');
+    // Navigate immediately — user can't tap another preset while loading.
+    // Save the originating step so we can restore it if an error fires before
+    // a session is successfully created (e.g. 409 group-conflict).
+    const prevStep = step;
+    setStep('options');
+    setSessionName(name);
     try {
       let id = sessionId;
       if (id) {
-        for (const opt of options) await removeOption(id, opt);
+        // Fetch current server state before clearing to avoid stale-read race
+        // (another group member may have added options that our local state doesn't know about)
+        let currentOptions = options;
+        try {
+          const serverData = await fetchSessionOptions(id);
+          currentOptions = serverData.options as string[];
+        } catch { /* fall back to local state */ }
+        for (const opt of currentOptions) await removeOption(id, opt);
         setOptions([]);
         await updateSessionName(id, name);
       } else {
         const res = await createSession(name);
         id = res.id; setSessionId(id);
       }
-      setSessionName(name);
-      const loaded: string[] = [];
+      let loaded: string[] = [];
       for (const opt of pollOptions) {
-        const { options: updated } = await addOption(id, opt);
-        loaded.push(...updated.filter(o => !loaded.includes(o)));
+        try {
+          const { options: updated } = await addOption(id!, opt);
+          loaded = updated as string[];
+        } catch (err: unknown) {
+          if (String(err).includes('422')) break; // limit reached — stop silently
+          throw err;
+        }
       }
-      setOptions(loaded); setSavedId(savedPollId); setStep('options');
+      setOptions(loaded); setSavedId(savedPollId);
     } catch (err: unknown) {
       const msg = String(err);
+      // Restore the originating step on error so the user can retry from where they were
+      setStep(prevStep);
       setError(msg.includes('409') ? 'В этой группе уже идёт сбор вариантов.' : msg);
-    } finally { setBusy(false); }
+    } finally { busyRef.current = false; setBusy(false); }
   }
 
   function handlePreset(preset: Preset) { return loadOptionSet(preset.name, preset.options, null); }

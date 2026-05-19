@@ -156,7 +156,19 @@ export default function App() {
       setScreen('live');
       startPolling(sessionId);
     } catch (err) {
-      setSubmitError(String(err));
+      const msg = String(err);
+      if (msg.includes('403')) {
+        // Session was closed while the user was on the tier list.
+        // Redirect to group results — no point showing an error for something
+        // the user can't fix. Refetch to get the latest borda_ranking.
+        try {
+          const fresh: SessionData = await fetchSession(sessionId);
+          setSession(fresh);
+        } catch { /* keep stale session data — live screen handles empty ranking */ }
+        setScreen('live');
+      } else {
+        setSubmitError(msg);
+      }
     } finally {
       setSubmitting(false);
     }

@@ -8,8 +8,11 @@ All notable changes to GroupTier are documented here.
 - Maximum options per session increased from **12 to 32** across all enforcement points: `POST /api/sessions/:id/options`, `PUT /api/sessions/:id/options`, `POST /api/saved-polls`, `PUT /api/saved-polls/:id`, the Telegram bot `/addoption` command, and the frontend add-option button.
 - Error messages and bot replies updated to reflect the new limit ("Max 32 options reached", "Up to 32 options").
 
+### Fixed
+- Tier distribution now scales proportionally with option count. Previously, 87.5% of 32 options landed in C tier (only the final and semifinal losers escaped it). The new formula gives A to the top `ceil(N/4)` rounds from the final and B to the next `ceil(N/2)` rounds, keeping ≈75% in C regardless of N — the same proportion as at N=12. Backward-compatible for N≤16.
+
 ### Added
-- 10 new tests for `savedPolls` routes covering: create happy path, missing name, fewer-than-2 options, more-than-32 options, exact-32 boundary, update happy path, max-options on update, exact-32 on update, 404 not found, and nothing-to-update guard (108 tests total).
+- 12 new tests: 10 for `savedPolls` routes (create, update, max-32 boundary) and 2 for tier distribution at N=12 (backward compat) and N=32 (proportional bucketing). 110 tests total.
 
 ## [1.0.4.2] - 2026-05-19
 

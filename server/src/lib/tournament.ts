@@ -71,15 +71,18 @@ export function createTournament(options: string[], userId: number): TournamentS
 }
 
 /**
- * Assign tier based on round lost in. Rounds are 0-indexed.
- * numRounds = ceil(log2(N))
+ * Assign tier based on round lost in. Thresholds scale with numRounds so that
+ * the C-tier proportion stays consistent regardless of option count:
+ *   A = top ceil(numRounds/4) rounds from the final
+ *   B = next ceil(numRounds/2) - ceil(numRounds/4) rounds
+ *   C = everything earlier
  */
 function assignTier(roundLost: number, numRounds: number): Tier {
   if (numRounds <= 1) return roundLost === 0 ? 'C' : 'S';
-  const fromEnd = numRounds - 1 - roundLost; // 0 = final, 1 = semifinal, etc.
-  if (fromEnd === 0) return 'A'; // final loser
-  if (fromEnd === 1) return 'B'; // semifinal loser
-  return 'C'; // earlier loser
+  const fromEnd = numRounds - 1 - roundLost; // 0 = final loser, higher = earlier loser
+  if (fromEnd < Math.ceil(numRounds / 4)) return 'A';
+  if (fromEnd < Math.ceil(numRounds / 2)) return 'B';
+  return 'C';
 }
 
 /**

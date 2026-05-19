@@ -44,8 +44,8 @@ export async function savedPollRoutes(fastify: FastifyInstance) {
       if (!Array.isArray(options) || options.length < 2) {
         return reply.status(400).send({ error: 'At least 2 options required' });
       }
-      if (options.length > 12) {
-        return reply.status(400).send({ error: 'Max 12 options allowed' });
+      if (options.length > 32) {
+        return reply.status(400).send({ error: 'Max 32 options allowed' });
       }
 
       const res = await pool.query<{ id: string }>(
@@ -77,8 +77,8 @@ export async function savedPollRoutes(fastify: FastifyInstance) {
         if (!Array.isArray(options) || options.length < 2) {
           return reply.status(400).send({ error: 'At least 2 options required' });
         }
-        if (options.length > 12) {
-          return reply.status(400).send({ error: 'Max 12 options allowed' });
+        if (options.length > 32) {
+          return reply.status(400).send({ error: 'Max 32 options allowed' });
         }
       }
 

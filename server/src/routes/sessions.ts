@@ -7,7 +7,7 @@ import { buildVoteUrl } from '../lib/urls.js';
 
 const MAX_NAME_LENGTH = 100;
 const MAX_OPTION_TEXT_LENGTH = 100;
-const MAX_OPTIONS = 12;
+const MAX_OPTIONS = 32;
 
 export async function sessionRoutes(fastify: FastifyInstance) {
   // POST /api/sessions — create session from Mini App (chat_id from validated initData)
@@ -248,7 +248,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // POST /api/sessions/:id/options — add option (dedup + limit 12)
+  // POST /api/sessions/:id/options — add option (dedup + limit 32)
   fastify.post<{ Params: { id: string }; Body: { text: string } }>(
     '/api/sessions/:id/options',
     { preHandler: initDataMiddleware },

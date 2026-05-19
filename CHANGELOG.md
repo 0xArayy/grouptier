@@ -2,18 +2,28 @@
 
 All notable changes to GroupTier are documented here.
 
+## [1.0.4.1] - 2026-05-19
+
+### Fixed
+- CHANGELOG button label corrected: "Вернуться к вариантам" (not "Попробовать снова") — the button navigates back to options, not auto-retries.
+- Error message for maximum options now uses the `MAX_OPTIONS` constant rather than a hardcoded `'12'`, ensuring message and limit stay in sync.
+
+### Added
+- Test coverage expanded from 76 → 87 tests: `buildVoteUrl` unit tests, `POST /results` validation paths (non-array, invalid option, duplicates, session-not-found), `PATCH /sessions` empty-name guard, `POST /vote` and `DELETE /options` 404 paths.
+- [saved-polls-item-validation] logged to TODOS.md: saved-polls API needs per-item option validation.
+
 ## [1.0.4.0] - 2026-05-19
 
 ### Fixed
 - Tournament bracket bug: multi-round tournaments (5+ options) were assigning wrong winners in rounds 2+ due to a stale round-winner reconstruction approach. Server `tournament.ts` is now synced with the frontend version using an explicit `currentRoundWinners` accumulator. Verified with N=8 (3 rounds) and N=6 (3 rounds with byes) regression tests.
 - Tournament tier assignments were wrong for odd-N polls (N=3, N=7): the `numRounds` formula used `+` instead of `−` when accounting for bye slots, shifting all loser tiers one level lower than intended. Fixed in both server and frontend copies.
-- Voting start retry screen: clicking "Попробовать снова" now correctly resets the busy state, re-enabling all option controls. Previously, `busy` stayed `true` while the original request was still in-flight, leaving the options step with every button disabled until the server responded.
+- Voting start retry screen: clicking "Вернуться к вариантам" now correctly resets the busy state, re-enabling all option controls. Previously, `busy` stayed `true` while the original request was still in-flight, leaving the options step with every button disabled until the server responded.
 - `my_result` lookup in GET `/api/sessions/:id` now uses strict string comparison (`String(r.user_id) === String(userId)`) instead of loose `==`. PostgreSQL returns BIGINT columns as strings; the old loose equality could produce wrong results for large Telegram user IDs approaching 2^53.
 
 ### Changed
 - "Мои опросы" button on the create-poll home screen is now hidden for users with no saved polls, eliminating a dead button for new users. Preset selection is now the primary call-to-action.
 - Option text input on the poll setup screen now enforces the 100-character server-side limit in the browser, with a character counter that appears at 80 characters and turns red at the limit.
-- Retry button on the voting-start timeout screen relabeled from "Назад к вариантам" to "Попробовать снова".
+- Retry button on the voting-start timeout screen relabeled from "Назад к вариантам" to "Вернуться к вариантам" (navigates back to the options step rather than retrying automatically, avoiding a 409 if voting is already in-flight).
 
 ### Added
 - Regression tests for multi-round tournament bracket traversal (N=8: pure power-of-2; N=6: with byes).

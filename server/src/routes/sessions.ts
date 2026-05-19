@@ -284,7 +284,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         [id],
       );
       if (parseInt(countRes.rows[0].count) >= MAX_OPTIONS) {
-        return reply.status(422).send({ error: 'Max 12 options reached' });
+        return reply.status(422).send({ error: `Max ${MAX_OPTIONS} options reached` });
       }
 
       const dupRes = await pool.query(

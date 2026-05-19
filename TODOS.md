@@ -44,6 +44,15 @@ Count check and insert are non-atomic — two concurrent requests at 11/12 optio
 ### [markdown-injection] Escape user content in bot Markdown messages
 `session.name` and option text are inserted raw into `parse_mode: 'Markdown'` messages. Underscores trigger italic, asterisks break bold spans. Apply `escapeMarkdown()` to all user-provided strings in bot announcements.
 
+### [tier-assertions] Add S/A/B/C tier assertions to tournament tests
+All full-run tests (N=4, N=8, N=6) verify list length and uniqueness but never check which tier each option received. An `assignTier` regression would pass undetected. Add assertions like `expect(eliminated.find(e => e.option === loser).tier).toBe('B')` for each full-run test.
+
+### [gtPulse-undefined] Define @keyframes gtPulse in index.css
+`OptionsStep.tsx:113` and `LiveResults.tsx:280` use `animation: 'gtPulse 1.2s infinite'` but `@keyframes gtPulse` is never defined anywhere in CSS. Elements render static. Add `@keyframes gtPulse { 0%,100% { opacity:1 } 50% { opacity:0.3 } }` to `frontend/src/index.css`.
+
+### [saved-polls-item-validation] Validate individual option items in saved-polls API
+`POST /api/saved-polls` and `PUT /api/saved-polls/:id` check `options.length` (2–12) but never validate individual items: each option should be a non-empty string ≤ 100 characters. Currently an attacker can store 12 options of arbitrary length in the JSONB column. Add `options.every(o => typeof o === 'string' && o.trim().length > 0 && o.length <= 100)` on both routes.
+
 ---
 
 ## Completed

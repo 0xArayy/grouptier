@@ -3,6 +3,7 @@ import {
   createSession,
   addOption,
   removeOption,
+  bulkReplaceOptions,
   startVoting,
   updateSessionName,
   fetchSessionOptions,
@@ -137,43 +138,21 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
     if (busyRef.current) return;
     busyRef.current = true; // synchronous guard — prevents polling race before setBusy re-renders
     setBusy(true); setError('');
-    // Navigate immediately — user can't tap another preset while loading.
-    // Save the originating step so we can restore it if an error fires before
-    // a session is successfully created (e.g. 409 group-conflict).
     const prevStep = step;
     setStep('options');
     setSessionName(name);
     try {
       let id = sessionId;
-      if (id) {
-        // Fetch current server state before clearing to avoid stale-read race
-        // (another group member may have added options that our local state doesn't know about)
-        let currentOptions = options;
-        try {
-          const serverData = await fetchSessionOptions(id);
-          currentOptions = serverData.options as string[];
-        } catch { /* fall back to local state */ }
-        for (const opt of currentOptions) await removeOption(id, opt);
-        setOptions([]);
-        await updateSessionName(id, name);
-      } else {
+      if (!id) {
         const res = await createSession(name);
         id = res.id; setSessionId(id);
       }
-      let loaded: string[] = [];
-      for (const opt of pollOptions) {
-        try {
-          const { options: updated } = await addOption(id!, opt);
-          loaded = updated as string[];
-        } catch (err: unknown) {
-          if (String(err).includes('422')) break; // limit reached — stop silently
-          throw err;
-        }
-      }
+      // Single atomic PUT: deletes all existing options and inserts new ones in one transaction.
+      // Also updates the session name when replacing into an existing session.
+      const { options: loaded } = await bulkReplaceOptions(id!, pollOptions, sessionId ? name : undefined);
       setOptions(loaded); setSavedId(savedPollId);
     } catch (err: unknown) {
       const msg = String(err);
-      // Restore the originating step on error so the user can retry from where they were
       setStep(prevStep);
       setError(msg.includes('409') ? 'В этой группе уже идёт сбор вариантов.' : msg);
     } finally { busyRef.current = false; setBusy(false); }

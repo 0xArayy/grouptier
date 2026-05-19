@@ -245,10 +245,10 @@ describe('POST /api/sessions/:id/options', () => {
     expect(JSON.parse(res.body).options).toEqual(['Pizza']);
   });
 
-  it('returns 422 when 12-option limit reached', async () => {
+  it('returns 422 when 32-option limit reached', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] })
-      .mockResolvedValueOnce({ rows: [{ count: '12' }] });
+      .mockResolvedValueOnce({ rows: [{ count: '32' }] });
 
     const res = await app.inject({
       method: 'POST',
@@ -258,7 +258,7 @@ describe('POST /api/sessions/:id/options', () => {
     });
 
     expect(res.statusCode).toBe(422);
-    expect(JSON.parse(res.body).error).toBe('Max 12 options reached');
+    expect(JSON.parse(res.body).error).toBe('Max 32 options reached');
   });
 
   it('returns 400 when option text exceeds 100 characters', async () => {
@@ -621,7 +621,7 @@ describe('PUT /api/sessions/:id/options', () => {
   });
 
   it('returns 422 when more than MAX_OPTIONS provided', async () => {
-    const tooMany = Array.from({ length: 13 }, (_, i) => `Option ${i + 1}`);
+    const tooMany = Array.from({ length: 33 }, (_, i) => `Option ${i + 1}`);
 
     const res = await app.inject({
       method: 'PUT',

@@ -150,7 +150,7 @@ export function OptionsStep({
           </div>
         )}
 
-        {options.length < 12 && (
+        {options.length < 32 && (
           <div style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', gap: 8 }}>
               <input

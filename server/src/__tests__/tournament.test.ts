@@ -130,4 +130,51 @@ describe('pick + buildRankedList', () => {
     expect(ranked[0]).toBe(t.champion);
     expect(realPicks).toBe(5);
   });
+
+  it('N=12 tier distribution — backward-compatible with original thresholds', () => {
+    const opts = Array.from({ length: 12 }, (_, i) => `opt${i}`);
+    let t = createTournament(opts, 1);
+
+    while (!t.champion) {
+      const m = t.rounds[t.currentRound][t.currentMatchup];
+      t = pick(t, m.optionA, m.isBye ? '__bye__' : m.optionB);
+    }
+
+    const tiers = Object.fromEntries(
+      (['S', 'A', 'B', 'C'] as const).map(tier => [
+        tier,
+        t.eliminated.filter(e => e.tier === tier).length,
+      ]),
+    );
+    expect(tiers.S).toBe(1);
+    expect(tiers.A).toBe(1);  // final loser only (fromEnd=0 < ceil(4/4)=1)
+    expect(tiers.B).toBe(1);  // semifinal loser (fromEnd=1 < ceil(4/2)=2)
+    expect(tiers.C).toBe(9);  // everything earlier
+  });
+
+  it('N=32 tier distribution — proportional thresholds reduce C-tier crowding', () => {
+    const opts = Array.from({ length: 32 }, (_, i) => `opt${i}`);
+    let t = createTournament(opts, 1);
+
+    while (!t.champion) {
+      const m = t.rounds[t.currentRound][t.currentMatchup];
+      t = pick(t, m.optionA, m.isBye ? '__bye__' : m.optionB);
+    }
+
+    const tiers = Object.fromEntries(
+      (['S', 'A', 'B', 'C'] as const).map(tier => [
+        tier,
+        t.eliminated.filter(e => e.tier === tier).length,
+      ]),
+    );
+    // numRounds=5: A threshold=ceil(5/4)=2, B threshold=ceil(5/2)=3
+    // fromEnd=0 (final loser) → A; fromEnd=1 (semifinal losers, 2) → A
+    // fromEnd=2 (quarterfinal losers, 4) → B
+    // fromEnd=3,4 (16+8=24) → C
+    expect(tiers.S).toBe(1);
+    expect(tiers.A).toBe(3);  // final + 2 semifinal losers
+    expect(tiers.B).toBe(4);  // 4 quarterfinal losers
+    expect(tiers.C).toBe(24); // 75% in C (vs 87.5% without fix)
+    expect(tiers.S + tiers.A + tiers.B + tiers.C).toBe(32);
+  });
 });

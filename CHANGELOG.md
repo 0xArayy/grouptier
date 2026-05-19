@@ -2,6 +2,15 @@
 
 All notable changes to GroupTier are documented here.
 
+## [1.0.4.2] - 2026-05-19
+
+### Fixed
+- Selecting a preset while options were loading no longer shows a raw `Error: 422: {"error":"Max 12 options reached"}` — the UI navigates to the options screen immediately on tap, so errors appear there with a friendlier message.
+- Race condition when two group members select presets simultaneously: the client now syncs the current server option list before clearing, avoiding stale-read conflicts that left 13+ options on the server.
+- Session closed mid-vote: tapping "Submit my picks" on a closed session now silently redirects to the group results screen instead of showing `Error: 403: {"error":"Session is closed"}`.
+- `busyRef` is now set synchronously when loading a preset, closing a render-gap race where the 2.5-second options poller could fire and overwrite `setOptions([])` mid-load.
+- Preset/saved-poll selection restores the originating step (presets or my-polls) on error instead of stranding the user on an empty options screen.
+
 ## [1.0.4.1] - 2026-05-19
 
 ### Fixed

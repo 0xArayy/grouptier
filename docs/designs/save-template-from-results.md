@@ -76,7 +76,7 @@ Add a "Сохранить шаблон" (Save template) button to the LiveResult
 - No changes needed — `createSavedPoll` already exists
 
 **Backend**
-- No changes needed — `POST /api/saved-polls` already validates 2-12 options and requires initData auth
+- No changes needed — `POST /api/saved-polls` already validates 2-32 options and requires initData auth
 - Note: individual option string length is not validated server-side; client-side trim/filter above is the mitigation
 
 ### Architecture diagram
@@ -109,7 +109,7 @@ App.tsx
 |------|----------|
 | session.name is null/empty | Pre-fill with "Мои опрос" (fallback) |
 | options.length < 2 | Can't happen — session must have ≥2 options to reach voting |
-| options.length > 12 | Can't happen — API enforces max 12 on creation |
+| options.length > 32 | Can't happen — API enforces max 32 on creation |
 | Duplicate template | Allowed — API doesn't dedup, sessionStorage prevents same-user re-save |
 | API error | Show inline error text, re-enable confirm button |
 | User taps confirm twice | `saving` flag disables button during API call |

@@ -65,7 +65,7 @@ bot.command('startsession', async (ctx) => {
   const sessionId: string = res.rows[0].id;
 
   await ctx.reply(
-    `📋 New session: *${name}*\n\nAdd options with /addoption <text>. Up to 12 options.\nAdmin starts voting with /vote.\n\nSession ID: \`${sessionId}\``,
+    `📋 New session: *${name}*\n\nAdd options with /addoption <text>. Up to 32 options.\nAdmin starts voting with /vote.\n\nSession ID: \`${sessionId}\``,
     { parse_mode: 'Markdown' },
   );
 });
@@ -92,8 +92,8 @@ bot.command('addoption', async (ctx) => {
     'SELECT COUNT(*) FROM options WHERE session_id = $1',
     [sessionId],
   );
-  if (parseInt(countRes.rows[0].count) >= 12) {
-    return ctx.reply('Max 12 options reached.');
+  if (parseInt(countRes.rows[0].count) >= 32) {
+    return ctx.reply('Max 32 options reached.');
   }
 
   // Check duplicate (case-insensitive)

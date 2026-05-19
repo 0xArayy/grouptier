@@ -117,6 +117,7 @@ Fastify (port 3000)
   GET  /api/sessions/:id              → session state + live Borda ranking
   PATCH /api/sessions/:id             → update session name
   POST /api/sessions/:id/options      → add option (dedup, max 12)
+  PUT  /api/sessions/:id/options      → bulk-replace all options (atomic, collecting only)
   POST /api/sessions/:id/vote         → flip to voting, send bot message
   POST /api/sessions/:id/results      → submit ranked list; bot edits vote count
   POST /api/sessions/:id/close        → close session, bot announces winner
@@ -158,6 +159,7 @@ All endpoints require `x-init-data` header (Telegram WebApp initData, or `dev` i
 | `GET` | `/api/sessions/:id` | user | Session state + Borda |
 | `PATCH` | `/api/sessions/:id` | — | Update name (collecting only) |
 | `POST` | `/api/sessions/:id/options` | — | Add option |
+| `PUT` | `/api/sessions/:id/options` | — | Bulk-replace all options (atomic, collecting only) |
 | `DELETE` | `/api/sessions/:id/options/:text` | — | Remove an option (collecting only) |
 | `POST` | `/api/sessions/:id/vote` | — | Start voting |
 | `POST` | `/api/sessions/:id/results` | user | Submit ranked list |

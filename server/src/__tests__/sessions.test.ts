@@ -5,7 +5,8 @@ import type { FastifyInstance } from 'fastify';
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
 const mockQuery = vi.fn();
-vi.mock('../db/client.js', () => ({ pool: { query: mockQuery } }));
+const mockConnect = vi.fn();
+vi.mock('../db/client.js', () => ({ pool: { query: mockQuery, connect: mockConnect } }));
 
 const mockSendMessage = vi.fn();
 vi.mock('../bot/bot.js', () => ({
@@ -525,6 +526,198 @@ describe('DELETE /api/sessions/:id/options/:text', () => {
     });
 
     expect(res.statusCode).toBe(403);
+  });
+});
+
+describe('PUT /api/sessions/:id/options', () => {
+  let app: FastifyInstance;
+  let mockClient: { query: ReturnType<typeof vi.fn>; release: ReturnType<typeof vi.fn> };
+
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    app = await buildApp();
+    mockClient = { query: vi.fn(), release: vi.fn() };
+    mockConnect.mockResolvedValue(mockClient);
+  });
+
+  it('replaces options atomically and returns 200', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }) // session
+      .mockResolvedValueOnce({ rows: [] }) // DELETE
+      .mockResolvedValueOnce({ rows: [] }) // INSERT
+      .mockResolvedValueOnce({ rows: [{ text: 'Pizza' }, { text: 'Sushi' }] }) // SELECT
+      .mockResolvedValueOnce({ rows: [] }); // COMMIT
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/sessions/${SESSION_ID}/options`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { options: ['Pizza', 'Sushi'] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).options).toEqual(['Pizza', 'Sushi']);
+  });
+
+  it('updates name atomically when provided', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }) // session
+      .mockResolvedValueOnce({ rows: [] }) // UPDATE name
+      .mockResolvedValueOnce({ rows: [] }) // DELETE
+      .mockResolvedValueOnce({ rows: [] }) // INSERT
+      .mockResolvedValueOnce({ rows: [{ text: 'A' }] }) // SELECT
+      .mockResolvedValueOnce({ rows: [] }); // COMMIT
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/sessions/${SESSION_ID}/options`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { options: ['A'], name: 'New Name' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).options).toEqual(['A']);
+  });
+
+  it('handles empty options array (clears all options)', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }) // session
+      .mockResolvedValueOnce({ rows: [] }) // DELETE
+      .mockResolvedValueOnce({ rows: [] }) // SELECT (no INSERT since empty)
+      .mockResolvedValueOnce({ rows: [] }); // COMMIT
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/sessions/${SESSION_ID}/options`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { options: [] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).options).toEqual([]);
+  });
+
+  it('deduplicates options case-insensitively', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }) // session
+      .mockResolvedValueOnce({ rows: [] }) // DELETE
+      .mockResolvedValueOnce({ rows: [] }) // INSERT (2 unique, not 3)
+      .mockResolvedValueOnce({ rows: [{ text: 'Pizza' }, { text: 'Sushi' }] }) // SELECT
+      .mockResolvedValueOnce({ rows: [] }); // COMMIT
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/sessions/${SESSION_ID}/options`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { options: ['Pizza', 'PIZZA', 'Sushi'] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).options).toEqual(['Pizza', 'Sushi']);
+  });
+
+  it('returns 422 when more than MAX_OPTIONS provided', async () => {
+    const tooMany = Array.from({ length: 13 }, (_, i) => `Option ${i + 1}`);
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/sessions/${SESSION_ID}/options`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { options: tooMany },
+    });
+
+    expect(res.statusCode).toBe(422);
+  });
+
+  it('returns 400 when options is not an array', async () => {
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/sessions/${SESSION_ID}/options`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { options: 'not-an-array' },
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('returns 404 when session not found', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [] }) // session — not found
+      .mockResolvedValueOnce({ rows: [] }); // ROLLBACK
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/sessions/${SESSION_ID}/options`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { options: ['A'] },
+    });
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('returns 403 when session is not collecting', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [{ status: 'voting', chat_id: -1001 }] }) // session
+      .mockResolvedValueOnce({ rows: [] }); // ROLLBACK
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/sessions/${SESSION_ID}/options`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { options: ['A'] },
+    });
+
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('returns 400 when name exceeds max length', async () => {
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/sessions/${SESSION_ID}/options`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { options: ['A'], name: 'n'.repeat(101) },
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('returns 400 when an option text exceeds max length', async () => {
+    const longText = 'a'.repeat(101);
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/sessions/${SESSION_ID}/options`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { options: [longText] },
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('rolls back transaction and returns 500 on DB error', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }) // session
+      .mockResolvedValueOnce({ rows: [] }) // DELETE
+      .mockRejectedValueOnce(new Error('DB failure')) // INSERT fails
+      .mockResolvedValueOnce({ rows: [] }); // ROLLBACK
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/sessions/${SESSION_ID}/options`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { options: ['A'] },
+    });
+
+    expect(res.statusCode).toBe(500);
+    expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(mockClient.release).toHaveBeenCalled();
   });
 });
 

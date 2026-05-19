@@ -45,6 +45,16 @@ export async function addOption(sessionId: string, text: string): Promise<{ opti
   return res.json();
 }
 
+export async function bulkReplaceOptions(sessionId: string, options: string[], name?: string): Promise<{ options: string[] }> {
+  const res = await fetch(`${BASE}/sessions/${sessionId}/options`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
+    body: JSON.stringify({ options, ...(name !== undefined && { name }) }),
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
 export async function removeOption(sessionId: string, text: string): Promise<{ options: string[] }> {
   const res = await fetch(`${BASE}/sessions/${sessionId}/options/${encodeURIComponent(text)}`, {
     method: 'DELETE',

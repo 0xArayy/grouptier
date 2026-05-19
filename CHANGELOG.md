@@ -4,12 +4,20 @@ All notable changes to GroupTier are documented here.
 
 ## [1.0.4.2] - 2026-05-19
 
+### Performance
+- Selecting a preset or saved poll now loads options in **one server round-trip** instead of up to 22 sequential requests (≤12 DELETE + ≤8 POST). New `PUT /api/sessions/:id/options` endpoint replaces all options atomically in a single PostgreSQL transaction, eliminating the 3–6 second blocking overlay on slow Telegram connections.
+
+### Added
+- `PUT /api/sessions/:id/options` bulk-replace endpoint: accepts an options array and optional name, deletes existing options and inserts the new set in one transaction. Validates option count (≤12), text length (≤100 chars), name length (≤100 chars), and deduplicates case-insensitively.
+- 10 new tests for the PUT endpoint covering: atomic replace, name update, empty array, case-insensitive dedup, max-options 422, option text 400, name-too-long 400, not-collecting 403, session-not-found 404, and transaction rollback (98 tests total).
+
 ### Fixed
 - Selecting a preset while options were loading no longer shows a raw `Error: 422: {"error":"Max 12 options reached"}` — the UI navigates to the options screen immediately on tap, so errors appear there with a friendlier message.
 - Race condition when two group members select presets simultaneously: the client now syncs the current server option list before clearing, avoiding stale-read conflicts that left 13+ options on the server.
 - Session closed mid-vote: tapping "Submit my picks" on a closed session now silently redirects to the group results screen instead of showing `Error: 403: {"error":"Session is closed"}`.
 - `busyRef` is now set synchronously when loading a preset, closing a render-gap race where the 2.5-second options poller could fire and overwrite `setOptions([])` mid-load.
 - Preset/saved-poll selection restores the originating step (presets or my-polls) on error instead of stranding the user on an empty options screen.
+- Bulk-inserted options now use `clock_timestamp()` per row, preserving insertion order under `ORDER BY created_at` (previously all rows in a batch shared the same transaction-level timestamp).
 
 ## [1.0.4.1] - 2026-05-19
 

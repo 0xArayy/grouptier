@@ -348,6 +348,101 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     },
   );
 
+  // PUT /api/sessions/:id/options — bulk replace (atomic delete + insert in one transaction)
+  fastify.put<{ Params: { id: string }; Body: { options: unknown; name?: unknown } }>(
+    '/api/sessions/:id/options',
+    { preHandler: initDataMiddleware },
+    async (request, reply) => {
+      const { id } = request.params;
+      const { options, name } = (request.body ?? {}) as { options: unknown; name?: unknown };
+
+      if (!Array.isArray(options)) {
+        return reply.status(400).send({ error: 'options must be an array' });
+      }
+
+      const texts = (options as unknown[]).map((o) => String(o ?? '').trim()).filter(Boolean);
+
+      const seen = new Set<string>();
+      const deduped: string[] = [];
+      for (const t of texts) {
+        const key = t.toLowerCase();
+        if (!seen.has(key)) { seen.add(key); deduped.push(t); }
+      }
+
+      if (deduped.length > MAX_OPTIONS) {
+        return reply.status(422).send({ error: `Max ${MAX_OPTIONS} options reached` });
+      }
+      for (const t of deduped) {
+        if (t.length > MAX_OPTION_TEXT_LENGTH) {
+          return reply.status(400).send({ error: 'Option text must be 100 characters or fewer' });
+        }
+      }
+
+      if (name !== undefined) {
+        const trimmedName = String(name).trim();
+        if (trimmedName.length > MAX_NAME_LENGTH) {
+          return reply.status(400).send({ error: 'Name must be 100 characters or fewer' });
+        }
+      }
+
+      const chat = request.telegramChat;
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        const sessionRes = await client.query(
+          'SELECT status, chat_id FROM sessions WHERE id = $1',
+          [id],
+        );
+        if (sessionRes.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return reply.status(404).send({ error: 'Session not found' });
+        }
+        if (chat && sessionRes.rows[0].chat_id !== chat.id) {
+          await client.query('ROLLBACK');
+          return reply.status(403).send({ error: 'Forbidden' });
+        }
+        if (sessionRes.rows[0].status !== 'collecting') {
+          await client.query('ROLLBACK');
+          return reply.status(403).send({ error: 'Session is not collecting options' });
+        }
+
+        if (name !== undefined) {
+          const trimmedName = String(name).trim();
+          if (trimmedName) {
+            await client.query(
+              "UPDATE sessions SET name = $1 WHERE id = $2 AND status = 'collecting'",
+              [trimmedName, id],
+            );
+          }
+        }
+
+        await client.query('DELETE FROM options WHERE session_id = $1', [id]);
+
+        if (deduped.length > 0) {
+          // clock_timestamp() gives each row its own timestamp, preserving insertion order
+          const placeholders = deduped.map((_, i) => `($1, $${i + 2}, clock_timestamp())`).join(', ');
+          await client.query(
+            `INSERT INTO options (session_id, text, created_at) VALUES ${placeholders}`,
+            [id, ...deduped],
+          );
+        }
+
+        const allRes = await client.query(
+          'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
+          [id],
+        );
+        await client.query('COMMIT');
+        return { options: allRes.rows.map((r: { text: string }) => r.text) };
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
+      }
+    },
+  );
+
   // POST /api/sessions/:id/vote — flip to voting, send bot message, rollback on failure
   fastify.post<{ Params: { id: string } }>(
     '/api/sessions/:id/vote',

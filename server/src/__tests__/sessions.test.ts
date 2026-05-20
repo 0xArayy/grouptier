@@ -9,8 +9,38 @@ const mockConnect = vi.fn();
 vi.mock('../db/client.js', () => ({ pool: { query: mockQuery, connect: mockConnect } }));
 
 const mockSendMessage = vi.fn();
+const mockSendPhoto = vi.fn();
+const mockEditMessageCaption = vi.fn();
 vi.mock('../bot/bot.js', () => ({
-  bot: { api: { sendMessage: mockSendMessage } },
+  bot: {
+    api: {
+      sendMessage: mockSendMessage,
+      sendPhoto: mockSendPhoto,
+      editMessageCaption: mockEditMessageCaption,
+    },
+  },
+}));
+
+// Stub card builders — plain functions so vi.resetAllMocks() doesn't wipe return values
+const FAKE_IMG = Buffer.from('fake-png');
+vi.mock('../bot/cards.js', () => ({
+  buildVotingCard: () => ({
+    image: FAKE_IMG,
+    caption: 'test caption',
+    parse_mode: 'HTML',
+    reply_markup: { inline_keyboard: [[{ text: '▶ VOTE', url: 'https://t.me/test' }]] },
+  }),
+  buildVotingCaption: () => 'test caption',
+  buildWinnerCard: () => ({
+    image: FAKE_IMG,
+    caption: '🥇 Winner',
+    parse_mode: 'HTML',
+  }),
+  buildSetupCard: () => ({
+    image: FAKE_IMG,
+    parse_mode: 'HTML',
+    reply_markup: { inline_keyboard: [[{ text: '⚙️ SET UP', url: 'https://t.me/test' }]] },
+  }),
 }));
 
 vi.mock('../middleware/initData.js', () => ({
@@ -292,14 +322,15 @@ describe('POST /api/sessions/:id/vote', () => {
     app = await buildApp();
   });
 
-  it('starts voting, sends message, returns ok', async () => {
+  it('starts voting, sends photo card, returns ok', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, status: 'collecting' }] })
-      .mockResolvedValueOnce({ rows: [{ count: '3' }] }) // option count
+      .mockResolvedValueOnce({ rows: [{ count: '3' }] }) // option count check
       .mockResolvedValueOnce({ rows: [] }) // update status to voting
+      .mockResolvedValueOnce({ rows: [{ text: 'A' }, { text: 'B' }, { text: 'C' }] }) // options text for card
       .mockResolvedValueOnce({ rows: [] }); // update message_id + message_sent=true
 
-    mockSendMessage.mockResolvedValueOnce({ message_id: 999 });
+    mockSendPhoto.mockResolvedValueOnce({ message_id: 999 });
 
     const res = await app.inject({
       method: 'POST',
@@ -309,21 +340,22 @@ describe('POST /api/sessions/:id/vote', () => {
 
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).ok).toBe(true);
-    expect(mockSendMessage).toHaveBeenCalledOnce();
+    expect(mockSendPhoto).toHaveBeenCalledOnce();
     expect(mockQuery).toHaveBeenCalledWith(
       'UPDATE sessions SET message_id = $1, message_sent = true WHERE id = $2',
       [999, SESSION_ID],
     );
   });
 
-  it('rolls back and returns 502 when sendMessage fails', async () => {
+  it('rolls back and returns 502 when sendPhoto fails', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, status: 'collecting' }] })
       .mockResolvedValueOnce({ rows: [{ count: '2' }] })
       .mockResolvedValueOnce({ rows: [] }) // update to voting
+      .mockResolvedValueOnce({ rows: [{ text: 'A' }, { text: 'B' }] }) // options text for card
       .mockResolvedValueOnce({ rows: [] }); // rollback update
 
-    mockSendMessage.mockRejectedValueOnce(new Error('Telegram API error'));
+    mockSendPhoto.mockRejectedValueOnce(new Error('Telegram API error'));
 
     const res = await app.inject({
       method: 'POST',
@@ -332,7 +364,6 @@ describe('POST /api/sessions/:id/vote', () => {
     });
 
     expect(res.statusCode).toBe(502);
-    // rollback was called
     expect(mockQuery).toHaveBeenCalledWith(
       "UPDATE sessions SET status = 'collecting' WHERE id = $1",
       [SESSION_ID],
@@ -732,7 +763,7 @@ describe('POST /api/sessions/:id/close', () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001 }] }) // atomic update
       .mockResolvedValueOnce({ rows: [{ ranked_list: ['A', 'B'] }, { ranked_list: ['B', 'A'] }] }); // results
-    mockSendMessage.mockResolvedValueOnce({ message_id: 1 });
+    mockSendPhoto.mockResolvedValueOnce({ message_id: 1 });
 
     const res = await app.inject({
       method: 'POST',

@@ -1,8 +1,9 @@
-import { Bot } from 'grammy';
+import { Bot, InputFile } from 'grammy';
 import type { InlineQueryResultArticle } from 'grammy/types';
 import { pool } from '../db/client.js';
 import { computeBorda } from '../db/borda.js';
 import { buildVoteUrl } from '../lib/urls.js';
+import { buildSetupCard, buildVotingCard, buildWinnerCard } from './cards.js';
 
 export const bot = new Bot(process.env.BOT_TOKEN ?? '');
 
@@ -11,13 +12,11 @@ bot.catch((err) => {
 });
 
 // Primary flow: /newpoll → Mini App (CreatePoll → OptionsStep → LiveResults)
-// /newpoll — create session and open Mini App manage screen
 bot.command('newpoll', async (ctx) => {
   if (!ctx.chat || ctx.chat.type === 'private') {
     return ctx.reply('Use /newpoll in a group chat.');
   }
 
-  // Check for existing collecting session
   const existing = await pool.query(
     "SELECT id FROM sessions WHERE chat_id = $1 AND status = 'collecting' LIMIT 1",
     [ctx.chat.id],
@@ -34,10 +33,9 @@ bot.command('newpoll', async (ctx) => {
   }
 
   const manageUrl = buildVoteUrl(sessionId);
-  await ctx.reply('🗳️ Tap below to set up your poll in the Mini App.', {
-    reply_markup: {
-      inline_keyboard: [[{ text: '🗳️ Set Up Poll →', url: manageUrl }]],
-    },
+  const card = buildSetupCard(manageUrl);
+  await ctx.replyWithPhoto(new InputFile(card.image, 'card.png'), {
+    reply_markup: card.reply_markup,
   });
 });
 
@@ -71,13 +69,11 @@ bot.command('startsession', async (ctx) => {
 });
 
 // LEGACY — superseded by /newpoll flow
-// /addoption <text>
 bot.command('addoption', async (ctx) => {
   if (!ctx.chat || ctx.chat.type === 'private') return;
   const text = ctx.match?.trim();
   if (!text) return ctx.reply('Usage: /addoption <option text>');
 
-  // Find most recent collecting session for this chat
   const sessionRes = await pool.query(
     `SELECT id FROM sessions WHERE chat_id = $1 AND status = 'collecting' ORDER BY created_at DESC LIMIT 1`,
     [ctx.chat.id],
@@ -87,7 +83,6 @@ bot.command('addoption', async (ctx) => {
   }
   const sessionId: string = sessionRes.rows[0].id;
 
-  // Check limit
   const countRes = await pool.query(
     'SELECT COUNT(*) FROM options WHERE session_id = $1',
     [sessionId],
@@ -96,7 +91,6 @@ bot.command('addoption', async (ctx) => {
     return ctx.reply('Max 32 options reached.');
   }
 
-  // Check duplicate (case-insensitive)
   const dupRes = await pool.query(
     'SELECT 1 FROM options WHERE session_id = $1 AND LOWER(text) = LOWER($2)',
     [sessionId, text],
@@ -116,7 +110,6 @@ bot.command('addoption', async (ctx) => {
 });
 
 // LEGACY — superseded by /newpoll flow
-// /vote — lock options and send Mini App link
 bot.command('vote', async (ctx) => {
   if (!ctx.chat || ctx.chat.type === 'private') return;
 
@@ -129,7 +122,6 @@ bot.command('vote', async (ctx) => {
   }
   const session = sessionRes.rows[0];
 
-  // Require at least 2 options
   const countRes = await pool.query(
     'SELECT COUNT(*) FROM options WHERE session_id = $1',
     [session.id],
@@ -143,24 +135,26 @@ bot.command('vote', async (ctx) => {
   const miniAppUrl = buildVoteUrl(session.id);
   const name = session.name ?? 'Untitled Session';
 
+  const optRes = await pool.query(
+    'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
+    [session.id],
+  );
+  const options: string[] = optRes.rows.map((r: { text: string }) => r.text);
+
   let sent;
   try {
-    sent = await ctx.reply(
-      `🗳️ Voting open for *${name}*!\n\n0 of 0 voted`,
-      {
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [[{ text: '🗳️ Cast your vote →', url: miniAppUrl }]],
-        },
-      },
-    );
+    const card = buildVotingCard(name, options, 0, 0, miniAppUrl);
+    sent = await ctx.replyWithPhoto(new InputFile(card.image, 'card.png'), {
+      caption: card.caption,
+      parse_mode: card.parse_mode,
+      reply_markup: card.reply_markup,
+    });
   } catch (err) {
     console.error('/vote reply failed:', err);
     await ctx.reply('❌ Failed to open voting. Check server logs.');
     return;
   }
 
-  // Store message_id and confirm message was delivered
   await pool.query('UPDATE sessions SET message_id = $1, message_sent = true WHERE id = $2', [
     sent.message_id,
     session.id,
@@ -168,11 +162,9 @@ bot.command('vote', async (ctx) => {
 });
 
 // LEGACY — superseded by /newpoll flow
-// /closesession — announce winner
 bot.command('closesession', async (ctx) => {
   if (!ctx.chat || ctx.chat.type === 'private') return;
 
-  // Atomic update — prevents race condition
   const res = await pool.query(
     `UPDATE sessions SET status = 'closed'
      WHERE id = (
@@ -189,7 +181,6 @@ bot.command('closesession', async (ctx) => {
   }
   const { id: sessionId, name } = res.rows[0];
 
-  // Fetch results for winner announcement
   const resultsRes = await pool.query(
     'SELECT ranked_list FROM user_results WHERE session_id = $1',
     [sessionId],
@@ -201,14 +192,16 @@ bot.command('closesession', async (ctx) => {
 
   const borda = computeBorda(resultsRes.rows.map((r: { ranked_list: string[] }) => r.ranked_list));
   const sessionName = name ?? 'Untitled Session';
-  const ranking = borda
-    .map((r, i) => `${i + 1}. ${r.option} — ${r.score} pts`)
-    .join('\n');
+  const card = buildWinnerCard(sessionName, borda);
+  await ctx.replyWithPhoto(new InputFile(card.image, 'winner.png'), {
+    caption: card.caption,
+    parse_mode: card.parse_mode,
+  });
+});
 
-  await ctx.reply(
-    `🏆 *${sessionName}* winner: *${borda[0].option}*!\n\nFull group ranking:\n${ranking}`,
-    { parse_mode: 'Markdown' },
-  );
+// Noop handler for display-only option grid buttons (answer all to prevent Telegram spinner timeout)
+bot.on('callback_query:data', async (ctx) => {
+  await ctx.answerCallbackQuery();
 });
 
 // inline query — share personal tier list
@@ -219,7 +212,7 @@ bot.on('inline_query', async (ctx) => {
     return ctx.answerInlineQuery([]);
   }
   const sessionId = parts[0];
-  const requesterId = ctx.from.id; // Use actual sender, not spoofable query param
+  const requesterId = ctx.from.id;
 
   const [resResult, sessionRes] = await Promise.all([
     pool.query('SELECT ranked_list FROM user_results WHERE session_id = $1 AND user_id = $2', [sessionId, requesterId]),

@@ -28,8 +28,7 @@ type Step = 'home' | 'presets' | 'my-polls' | 'options' | 'starting';
 
 
 export function CreatePoll({ onSessionReady, existingSession }: Props) {
-  const hasExistingOptions = (existingSession?.options.length ?? 0) > 0;
-  const [step, setStep] = useState<Step>(hasExistingOptions ? 'options' : 'home');
+  const [step, setStep] = useState<Step>('home');
   const [sessionId, setSessionId] = useState<string | null>(existingSession?.id ?? null);
   const [sessionName, setSessionName] = useState(existingSession?.name ?? '');
   const [options, setOptions] = useState<string[]>(existingSession?.options ?? []);

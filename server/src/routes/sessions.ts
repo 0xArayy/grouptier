@@ -1,9 +1,11 @@
 import type { FastifyInstance } from 'fastify';
+import { InputFile } from 'grammy';
 import { pool } from '../db/client.js';
 import { initDataMiddleware } from '../middleware/initData.js';
 import { computeBorda } from '../db/borda.js';
 import { bot } from '../bot/bot.js';
 import { buildVoteUrl } from '../lib/urls.js';
+import { buildVotingCard, buildVotingCaption, buildWinnerCard } from '../bot/cards.js';
 
 const MAX_NAME_LENGTH = 100;
 const MAX_OPTION_TEXT_LENGTH = 100;
@@ -206,17 +208,13 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       const totalVoters = parseInt(voterCountRes.rows[0].count);
 
       if (session.message_id) {
-        const miniAppUrl = buildVoteUrl(id);
-        const text =
-          `🗳️ Voting open for ${session.name ?? 'Untitled Session'}!\n\n` +
-          `${resultCount} of ${totalVoters} voted`;
+        const caption = buildVotingCaption(resultCount, totalVoters);
         bot.api
-          .editMessageText(session.chat_id, session.message_id, text, {
-            reply_markup: {
-              inline_keyboard: [[{ text: '🗳️ Cast your vote →', url: miniAppUrl }]],
-            },
+          .editMessageCaption(session.chat_id, session.message_id, {
+            caption,
+            parse_mode: 'HTML',
           })
-          .catch((err: unknown) => console.error('editMessageText failed:', err));
+          .catch((err: unknown) => console.error('editMessageCaption failed:', err));
       }
 
       return { borda_ranking: borda, result_count: resultCount, voter_count: totalVoters };
@@ -481,15 +479,19 @@ export async function sessionRoutes(fastify: FastifyInstance) {
 
       const miniAppUrl = buildVoteUrl(id);
       const name = session.name ?? 'Untitled Session';
+
+      const optRes = await pool.query(
+        'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
+        [id],
+      );
+      const options: string[] = optRes.rows.map((r: { text: string }) => r.text);
+
       try {
-        const sent = await bot.api.sendMessage(
+        const card = buildVotingCard(name, options, 0, 0, miniAppUrl);
+        const sent = await bot.api.sendPhoto(
           session.chat_id,
-          `🗳️ Voting open for ${name}!\n\n0 of 0 voted`,
-          {
-            reply_markup: {
-              inline_keyboard: [[{ text: '🗳️ Cast your vote →', url: miniAppUrl }]],
-            },
-          },
+          new InputFile(card.image, 'card.png'),
+          { caption: card.caption, parse_mode: card.parse_mode, reply_markup: card.reply_markup },
         );
         await pool.query(
           'UPDATE sessions SET message_id = $1, message_sent = true WHERE id = $2',
@@ -534,14 +536,13 @@ export async function sessionRoutes(fastify: FastifyInstance) {
 
       const borda = computeBorda(resultsRes.rows.map((r: { ranked_list: string[] }) => r.ranked_list));
       const sessionName = name ?? 'Untitled Session';
-      const ranking = borda.map((r, i) => `${i + 1}. ${r.option} — ${r.score} pts`).join('\n');
+      const card = buildWinnerCard(sessionName, borda);
 
       bot.api
-        .sendMessage(
-          chat_id,
-          `🏆 *${sessionName}* winner: *${borda[0].option}*!\n\nFull group ranking:\n${ranking}`,
-          { parse_mode: 'Markdown' },
-        )
+        .sendPhoto(chat_id, new InputFile(card.image, 'winner.png'), {
+          caption: card.caption,
+          parse_mode: card.parse_mode,
+        })
         .catch((err: unknown) => console.error('close announcement failed:', err));
 
       return { ok: true, winner: borda[0].option };

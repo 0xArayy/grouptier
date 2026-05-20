@@ -2,6 +2,31 @@
 
 All notable changes to GroupTier are documented here.
 
+## [1.0.5.0] - 2026-05-20
+
+### Added
+- **Bot card images** — all bot messages are now 600×220 PNG photo cards generated with `@napi-rs/canvas` instead of plain text.
+  - `generateVotingCard(name, optionCount)` — red-gradient card with poll name, option count, and estimated voting time.
+  - `generateSetupCard()` — red-gradient card for the `/newpoll` setup flow.
+  - `generateWinnerCard(name, winner)` — gold-gradient card announcing the poll winner.
+- `server/src/bot/imageCard.ts` — all canvas drawing logic isolated in one file; calls `GlobalFonts.loadSystemFonts()` at first use with a non-fatal warn on failure.
+- `server/src/bot/cards.ts` — message builders (`buildVotingCard`, `buildSetupCard`, `buildWinnerCard`, `buildVotingCaption`, `optionEmoji`) that compose image + caption + `reply_markup` into a single return value consumed by both bot commands and REST routes.
+- `nixpacks.toml` — adds `freefont_ttf` and `fontconfig` Nix packages for Railway Nixpacks deployments so system fonts are available for canvas text rendering.
+- 25 new unit tests in `cards.test.ts` covering captions, winner card logic, emoji mapping, and keyboard grid layout (135 tests total).
+
+### Changed
+- `/newpoll` bot command: replies with `sendPhoto` (setup card + "⚙️ НАСТРОИТЬ ГОЛОС" URL button) instead of plain text.
+- `/vote` legacy command: replies with `sendPhoto` (voting card + options grid + vote URL button) instead of plain text.
+- `/closesession` legacy command: replies with `sendPhoto` (winner card) instead of plain text.
+- `POST /api/sessions/:id/vote`: sends voting card photo via `bot.api.sendPhoto`; `message_id` stored from photo message for caption updates.
+- `POST /api/sessions/:id/results`: updates live progress via `editMessageCaption` (vote count + %) instead of `editMessageText`.
+- `POST /api/sessions/:id/close`: sends winner card photo via `bot.api.sendPhoto`.
+- Inline option grid buttons (callback_data `_`) now always answer immediately via a catch-all `callback_query:data` handler, preventing Telegram's 30-second spinner.
+
+### Fixed
+- `buildVotingCaption` guards against NaN from malformed DB values using `Math.trunc() || 0`.
+- `buildWinnerCard` throws immediately on empty borda array instead of crashing at `borda[0]`.
+
 ## [1.0.4.3] - 2026-05-19
 
 ### Changed

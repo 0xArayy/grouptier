@@ -202,7 +202,8 @@ export default function App() {
 
   function handlePollReady(newSessionId: string) {
     setScreen('loading');
-    setSessionId(newSessionId); // triggers useEffect([sessionId]) → loadSession
+    setSessionId(newSessionId);
+    loadSession(newSessionId);
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────

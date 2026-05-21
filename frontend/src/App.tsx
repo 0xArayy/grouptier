@@ -193,12 +193,28 @@ export default function App() {
   }
 
   function handleShare() {
-    const url = session?.share_url;
-    if (!url) return;
-    const telegramShareUrl =
-      'https://t.me/share/url?url=' + encodeURIComponent(url) +
-      '&text=' + encodeURIComponent('Проголосуй в GroupTier!');
-    window.Telegram?.WebApp?.openTelegramLink?.(telegramShareUrl);
+    if (!session?.share_url) return;
+
+    if (session.status === 'closed' && session.borda_ranking.length > 0) {
+      // Share results summary
+      const medals = ['🥇', '🥈', '🥉'];
+      const top = session.borda_ranking
+        .slice(0, 3)
+        .map((r, i) => `${medals[i]} ${r.option}`)
+        .join('\n');
+      const text = `GroupTier · ${session.name}\n\n${top}`;
+      window.Telegram?.WebApp?.openTelegramLink?.(
+        'https://t.me/share/url?url=' + encodeURIComponent(session.share_url) +
+        '&text=' + encodeURIComponent(text),
+      );
+      return;
+    }
+
+    // Poll still open — share vote link
+    window.Telegram?.WebApp?.openTelegramLink?.(
+      'https://t.me/share/url?url=' + encodeURIComponent(session.share_url) +
+      '&text=' + encodeURIComponent('Проголосуй в GroupTier!'),
+    );
   }
 
   async function handleSaveTemplate(name: string, emoji: string) {
@@ -360,7 +376,7 @@ export default function App() {
           resultCount={session.result_count}
           voterCount={session.voter_count}
           sessionClosed={session.status === 'closed'}
-          onShare={submitted ? handleShare : undefined}
+          onShare={submitted || session.status === 'closed' ? handleShare : undefined}
           onClose={session.status === 'voting' ? handleClose : undefined}
           closing={closing}
           onSaveTemplate={submitted ? handleSaveTemplate : undefined}

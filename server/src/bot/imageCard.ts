@@ -103,7 +103,7 @@ export function generateSetupCard(): Buffer {
 
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 54px sans-serif';
-  ctx.fillText('НОВЫЙ ГОЛОС', PAD, 132);
+  ctx.fillText('НОВЫЙ ОПРОС', PAD, 132);
 
   ctx.fillStyle = 'rgba(255,255,255,0.82)';
   ctx.font = '18px sans-serif';

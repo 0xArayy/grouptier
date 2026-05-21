@@ -5,10 +5,11 @@ import { ByeScreen } from './components/ByeScreen.tsx';
 import { TierList } from './components/TierList.tsx';
 import { LiveResults } from './components/LiveResults.tsx';
 import { CreatePoll } from './components/CreatePoll.tsx';
+import { ShareStep } from './components/ShareStep.tsx';
 import { createTournament, pick, buildRankedList } from './lib/tournament.ts';
 import type { TournamentState } from './lib/tournament.ts';
 
-type Screen = 'loading' | 'error' | 'waiting' | 'compare' | 'bye' | 'tierlist' | 'live' | 'create';
+type Screen = 'loading' | 'error' | 'waiting' | 'compare' | 'bye' | 'tierlist' | 'live' | 'create' | 'share';
 
 interface SessionData {
   id: string;
@@ -36,6 +37,7 @@ function getSessionId(): string | null {
 
 export default function App() {
   const [sessionId, setSessionId] = useState<string | null>(getSessionId);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [screen, setScreen] = useState<Screen>('loading');
   const [session, setSession] = useState<SessionData | null>(null);
   const [tournament, setTournament] = useState<TournamentState | null>(null);
@@ -206,7 +208,22 @@ export default function App() {
     loadSession(newSessionId);
   }
 
+  function handleShareReady(newSessionId: string, url: string) {
+    setSessionId(newSessionId);
+    setShareUrl(url);
+    setScreen('share');
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
+
+  if (screen === 'share' && shareUrl && sessionId) {
+    return (
+      <>
+        {offline && <OfflineBanner />}
+        <ShareStep shareUrl={shareUrl} onDone={() => handlePollReady(sessionId)} />
+      </>
+    );
+  }
 
   if (screen === 'create') {
     const existing = session?.status === 'collecting'
@@ -215,7 +232,7 @@ export default function App() {
     return (
       <>
         {offline && <OfflineBanner />}
-        <CreatePoll onSessionReady={handlePollReady} existingSession={existing} />
+        <CreatePoll onSessionReady={handlePollReady} onShareReady={handleShareReady} existingSession={existing} />
       </>
     );
   }

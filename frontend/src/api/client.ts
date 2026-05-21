@@ -64,12 +64,13 @@ export async function removeOption(sessionId: string, text: string): Promise<{ o
   return res.json();
 }
 
-export async function startVoting(sessionId: string): Promise<void> {
+export async function startVoting(sessionId: string): Promise<{ share_url?: string }> {
   const res = await fetch(`${BASE}/sessions/${sessionId}/vote`, {
     method: 'POST',
     headers: { 'x-init-data': getInitData() },
   });
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  return res.json();
 }
 
 export async function fetchSessionOptions(sessionId: string): Promise<{ options: string[] }> {

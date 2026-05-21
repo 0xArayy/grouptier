@@ -87,6 +87,13 @@ export async function initDataMiddleware(
     return;
   }
 
+  // Chatless dev bypass — simulates opening Mini App outside any group context
+  if (process.env.NODE_ENV !== 'production' && initData === 'dev-chatless') {
+    request.telegramUser = { id: 1, first_name: 'Dev' };
+    request.telegramChat = null;
+    return;
+  }
+
   const result = validateInitData(initData, botToken);
   if (!result) {
     reply.status(401).send({ error: 'Invalid initData' });

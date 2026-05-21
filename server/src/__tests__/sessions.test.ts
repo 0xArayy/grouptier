@@ -761,7 +761,8 @@ describe('POST /api/sessions/:id/close', () => {
 
   it('closes session and returns winner', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001 }] }) // atomic update
+      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, creator_user_id: 42, status: 'voting' }] }) // SELECT
+      .mockResolvedValueOnce({ rows: [] }) // UPDATE to closed
       .mockResolvedValueOnce({ rows: [{ ranked_list: ['A', 'B'] }, { ranked_list: ['B', 'A'] }] }); // results
     mockSendPhoto.mockResolvedValueOnce({ message_id: 1 });
 
@@ -777,7 +778,7 @@ describe('POST /api/sessions/:id/close', () => {
   });
 
   it('returns 409 when session is not in voting state', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [] }); // update returns nothing
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, creator_user_id: null, status: 'collecting' }] }); // SELECT — wrong status
 
     const res = await app.inject({
       method: 'POST',
@@ -790,7 +791,8 @@ describe('POST /api/sessions/:id/close', () => {
 
   it('returns winner=null when no votes have been cast', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001 }] }) // atomic update
+      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, creator_user_id: 42, status: 'voting' }] }) // SELECT
+      .mockResolvedValueOnce({ rows: [] }) // UPDATE to closed
       .mockResolvedValueOnce({ rows: [] }); // no results
 
     const res = await app.inject({

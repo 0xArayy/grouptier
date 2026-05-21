@@ -21,13 +21,14 @@ import { DEFAULT_SAVE_EMOJI } from '../lib/constants.ts';
 
 interface Props {
   onSessionReady: (sessionId: string) => void;
+  onShareReady?: (sessionId: string, shareUrl: string) => void;
   existingSession?: { id: string; name: string; options: string[] };
 }
 
 type Step = 'home' | 'presets' | 'my-polls' | 'options' | 'starting';
 
 
-export function CreatePoll({ onSessionReady, existingSession }: Props) {
+export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Props) {
   const [step, setStep] = useState<Step>('home');
   const [sessionId, setSessionId] = useState<string | null>(existingSession?.id ?? null);
   const [sessionName, setSessionName] = useState(existingSession?.name ?? '');
@@ -171,7 +172,14 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
   async function handleStartVoting() {
     if (!sessionId || busy) return;
     setBusy(true); setError(''); setStep('starting');
-    try { await startVoting(sessionId); onSessionReady(sessionId); }
+    try {
+      const result = await startVoting(sessionId);
+      if (result.share_url && onShareReady) {
+        onShareReady(sessionId, result.share_url);
+      } else {
+        onSessionReady(sessionId);
+      }
+    }
     catch (err: unknown) { setError(String(err)); setStep('options'); }
     finally { setBusy(false); }
   }
@@ -244,7 +252,7 @@ export function CreatePoll({ onSessionReady, existingSession }: Props) {
       showSaveForm={showSaveForm} setShowSaveForm={setShowSaveForm}
       saveEmoji={saveEmoji} setSaveEmoji={setSaveEmoji}
       saving={saving} saveSuccess={saveSuccess}
-      onBack={() => { setError(''); setStep('home'); }}
+      onBack={() => { setError(''); setSessionId(null); setOptions([]); setStep('home'); }}
       onAddOption={handleAddOption}
       onRemoveOption={handleRemoveOption}
       onStartVoting={handleStartVoting}

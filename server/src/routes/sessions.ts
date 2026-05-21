@@ -18,17 +18,17 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     { preHandler: initDataMiddleware },
     async (request, reply) => {
       const chat = request.telegramChat;
-      if (!chat) {
-        return reply.status(400).send({ error: 'No chat context. Open from a group.' });
-      }
+      const userId = request.telegramUser.id;
 
-      // 409 race guard: one collecting session per chat at a time
-      const existing = await pool.query(
-        "SELECT id FROM sessions WHERE chat_id = $1 AND status = 'collecting' LIMIT 1",
-        [chat.id],
-      );
-      if (existing.rows.length > 0) {
-        return reply.status(409).send({ error: 'Session already exists', id: existing.rows[0].id });
+      // 409 race guard: one collecting session per chat at a time (group sessions only)
+      if (chat) {
+        const existing = await pool.query(
+          "SELECT id FROM sessions WHERE chat_id = $1 AND status = 'collecting' LIMIT 1",
+          [chat.id],
+        );
+        if (existing.rows.length > 0) {
+          return reply.status(409).send({ error: 'Session already exists', id: existing.rows[0].id });
+        }
       }
 
       const rawName = (request.body?.name ?? '').trim();
@@ -38,16 +38,16 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       const name = rawName || 'Untitled Session';
       try {
         const res = await pool.query(
-          "INSERT INTO sessions (chat_id, name, status) VALUES ($1, $2, 'collecting') RETURNING id",
-          [chat.id, name],
+          "INSERT INTO sessions (chat_id, creator_user_id, name, status) VALUES ($1, $2, $3, 'collecting') RETURNING id",
+          [chat?.id ?? null, userId, name],
         );
         return reply.status(201).send({ id: res.rows[0].id });
       } catch (err: unknown) {
         if ((err as { code?: string }).code === '23505') {
-          // Concurrent INSERT raced past the SELECT — unique index caught it
+          // Concurrent INSERT raced past the SELECT — unique index caught it (group only)
           const fallback = await pool.query(
             "SELECT id FROM sessions WHERE chat_id = $1 AND status = 'collecting' LIMIT 1",
-            [chat.id],
+            [chat?.id],
           );
           return reply.status(409).send({ error: 'Session already exists', id: fallback.rows[0]?.id });
         }
@@ -56,20 +56,27 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // GET /api/sessions/active — return current collecting session for this chat
+  // GET /api/sessions/active — return current collecting session for this chat or user
   fastify.get(
     '/api/sessions/active',
     { preHandler: initDataMiddleware },
     async (request, reply) => {
       const chat = request.telegramChat;
-      if (!chat) {
-        return reply.status(400).send({ error: 'No chat context. Open from a group.' });
+      const userId = request.telegramUser.id;
+
+      let res;
+      if (chat) {
+        res = await pool.query(
+          "SELECT id, name, status FROM sessions WHERE chat_id = $1 AND status = 'collecting' ORDER BY created_at DESC LIMIT 1",
+          [chat.id],
+        );
+      } else {
+        res = await pool.query(
+          "SELECT id, name, status FROM sessions WHERE creator_user_id = $1 AND chat_id IS NULL AND status = 'collecting' ORDER BY created_at DESC LIMIT 1",
+          [userId],
+        );
       }
 
-      const res = await pool.query(
-        "SELECT id, name, status FROM sessions WHERE chat_id = $1 AND status = 'collecting' ORDER BY created_at DESC LIMIT 1",
-        [chat.id],
-      );
       if (res.rows.length === 0) {
         return reply.status(404).send({ error: 'No active session' });
       }
@@ -111,8 +118,11 @@ export async function sessionRoutes(fastify: FastifyInstance) {
 
       // A crash between status flip and sendMessage leaves status='voting' but
       // message_sent=false — surface it as 'collecting' so the UI stays functional.
+      // chat_id === null means chatless: no bot message is ever sent, so message_sent
+      // stays false by design — must not be treated as a crash recovery case.
       const effectiveStatus =
-        session.status === 'voting' && !session.message_sent ? 'collecting' : session.status;
+        session.status === 'voting' && !session.message_sent && session.chat_id !== null
+          ? 'collecting' : session.status;
 
       return {
         id: session.id,
@@ -479,6 +489,11 @@ export async function sessionRoutes(fastify: FastifyInstance) {
 
       await pool.query("UPDATE sessions SET status = 'voting' WHERE id = $1", [id]);
 
+      // Chatless sessions have no group to announce to — just flip status and return share link.
+      if (!session.chat_id) {
+        return { ok: true, share_url: buildVoteUrl(id) };
+      }
+
       const miniAppUrl = buildVoteUrl(id);
       const name = session.name ?? 'Untitled Session';
 
@@ -515,17 +530,26 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     { preHandler: initDataMiddleware },
     async (request, reply) => {
       const { id } = request.params;
+      const userId = request.telegramUser.id;
 
-      const res = await pool.query(
-        `UPDATE sessions SET status = 'closed'
-         WHERE id = $1 AND status = 'voting'
-         RETURNING id, name, chat_id`,
+      const sessionRes = await pool.query(
+        'SELECT id, name, chat_id, creator_user_id, status FROM sessions WHERE id = $1',
         [id],
       );
-      if (res.rows.length === 0) {
+      if (sessionRes.rows.length === 0) {
+        return reply.status(404).send({ error: 'Session not found' });
+      }
+      const session = sessionRes.rows[0];
+      if (session.status !== 'voting') {
         return reply.status(409).send({ error: 'Session is not in voting state' });
       }
-      const { name, chat_id } = res.rows[0];
+
+      // Chatless sessions: only the creator can close
+      if (!session.chat_id && session.creator_user_id && session.creator_user_id !== userId) {
+        return reply.status(403).send({ error: 'Only the creator can close this poll' });
+      }
+
+      await pool.query("UPDATE sessions SET status = 'closed' WHERE id = $1", [id]);
 
       const resultsRes = await pool.query(
         'SELECT ranked_list FROM user_results WHERE session_id = $1',
@@ -537,15 +561,17 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       }
 
       const borda = computeBorda(resultsRes.rows.map((r: { ranked_list: string[] }) => r.ranked_list));
-      const sessionName = name ?? 'Untitled Session';
+      const sessionName = session.name ?? 'Untitled Session';
       const card = buildWinnerCard(sessionName, borda);
 
-      bot.api
-        .sendPhoto(chat_id, new InputFile(card.image, 'winner.png'), {
-          caption: card.caption,
-          parse_mode: card.parse_mode,
-        })
-        .catch((err: unknown) => console.error('close announcement failed:', err));
+      if (session.chat_id) {
+        bot.api
+          .sendPhoto(session.chat_id, new InputFile(card.image, 'winner.png'), {
+            caption: card.caption,
+            parse_mode: card.parse_mode,
+          })
+          .catch((err: unknown) => console.error('close announcement failed:', err));
+      }
 
       return { ok: true, winner: borda[0].option };
     },

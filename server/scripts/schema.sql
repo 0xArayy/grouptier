@@ -2,7 +2,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE IF NOT EXISTS sessions (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  chat_id     BIGINT NOT NULL,
+  chat_id     BIGINT,
   name        TEXT,
   message_id  BIGINT,
   status      TEXT NOT NULL DEFAULT 'collecting',
@@ -19,6 +19,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS sessions_one_collecting_per_chat
 -- If status='voting' AND message_sent=false the server crashed between the status
 -- flip and sendMessage — treat this session as 'collecting' until the message lands.
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS message_sent BOOLEAN NOT NULL DEFAULT false;
+
+-- Chatless poll support: make chat_id nullable and track creator for ownership.
+-- PostgreSQL excludes NULLs from unique indexes, so sessions_one_collecting_per_chat
+-- remains valid — multiple chatless sessions can coexist without violating it.
+ALTER TABLE sessions ALTER COLUMN chat_id DROP NOT NULL;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS creator_user_id BIGINT;
 
 CREATE TABLE IF NOT EXISTS options (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),

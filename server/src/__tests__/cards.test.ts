@@ -74,17 +74,18 @@ describe('buildWinnerCard', () => {
     expect(caption).toContain('Alpha');
   });
 
-  it('top-3 get medals, 4th+ get numbered lines', () => {
+  it('shows top-3 with medals only', () => {
     const { caption } = buildWinnerCard('Poll', fakeBorda);
     expect(caption).toContain('🥈');
     expect(caption).toContain('🥉');
-    expect(caption).toContain('4. Delta');
-    expect(caption).toContain('5. Epsilon');
+    expect(caption).not.toContain('Delta');
+    expect(caption).not.toContain('Epsilon');
   });
 
-  it('caps output at top 5 entries', () => {
+  it('caps output at top 3 entries', () => {
     const { caption } = buildWinnerCard('Poll', fakeBorda);
-    expect(caption).not.toContain('Zeta'); // 6th entry should be omitted
+    expect(caption).not.toContain('Delta');
+    expect(caption).not.toContain('Zeta');
   });
 
   it('HTML-escapes special chars in option names', () => {
@@ -131,27 +132,10 @@ describe('buildVotingCard', () => {
     expect(typeof card.caption).toBe('string');
   });
 
-  it('includes a vote URL button as the last keyboard row', () => {
+  it('has exactly one keyboard row with the vote URL button', () => {
     const card = buildVotingCard('Lunch', options, 0, 0, 'https://t.me/test');
-    const rows = card.reply_markup.inline_keyboard;
-    const lastRow = rows[rows.length - 1];
-    expect(lastRow[0]).toMatchObject({ url: 'https://t.me/test' });
-  });
-
-  it('≤4 options → single grid row with all options', () => {
-    const threeOpts = ['A', 'B', 'C'];
-    const card = buildVotingCard('Test', threeOpts, 0, 0, 'https://t.me/test');
-    // grid rows + vote button row
-    const gridRows = card.reply_markup.inline_keyboard.slice(0, -1);
-    expect(gridRows).toHaveLength(1);
-    expect(gridRows[0]).toHaveLength(3);
-  });
-
-  it('>4 options → grid rows of max 4 columns', () => {
-    const sixOpts = ['A', 'B', 'C', 'D', 'E', 'F'];
-    const card = buildVotingCard('Test', sixOpts, 0, 0, 'https://t.me/test');
-    const gridRows = card.reply_markup.inline_keyboard.slice(0, -1);
-    gridRows.forEach((row) => expect(row.length).toBeLessThanOrEqual(4));
+    expect(card.reply_markup.inline_keyboard).toHaveLength(1);
+    expect(card.reply_markup.inline_keyboard[0][0]).toMatchObject({ url: 'https://t.me/test' });
   });
 
   it('caption reflects waiting state when total=0', () => {

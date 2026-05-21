@@ -5,6 +5,8 @@ import { computeBorda } from '../db/borda.js';
 import { buildVoteUrl } from '../lib/urls.js';
 import { buildSetupCard, buildVotingCard, buildWinnerCard } from './cards.js';
 
+const MAX_OPTIONS = 32;
+
 export const bot = new Bot(process.env.BOT_TOKEN ?? '');
 
 bot.catch((err) => {
@@ -87,8 +89,8 @@ bot.command('addoption', async (ctx) => {
     'SELECT COUNT(*) FROM options WHERE session_id = $1',
     [sessionId],
   );
-  if (parseInt(countRes.rows[0].count) >= 32) {
-    return ctx.reply('Max 32 options reached.');
+  if (parseInt(countRes.rows[0].count) >= MAX_OPTIONS) {
+    return ctx.reply(`Max ${MAX_OPTIONS} options reached.`);
   }
 
   const dupRes = await pool.query(
@@ -150,6 +152,7 @@ bot.command('vote', async (ctx) => {
       reply_markup: card.reply_markup,
     });
   } catch (err) {
+    await pool.query(`UPDATE sessions SET status = 'collecting' WHERE id = $1`, [session.id]);
     console.error('/vote reply failed:', err);
     await ctx.reply('❌ Failed to open voting. Check server logs.');
     return;

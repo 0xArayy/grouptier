@@ -1,9 +1,7 @@
 import { generateVotingCard, generateSetupCard, generateWinnerCard } from './imageCard.js';
+import type { BordaResult } from '../db/borda.js';
 
-export interface BordaResult {
-  option: string;
-  score: number;
-}
+export type { BordaResult };
 
 // ── Emoji mapping ────────────────────────────────────────────────────────────
 
@@ -59,35 +57,11 @@ export function optionEmoji(text: string, index: number): string {
   return FALLBACK_BULLETS[index % FALLBACK_BULLETS.length];
 }
 
-function truncate(text: string, max: number): string {
-  return text.length > max ? text.slice(0, max - 1) + '…' : text;
-}
-
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// ── Inline keyboard builders ─────────────────────────────────────────────────
-
-type DisplayBtn = { text: string; callback_data: string };
-type UrlBtn     = { text: string; url: string };
-
-const MAX_GRID_COLS = 4;
-const GRID_LABEL_MAX_CHARS = 9; // fits within Telegram inline button width at 4 columns
-
-function buildOptionsGrid(options: string[]): DisplayBtn[][] {
-  const cols = options.length <= MAX_GRID_COLS ? options.length : MAX_GRID_COLS;
-  const rows: DisplayBtn[][] = [];
-  for (let i = 0; i < options.length; i += cols) {
-    rows.push(
-      options.slice(i, i + cols).map((opt, j) => ({
-        text: `${optionEmoji(opt, i + j)} ${truncate(opt, GRID_LABEL_MAX_CHARS)}`,
-        callback_data: '_',
-      })),
-    );
-  }
-  return rows;
-}
+type UrlBtn = { text: string; url: string };
 
 // ── Caption builders (used in sendPhoto / editMessageCaption) ─────────────────
 
@@ -111,7 +85,7 @@ export function buildVotingCard(
   image: Buffer;
   caption: string;
   parse_mode: 'HTML';
-  reply_markup: { inline_keyboard: (DisplayBtn | UrlBtn)[][] };
+  reply_markup: { inline_keyboard: UrlBtn[][] };
 } {
   const image   = generateVotingCard(name, options.length);
   const voteBtn: UrlBtn = { text: '▶  ПРОГОЛОСОВАТЬ', url: voteUrl };

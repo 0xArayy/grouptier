@@ -45,14 +45,12 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
 export function createTournament(options: string[], userId: number): TournamentState {
   const shuffled = seededShuffle(options, userId);
   const round1: Matchup[] = [];
-  const autoAdvanced: string[] = [];
 
   for (let i = 0; i < shuffled.length; i += 2) {
     if (i + 1 < shuffled.length) {
       round1.push({ optionA: shuffled[i], optionB: shuffled[i + 1], isBye: false });
     } else {
       round1.push({ optionA: shuffled[i], optionB: '', isBye: true });
-      autoAdvanced.push(shuffled[i]);
     }
   }
 
@@ -108,10 +106,7 @@ export function pick(
   const currentMatchup = state.currentMatchup;
   const rounds = state.rounds.map(r => [...r]);
 
-  // Accumulate the winner for this matchup (byes advance optionA).
-  const roundWinner = winner === '__bye__'
-    ? state.rounds[currentRound][currentMatchup].optionA
-    : winner;
+  const roundWinner = winner;
   const currentRoundWinners = [...state.currentRoundWinners, roundWinner];
 
   const nextMatchup = currentMatchup + 1;

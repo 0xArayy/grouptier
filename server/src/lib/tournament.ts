@@ -45,14 +45,12 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
 export function createTournament(options: string[], userId: number): TournamentState {
   const shuffled = seededShuffle(options, userId);
   const round1: Matchup[] = [];
-  const autoAdvanced: string[] = [];
 
   for (let i = 0; i < shuffled.length; i += 2) {
     if (i + 1 < shuffled.length) {
       round1.push({ optionA: shuffled[i], optionB: shuffled[i + 1], isBye: false });
     } else {
       round1.push({ optionA: shuffled[i], optionB: '', isBye: true });
-      autoAdvanced.push(shuffled[i]);
     }
   }
 

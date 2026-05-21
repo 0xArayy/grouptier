@@ -1,2 +1,2 @@
 [phases.setup]
-nixPkgs = ["freefont_ttf", "fontconfig"]
+aptPkgs = ["fontconfig", "fonts-freefont-ttf"]

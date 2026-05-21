@@ -130,7 +130,7 @@ export function buildSetupCard(voteUrl: string): {
   return {
     image: generateSetupCard(),
     reply_markup: {
-      inline_keyboard: [[{ text: '⚙️  НАСТРОИТЬ ГОЛОС', url: voteUrl }]],
+      inline_keyboard: [[{ text: '⚙️  НАСТРОИТЬ ОПРОС', url: voteUrl }]],
     },
   };
 }

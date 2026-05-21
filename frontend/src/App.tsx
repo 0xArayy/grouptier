@@ -196,16 +196,8 @@ export default function App() {
     if (!session) return;
 
     if (session.status === 'closed') {
-      // Build a text summary of the top results and share via forward dialog
-      const medals = ['🥇', '🥈', '🥉'];
-      const top = session.borda_ranking.slice(0, 3);
-      const lines = top.map((r, i) => `${medals[i]} ${r.option}`).join('\n');
-      const text = `🏆 GroupTier: ${session.name}\n${lines}`;
-      const url = session.share_url ?? '';
-      window.Telegram?.WebApp?.openTelegramLink?.(
-        'https://t.me/share/url?url=' + encodeURIComponent(url) +
-        '&text=' + encodeURIComponent(text),
-      );
+      // Inline query → bot returns winner card photo → user picks chat → photo sent
+      window.Telegram?.WebApp?.switchInlineQuery?.(session.id + ':winner', ['users', 'groups', 'channels']);
       return;
     }
 

@@ -209,10 +209,12 @@ export async function sessionRoutes(fastify: FastifyInstance) {
 
       if (session.message_id) {
         const caption = buildVotingCaption(resultCount, totalVoters);
+        const voteUrl = buildVoteUrl(id);
         bot.api
           .editMessageCaption(session.chat_id, session.message_id, {
             caption,
             parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [[{ text: '▶  ПРОГОЛОСОВАТЬ', url: voteUrl }]] },
           })
           .catch((err: unknown) => console.error('editMessageCaption failed:', err));
       }

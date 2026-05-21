@@ -114,13 +114,12 @@ export function buildVotingCard(
   reply_markup: { inline_keyboard: (DisplayBtn | UrlBtn)[][] };
 } {
   const image   = generateVotingCard(name, options.length);
-  const grid    = buildOptionsGrid(options);
   const voteBtn: UrlBtn = { text: '▶  ПРОГОЛОСОВАТЬ', url: voteUrl };
   return {
     image,
     caption: buildVotingCaption(voted, total),
     parse_mode: 'HTML',
-    reply_markup: { inline_keyboard: [...grid, [voteBtn]] },
+    reply_markup: { inline_keyboard: [[voteBtn]] },
   };
 }
 

@@ -1,2 +1,2 @@
 [phases.setup]
-nixPkgs = ["nodejs_18", "nodePackages.npm", "freefont_ttf", "fontconfig"]
+nixPkgs = ["freefont_ttf", "fontconfig"]

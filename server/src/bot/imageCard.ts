@@ -32,6 +32,37 @@ const CARD_GRADIENT_RED: [string, string] = ['#FF4D4D', '#FF7A52'];
 
 type Ctx = ReturnType<ReturnType<typeof createCanvas>['getContext']>;
 
+// Mini tier-bar logomark — mirrors the grouptier-g02.svg mark
+const LOGO_BARS = [
+  { color: '#E63946', w: 1.00, label: 'S' },
+  { color: '#F77F00', w: 0.82, label: 'A' },
+  { color: '#FCBF49', w: 0.64, label: 'B' },
+  { color: '#90BE6D', w: 0.46, label: 'C' },
+];
+
+function drawLogoMark(ctx: Ctx, rightX: number, topY: number, opacity = 1) {
+  const barH = 10;
+  const gap = 2.5;
+  const maxW = 46;
+
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  for (let i = 0; i < LOGO_BARS.length; i++) {
+    const { color, w, label } = LOGO_BARS[i];
+    const barW = maxW * w;
+    const barX = rightX - maxW; // left-aligned within the fixed-width column
+    const barY = topY + i * (barH + gap);
+
+    ctx.fillStyle = color;
+    ctx.fillRect(barX, barY, barW, barH);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.font = `${barH - 1}px MontserratBold`;
+    ctx.fillText(label, barX + 3, barY + barH - 1.5);
+  }
+  ctx.restore();
+}
+
 function drawBase(ctx: Ctx, c1: string, c2: string) {
   // Gradient background
   const bg = ctx.createLinearGradient(0, 0, W, H);
@@ -58,6 +89,7 @@ function drawBase(ctx: Ctx, c1: string, c2: string) {
   topFade.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = topFade;
   ctx.fillRect(0, 0, W, 54);
+
 }
 
 function fitText(ctx: Ctx, text: string, maxW: number, maxPx: number): number {
@@ -82,6 +114,7 @@ export function generateVotingCard(name: string, optionCount: number): Buffer {
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext('2d');
   drawBase(ctx, ...CARD_GRADIENT_RED);
+  drawLogoMark(ctx, W - PAD, 18, 0.88);
 
   // "GROUPTIER · TOURNAMENT" label
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
@@ -107,6 +140,7 @@ export function generateSetupCard(): Buffer {
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext('2d');
   drawBase(ctx, ...CARD_GRADIENT_RED);
+  drawLogoMark(ctx, W - PAD, 18, 0.88);
 
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   ctx.font = '13px MontserratBold';
@@ -128,6 +162,8 @@ export function generateWinnerCard(name: string, winner: string): Buffer {
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext('2d');
   drawBase(ctx, '#FF9F40', '#FFD43A');
+  // Re-draw logomark with darker blend for golden background
+  drawLogoMark(ctx, W - PAD, 18, 0.55);
 
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
   ctx.font = '13px MontserratBold';

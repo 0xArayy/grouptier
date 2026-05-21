@@ -142,10 +142,8 @@ export function buildWinnerCard(name: string, borda: BordaResult[]): {
 } {
   if (borda.length === 0) throw new Error('buildWinnerCard: empty borda results');
   const medals = ['🥇', '🥈', '🥉'];
-  const lines = borda.slice(0, 5).map((r, i) =>
-    i < 3
-      ? `${medals[i]} <b>${escapeHtml(r.option)}</b>`
-      : `${i + 1}. ${escapeHtml(r.option)}`,
+  const lines = borda.slice(0, 3).map((r, i) =>
+    `${medals[i]} <b>${escapeHtml(r.option)}</b>`,
   );
   return {
     image:   generateWinnerCard(name, borda[0].option),

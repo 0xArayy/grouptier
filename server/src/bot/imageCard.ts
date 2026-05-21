@@ -1,15 +1,26 @@
 import { createCanvas, GlobalFonts } from '@napi-rs/canvas';
+import { createRequire } from 'module';
+
+const _require = createRequire(import.meta.url);
 
 let _fontsReady = false;
 function ensureFonts() {
   if (_fontsReady) return;
   _fontsReady = true;
   try {
-    // loadSystemFonts exists at runtime but is missing from the bundled .d.ts
-    (GlobalFonts as unknown as { loadSystemFonts(): void }).loadSystemFonts();
+    GlobalFonts.registerFromPath(
+      _require.resolve('@expo-google-fonts/montserrat/400Regular/Montserrat_400Regular.ttf'),
+      'Montserrat',
+    );
+    GlobalFonts.registerFromPath(
+      _require.resolve('@expo-google-fonts/montserrat/800ExtraBold/Montserrat_800ExtraBold.ttf'),
+      'MontserratBold',
+    );
   } catch (err) {
-    // Non-fatal on restricted envs, but warn — blank text on cards if no fonts available
-    console.warn('imageCard: loadSystemFonts failed (cards may render blank text):', err);
+    console.warn('imageCard: failed to load Montserrat fonts, falling back to system fonts:', err);
+    try {
+      (GlobalFonts as unknown as { loadSystemFonts(): void }).loadSystemFonts();
+    } catch { /* ignore */ }
   }
 }
 
@@ -51,10 +62,10 @@ function drawBase(ctx: Ctx, c1: string, c2: string) {
 
 function fitText(ctx: Ctx, text: string, maxW: number, maxPx: number): number {
   let sz = maxPx;
-  ctx.font = `bold ${sz}px sans-serif`;
+  ctx.font = `${sz}px MontserratBold`;
   while (ctx.measureText(text).width > maxW && sz > 18) {
     sz -= 2;
-    ctx.font = `bold ${sz}px sans-serif`;
+    ctx.font = `${sz}px MontserratBold`;
   }
   return sz;
 }
@@ -74,7 +85,7 @@ export function generateVotingCard(name: string, optionCount: number): Buffer {
 
   // "GROUPTIER · TOURNAMENT" label
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
-  ctx.font = 'bold 13px sans-serif';
+  ctx.font = '13px MontserratBold';
   ctx.fillText(BRAND_LABEL, PAD, PAD + 2);
 
   // Poll name — auto-shrinks if too long
@@ -85,7 +96,7 @@ export function generateVotingCard(name: string, optionCount: number): Buffer {
 
   // Subtitle
   ctx.fillStyle = 'rgba(255,255,255,0.82)';
-  ctx.font = '18px sans-serif';
+  ctx.font = '18px Montserrat';
   ctx.fillText(`${optionCount} вариантов  ·  ${timeLabel(optionCount)} на голос`, PAD, H - 20);
 
   return canvas.toBuffer('image/png');
@@ -98,15 +109,15 @@ export function generateSetupCard(): Buffer {
   drawBase(ctx, ...CARD_GRADIENT_RED);
 
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
-  ctx.font = 'bold 13px sans-serif';
+  ctx.font = '13px MontserratBold';
   ctx.fillText(BRAND_LABEL, PAD, PAD + 2);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 54px sans-serif';
+  ctx.font = '54px MontserratBold';
   ctx.fillText('НОВЫЙ ОПРОС', PAD, 132);
 
   ctx.fillStyle = 'rgba(255,255,255,0.82)';
-  ctx.font = '18px sans-serif';
+  ctx.font = '18px Montserrat';
   ctx.fillText('Настройте варианты и запустите турнир', PAD, 178);
 
   return canvas.toBuffer('image/png');
@@ -119,11 +130,11 @@ export function generateWinnerCard(name: string, winner: string): Buffer {
   drawBase(ctx, '#FF9F40', '#FFD43A');
 
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
-  ctx.font = 'bold 13px sans-serif';
+  ctx.font = '13px MontserratBold';
   ctx.fillText('GROUPTIER  ·  ИТОГИ', PAD, PAD + 2);
 
   ctx.fillStyle = 'rgba(0,0,0,0.42)';
-  ctx.font = 'bold 20px sans-serif';
+  ctx.font = '20px MontserratBold';
   const shortName = name.length > 35 ? name.slice(0, 34) + '…' : name;
   ctx.fillText(shortName.toUpperCase(), PAD, 72);
 
@@ -133,8 +144,8 @@ export function generateWinnerCard(name: string, winner: string): Buffer {
   ctx.fillText(display, PAD, 72 + sz + 14);
 
   ctx.fillStyle = 'rgba(0,0,0,0.38)';
-  ctx.font = '19px sans-serif';
-  ctx.fillText('★  ПОБЕДИТЕЛЬ', PAD, H - 20);
+  ctx.font = '19px Montserrat';
+  ctx.fillText('ПОБЕДИТЕЛЬ', PAD, H - 20);
 
   return canvas.toBuffer('image/png');
 }

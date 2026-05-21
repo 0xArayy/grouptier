@@ -1,5 +1,5 @@
 import { Bot, InputFile } from 'grammy';
-import type { InlineQueryResultArticle } from 'grammy/types';
+import type { InlineQueryResultArticle, InlineQueryResultPhoto } from 'grammy/types';
 import { pool } from '../db/client.js';
 import { computeBorda } from '../db/borda.js';
 import { buildVoteUrl } from '../lib/urls.js';
@@ -207,7 +207,9 @@ bot.on('callback_query:data', async (ctx) => {
   await ctx.answerCallbackQuery();
 });
 
-// inline query — share personal tier list
+// inline query — two modes:
+//   <sessionId>:winner  → share winner announcement card (photo)
+//   <sessionId>         → share personal tier list (article)
 bot.on('inline_query', async (ctx) => {
   const query = ctx.inlineQuery.query;
   const parts = query.split(':');
@@ -215,6 +217,41 @@ bot.on('inline_query', async (ctx) => {
     return ctx.answerInlineQuery([]);
   }
   const sessionId = parts[0];
+  const mode = parts[1]; // 'winner' or undefined
+
+  // ── Winner card mode ────────────────────────────────────────────────────
+  if (mode === 'winner') {
+    const serverUrl = process.env.SERVER_URL?.replace(/\/$/, '')
+      ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : null);
+    if (!serverUrl) return ctx.answerInlineQuery([]);
+
+    const [sessionRes, resultsRes] = await Promise.all([
+      pool.query("SELECT name FROM sessions WHERE id = $1 AND status = 'closed'", [sessionId]),
+      pool.query('SELECT ranked_list FROM user_results WHERE session_id = $1', [sessionId]),
+    ]);
+    if (sessionRes.rows.length === 0 || resultsRes.rows.length === 0) {
+      return ctx.answerInlineQuery([]);
+    }
+
+    const sessionName = sessionRes.rows[0].name ?? 'Untitled Session';
+    const borda = computeBorda(resultsRes.rows.map((r: { ranked_list: string[] }) => r.ranked_list));
+    const medals = ['🥇', '🥈', '🥉'];
+    const caption = borda.slice(0, 3).map((r, i) => `${medals[i]} ${r.option}`).join('\n');
+    const photoUrl = `${serverUrl}/api/sessions/${sessionId}/winner-card`;
+
+    const result: InlineQueryResultPhoto = {
+      type: 'photo',
+      id: `winner-${sessionId}`,
+      photo_url: photoUrl,
+      thumbnail_url: photoUrl,
+      title: sessionName,
+      caption,
+    };
+
+    return ctx.answerInlineQuery([result], { cache_time: 300 });
+  }
+
+  // ── Personal tier list mode ─────────────────────────────────────────────
   const requesterId = ctx.from.id;
 
   const [resResult, sessionRes] = await Promise.all([

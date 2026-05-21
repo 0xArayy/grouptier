@@ -193,24 +193,17 @@ export default function App() {
   }
 
   function handleShare() {
-    if (!session?.share_url) return;
+    if (!session) return;
 
-    if (session.status === 'closed' && session.borda_ranking.length > 0) {
-      // Share results summary
-      const medals = ['🥇', '🥈', '🥉'];
-      const top = session.borda_ranking
-        .slice(0, 3)
-        .map((r, i) => `${medals[i]} ${r.option}`)
-        .join('\n');
-      const text = `GroupTier · ${session.name}\n\n${top}`;
-      window.Telegram?.WebApp?.openTelegramLink?.(
-        'https://t.me/share/url?url=' + encodeURIComponent(session.share_url) +
-        '&text=' + encodeURIComponent(text),
-      );
+    if (session.status === 'closed') {
+      // Inline query → bot returns winner card photo → user picks chat → photo sent
+      // Mini App closes after chat selection (acceptable — poll is done)
+      window.Telegram?.WebApp?.switchInlineQuery?.(session.id + ':winner');
       return;
     }
 
-    // Poll still open — share vote link
+    // Poll still open — share vote link via forward dialog
+    if (!session.share_url) return;
     window.Telegram?.WebApp?.openTelegramLink?.(
       'https://t.me/share/url?url=' + encodeURIComponent(session.share_url) +
       '&text=' + encodeURIComponent('Проголосуй в GroupTier!'),

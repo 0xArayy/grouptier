@@ -138,6 +138,37 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     },
   );
 
+  // GET /api/sessions/:id/winner-card — public PNG of winner announcement (no auth, for inline sharing)
+  fastify.get<{ Params: { id: string } }>(
+    '/api/sessions/:id/winner-card',
+    async (request, reply) => {
+      const { id } = request.params;
+
+      const sessionRes = await pool.query(
+        "SELECT name FROM sessions WHERE id = $1 AND status = 'closed'",
+        [id],
+      );
+      if (sessionRes.rows.length === 0) {
+        return reply.status(404).send({ error: 'Session not found or not closed' });
+      }
+
+      const resultsRes = await pool.query(
+        'SELECT ranked_list FROM user_results WHERE session_id = $1',
+        [id],
+      );
+      if (resultsRes.rows.length === 0) {
+        return reply.status(404).send({ error: 'No results' });
+      }
+
+      const borda = computeBorda(resultsRes.rows.map((r: { ranked_list: string[] }) => r.ranked_list));
+      const card = buildWinnerCard(sessionRes.rows[0].name ?? 'Untitled Session', borda);
+
+      reply.header('Content-Type', 'image/png');
+      reply.header('Cache-Control', 'public, max-age=3600');
+      return reply.send(card.image);
+    },
+  );
+
   // GET /api/sessions/:id/options — lightweight poll-friendly options fetch (no voter registration)
   fastify.get<{ Params: { id: string } }>(
     '/api/sessions/:id/options',

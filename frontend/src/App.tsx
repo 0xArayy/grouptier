@@ -20,6 +20,7 @@ interface SessionData {
   result_count: number;
   borda_ranking: { option: string; score: number }[];
   my_result: string[] | null;
+  share_url?: string;
 }
 
 function getUserId(): number {
@@ -192,8 +193,12 @@ export default function App() {
   }
 
   function handleShare() {
-    if (!sessionId) return;
-    window.Telegram?.WebApp?.switchInlineQuery?.(sessionId, ['groups']);
+    const url = session?.share_url;
+    if (!url) return;
+    const telegramShareUrl =
+      'https://t.me/share/url?url=' + encodeURIComponent(url) +
+      '&text=' + encodeURIComponent('Проголосуй в GroupTier!');
+    window.Telegram?.WebApp?.openTelegramLink?.(telegramShareUrl);
   }
 
   async function handleSaveTemplate(name: string, emoji: string) {

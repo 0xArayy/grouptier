@@ -133,6 +133,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         result_count: parseInt(resultCount.rows[0].count),
         borda_ranking: borda,
         my_result: (resultsRes.rows.find((r: { user_id: number; ranked_list: string[] }) => String(r.user_id) === String(userId))?.ranked_list) ?? null,
+        share_url: buildVoteUrl(id),
       };
     },
   );

@@ -332,7 +332,8 @@ describe('POST /api/sessions/:id/close (chatless)', () => {
   it('returns 403 when non-creator tries to close chatless session', async () => {
     mockUserId = 99; // different user from creator_user_id=42
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: null, creator_user_id: 42, status: 'voting' }] });
+      // pg returns BIGINT as string — simulate that here
+      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: null, creator_user_id: '42', status: 'voting' }] });
 
     const res = await app.inject({
       method: 'POST',

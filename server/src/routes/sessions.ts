@@ -544,8 +544,9 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         return reply.status(409).send({ error: 'Session is not in voting state' });
       }
 
-      // Chatless sessions: only the creator can close
-      if (!session.chat_id && session.creator_user_id && session.creator_user_id !== userId) {
+      // Chatless sessions: only the creator can close.
+      // pg returns BIGINT as string — compare via String() to avoid type mismatch.
+      if (!session.chat_id && session.creator_user_id && String(session.creator_user_id) !== String(userId)) {
         return reply.status(403).send({ error: 'Only the creator can close this poll' });
       }
 

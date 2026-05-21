@@ -39,6 +39,7 @@ export default function App() {
   const [sessionId, setSessionId] = useState<string | null>(getSessionId);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [screen, setScreen] = useState<Screen>('loading');
+  const pendingShareSessionId = useRef<string | null>(null);
   const [session, setSession] = useState<SessionData | null>(null);
   const [tournament, setTournament] = useState<TournamentState | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
@@ -209,18 +210,24 @@ export default function App() {
   }
 
   function handleShareReady(newSessionId: string, url: string) {
-    setSessionId(newSessionId);
+    pendingShareSessionId.current = newSessionId;
     setShareUrl(url);
     setScreen('share');
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  if (screen === 'share' && shareUrl && sessionId) {
+  if (screen === 'share' && shareUrl) {
     return (
       <>
         {offline && <OfflineBanner />}
-        <ShareStep shareUrl={shareUrl} onDone={() => handlePollReady(sessionId)} />
+        <ShareStep
+          shareUrl={shareUrl}
+          onDone={() => {
+            const sid = pendingShareSessionId.current;
+            if (sid) handlePollReady(sid);
+          }}
+        />
       </>
     );
   }

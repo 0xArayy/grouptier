@@ -196,9 +196,16 @@ export default function App() {
     if (!session) return;
 
     if (session.status === 'closed') {
-      // Inline query → bot returns winner card photo → user picks chat → photo sent
-      // Mini App closes after chat selection (acceptable — poll is done)
-      window.Telegram?.WebApp?.switchInlineQuery?.(session.id + ':winner');
+      // Build a text summary of the top results and share via forward dialog
+      const medals = ['🥇', '🥈', '🥉'];
+      const top = session.borda_ranking.slice(0, 3);
+      const lines = top.map((r, i) => `${medals[i]} ${r.option}`).join('\n');
+      const text = `🏆 GroupTier: ${session.name}\n${lines}`;
+      const url = session.share_url ?? '';
+      window.Telegram?.WebApp?.openTelegramLink?.(
+        'https://t.me/share/url?url=' + encodeURIComponent(url) +
+        '&text=' + encodeURIComponent(text),
+      );
       return;
     }
 
@@ -208,6 +215,19 @@ export default function App() {
       'https://t.me/share/url?url=' + encodeURIComponent(session.share_url) +
       '&text=' + encodeURIComponent('Проголосуй в GroupTier!'),
     );
+  }
+
+  function handleNewPoll() {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    setSessionId(null);
+    setSession(null);
+    setShareUrl(null);
+    setSubmitted(false);
+    setTournament(null);
+    setScreen('loading');
   }
 
   async function handleSaveTemplate(name: string, emoji: string) {
@@ -374,6 +394,7 @@ export default function App() {
           closing={closing}
           onSaveTemplate={submitted ? handleSaveTemplate : undefined}
           initialSaved={initialSaved}
+          onNewPoll={session.status === 'closed' ? handleNewPoll : undefined}
         />
       </>
     );

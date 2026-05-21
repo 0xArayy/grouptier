@@ -17,6 +17,7 @@ interface Props {
   closing?: boolean;
   onSaveTemplate?: (name: string, emoji: string) => Promise<void>;
   initialSaved?: boolean;
+  onNewPoll?: () => void;
 }
 
 const TIER_META = [
@@ -48,6 +49,7 @@ export function LiveResults({
   closing,
   onSaveTemplate,
   initialSaved = false,
+  onNewPoll,
 }: Props) {
   const tiers = assignTiers(bordaRanking);
   const maxScore = bordaRanking[0]?.score ?? 1;
@@ -226,6 +228,13 @@ export function LiveResults({
           </button>
         )}
       </div>
+      {sessionClosed && onNewPoll && (
+        <div style={{ padding: '6px 14px 0' }}>
+          <button style={styles.newPollBtn} onClick={onNewPoll}>
+            + Новый опрос
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -498,5 +507,17 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: 'var(--tap-target-min)',
     cursor: 'pointer',
     boxShadow: '0 2px 8px var(--accent-shadow)',
+  },
+  newPollBtn: {
+    width: '100%',
+    padding: '10px',
+    background: 'transparent',
+    color: 'var(--text-hint)',
+    borderRadius: 'var(--radius-md)',
+    fontSize: 13,
+    fontWeight: 600,
+    minHeight: 'var(--tap-target-min)',
+    cursor: 'pointer',
+    border: '1px solid var(--surface)',
   },
 };

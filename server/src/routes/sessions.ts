@@ -169,6 +169,35 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     },
   );
 
+  // GET /api/sessions/:id/voting-card — public PNG of voting card (no auth, for inline sharing)
+  fastify.get<{ Params: { id: string } }>(
+    '/api/sessions/:id/voting-card',
+    async (request, reply) => {
+      const { id } = request.params;
+
+      const sessionRes = await pool.query(
+        "SELECT name, status FROM sessions WHERE id = $1 AND status != 'closed'",
+        [id],
+      );
+      if (sessionRes.rows.length === 0) {
+        return reply.status(404).send({ error: 'Session not found or already closed' });
+      }
+
+      const optionsRes = await pool.query(
+        'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
+        [id],
+      );
+      const options: string[] = optionsRes.rows.map((r: { text: string }) => r.text);
+
+      const voteUrl = buildVoteUrl(id);
+      const card = buildVotingCard(sessionRes.rows[0].name ?? 'Untitled Session', options, 0, 0, voteUrl);
+
+      reply.header('Content-Type', 'image/png');
+      reply.header('Cache-Control', 'public, max-age=60');
+      return reply.send(card.image);
+    },
+  );
+
   // GET /api/sessions/:id/options — lightweight poll-friendly options fetch (no voter registration)
   fastify.get<{ Params: { id: string } }>(
     '/api/sessions/:id/options',

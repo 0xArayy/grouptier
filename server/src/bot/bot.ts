@@ -207,9 +207,9 @@ bot.on('callback_query:data', async (ctx) => {
   await ctx.answerCallbackQuery();
 });
 
-// inline query — two modes:
-//   <sessionId>:winner  → share winner announcement card (photo)
-//   <sessionId>         → share personal tier list (article)
+// inline query — three modes:
+//   <sessionId>:winner  → share winner announcement card (photo, closed session)
+//   <sessionId>         → share voting card (photo, open session) or personal tier list (article, voted)
 bot.on('inline_query', async (ctx) => {
   const query = ctx.inlineQuery.query;
   const parts = query.split(':');
@@ -219,10 +219,11 @@ bot.on('inline_query', async (ctx) => {
   const sessionId = parts[0];
   const mode = parts[1]; // 'winner' or undefined
 
+  const serverUrl = process.env.SERVER_URL?.replace(/\/$/, '')
+    ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : null);
+
   // ── Winner card mode ────────────────────────────────────────────────────
   if (mode === 'winner') {
-    const serverUrl = process.env.SERVER_URL?.replace(/\/$/, '')
-      ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : null);
     if (!serverUrl) return ctx.answerInlineQuery([]);
 
     const [sessionRes, resultsRes] = await Promise.all([
@@ -251,17 +252,40 @@ bot.on('inline_query', async (ctx) => {
     return ctx.answerInlineQuery([result], { cache_time: 300 });
   }
 
-  // ── Personal tier list mode ─────────────────────────────────────────────
+  // ── Voting card or personal tier list mode ──────────────────────────────
   const requesterId = ctx.from.id;
 
-  const [resResult, sessionRes] = await Promise.all([
+  const [sessionRes, resResult] = await Promise.all([
+    pool.query('SELECT name, status FROM sessions WHERE id = $1', [sessionId]),
     pool.query('SELECT ranked_list FROM user_results WHERE session_id = $1 AND user_id = $2', [sessionId, requesterId]),
-    pool.query('SELECT name FROM sessions WHERE id = $1', [sessionId]),
   ]);
+  if (sessionRes.rows.length === 0) return ctx.answerInlineQuery([]);
+
+  const sessionName = sessionRes.rows[0].name ?? 'Untitled Session';
+  const sessionStatus: string = sessionRes.rows[0].status;
+
+  // Open session → share voting card photo so others can tap in and vote
+  if (sessionStatus === 'voting') {
+    if (!serverUrl) return ctx.answerInlineQuery([]);
+    const photoUrl = `${serverUrl}/api/sessions/${sessionId}/voting-card`;
+    const voteUrl = buildVoteUrl(sessionId);
+
+    const result: InlineQueryResultPhoto = {
+      type: 'photo',
+      id: `vote-${sessionId}`,
+      photo_url: photoUrl,
+      thumbnail_url: photoUrl,
+      title: sessionName,
+      caption: '',
+      reply_markup: { inline_keyboard: [[{ text: '▶  ПРОГОЛОСОВАТЬ', url: voteUrl }]] },
+    };
+    return ctx.answerInlineQuery([result], { cache_time: 30 });
+  }
+
+  // Closed session + user has voted → share personal tier list article
   if (resResult.rows.length === 0) {
     return ctx.answerInlineQuery([]);
   }
-  const sessionName = sessionRes.rows[0]?.name ?? 'Untitled Session';
   const rankedList: string[] = resResult.rows[0].ranked_list;
 
   const tierSize = Math.ceil(rankedList.length / 4);

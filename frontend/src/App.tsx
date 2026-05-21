@@ -201,12 +201,8 @@ export default function App() {
       return;
     }
 
-    // Poll still open — share vote link via forward dialog
-    if (!session.share_url) return;
-    window.Telegram?.WebApp?.openTelegramLink?.(
-      'https://t.me/share/url?url=' + encodeURIComponent(session.share_url) +
-      '&text=' + encodeURIComponent('Проголосуй в GroupTier!'),
-    );
+    // Poll still open — inline query returns voting card photo with Vote button
+    window.Telegram?.WebApp?.switchInlineQuery?.(session.id, ['users', 'groups', 'channels']);
   }
 
   function handleNewPoll() {

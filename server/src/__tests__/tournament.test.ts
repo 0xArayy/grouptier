@@ -79,6 +79,18 @@ describe('pick + buildRankedList', () => {
     expect(ranked).toHaveLength(4);
     expect(new Set(ranked).size).toBe(4); // all unique
     opts.forEach(o => expect(ranked).toContain(o));
+
+    // numRounds=2: aThreshold=ceil(2/4)=1, bThreshold=ceil(2/2)=1
+    // S=1 (champion), A=1 (final loser fromEnd=0), B=0 (aThreshold==bThreshold), C=2 (round-0 losers)
+    const tiers = Object.fromEntries(
+      (['S', 'A', 'B', 'C'] as const).map(tier => [tier, t.eliminated.filter(e => e.tier === tier).length]),
+    );
+    expect(tiers.S).toBe(1);
+    expect(tiers.A).toBe(1);
+    expect(tiers.B).toBe(0);
+    expect(tiers.C).toBe(2);
+    // Champion must be S tier
+    expect(t.eliminated.find(e => e.option === t.champion)?.tier).toBe('S');
   });
 
   it('champion is always first in ranked list', () => {
@@ -107,6 +119,17 @@ describe('pick + buildRankedList', () => {
     opts.forEach(o => expect(ranked).toContain(o));
     expect(ranked).not.toContain('__bye__');
     expect(ranked[0]).toBe(t.champion);
+
+    // numRounds=3: aThreshold=ceil(3/4)=1, bThreshold=ceil(3/2)=2
+    // S=1, A=1 (final loser), B=2 (semifinal losers), C=4 (quarterfinal losers)
+    const tiers = Object.fromEntries(
+      (['S', 'A', 'B', 'C'] as const).map(tier => [tier, t.eliminated.filter(e => e.tier === tier).length]),
+    );
+    expect(tiers.S).toBe(1);
+    expect(tiers.A).toBe(1);
+    expect(tiers.B).toBe(2);
+    expect(tiers.C).toBe(4);
+    expect(tiers.S + tiers.A + tiers.B + tiers.C).toBe(8);
   });
 
   it('N=6 full run — 3 rounds with byes, bracket advances correctly', () => {
@@ -129,6 +152,18 @@ describe('pick + buildRankedList', () => {
     expect(ranked).not.toContain('__bye__');
     expect(ranked[0]).toBe(t.champion);
     expect(realPicks).toBe(5);
+
+    // N=6: numRounds=3 (same as N=8, next power-of-2 is 8)
+    // aThreshold=1, bThreshold=2 — same formula as N=8
+    // S=1, A=1 (final loser), B=1 (one semifinal loser; the other slot was a bye), C=3 (round-0 real losers)
+    const tiers = Object.fromEntries(
+      (['S', 'A', 'B', 'C'] as const).map(tier => [tier, t.eliminated.filter(e => e.tier === tier).length]),
+    );
+    expect(tiers.S).toBe(1);
+    expect(tiers.A).toBe(1);
+    expect(tiers.B).toBe(1);
+    expect(tiers.C).toBe(3);
+    expect(tiers.S + tiers.A + tiers.B + tiers.C).toBe(6);
   });
 
   it('N=12 tier distribution — backward-compatible with original thresholds', () => {
@@ -150,6 +185,7 @@ describe('pick + buildRankedList', () => {
     expect(tiers.A).toBe(1);  // final loser only (fromEnd=0 < ceil(4/4)=1)
     expect(tiers.B).toBe(1);  // semifinal loser (fromEnd=1 < ceil(4/2)=2)
     expect(tiers.C).toBe(9);  // everything earlier
+    expect(tiers.S + tiers.A + tiers.B + tiers.C).toBe(12);
   });
 
   it('N=32 tier distribution — proportional thresholds reduce C-tier crowding', () => {

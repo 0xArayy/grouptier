@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import { existsSync, readFileSync } from 'fs';
 import Fastify from 'fastify';
 import fastifyCors from '@fastify/cors';
+import fastifyRateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import { sessionRoutes } from './routes/sessions.js';
 import { savedPollRoutes } from './routes/savedPolls.js';
@@ -60,7 +61,19 @@ const { bot } = await import('./bot/bot.js');
 
 const fastify = Fastify({ logger: true });
 
-await fastify.register(fastifyCors, { origin: true });
+const allowedOrigin = process.env.ALLOWED_ORIGIN;
+if (!allowedOrigin && process.env.NODE_ENV === 'production') {
+  console.warn('WARNING: ALLOWED_ORIGIN is not set — CORS is open to all origins');
+}
+await fastify.register(fastifyCors, { origin: allowedOrigin ?? true });
+
+await fastify.register(fastifyRateLimit, {
+  global: true,
+  max: 100,
+  timeWindow: '1 minute',
+  keyGenerator: (req) => req.ip,
+  errorResponseBuilder: () => ({ error: 'Too many requests, please try again later' }),
+});
 
 // /health must be registered before static so it's never shadowed
 fastify.get('/health', async () => ({ ok: true }));

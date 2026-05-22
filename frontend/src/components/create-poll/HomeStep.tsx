@@ -100,7 +100,7 @@ export function HomeStep({
         placeholder="Название опроса…"
         value={customName}
         onChange={e => setCustomName(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && onCreate()}
+        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onCreate(); } }}
         autoFocus
       />
       {error && <div style={{ color: 'var(--accent)', fontSize: 13, marginTop: 8 }}>{error}</div>}

@@ -2,10 +2,11 @@ import { useState } from 'react';
 
 interface Props {
   shareUrl: string;
+  sessionId: string;
   onDone: () => void;
 }
 
-export function ShareStep({ shareUrl, onDone }: Props) {
+export function ShareStep({ shareUrl, sessionId, onDone }: Props) {
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
@@ -18,8 +19,7 @@ export function ShareStep({ shareUrl, onDone }: Props) {
   }
 
   function handleSendToTelegram() {
-    const url = 'https://t.me/share/url?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent('Проголосуй в GroupTier!');
-    window.Telegram?.WebApp?.openTelegramLink?.(url);
+    window.Telegram?.WebApp?.switchInlineQuery?.(sessionId, ['users', 'groups', 'channels']);
   }
 
   return (

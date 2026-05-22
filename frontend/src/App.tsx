@@ -245,6 +245,7 @@ export default function App() {
         {offline && <OfflineBanner />}
         <ShareStep
           shareUrl={shareUrl}
+          sessionId={pendingShareSessionId.current ?? ''}
           onDone={() => {
             const sid = pendingShareSessionId.current;
             if (sid) handlePollReady(sid);

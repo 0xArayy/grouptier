@@ -218,6 +218,32 @@ export default function App() {
     setScreen('loading');
   }
 
+  function handleGoHome() {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    setSessionId(null);
+    setSession(null);
+    setShareUrl(null);
+    setSubmitted(false);
+    setTournament(null);
+    setScreen('create');
+  }
+
+  // Telegram BackButton — show on all non-home screens
+  useEffect(() => {
+    const tgBack = window.Telegram?.WebApp?.BackButton;
+    if (!tgBack) return;
+    if (screen === 'loading' || screen === 'create') {
+      tgBack.hide();
+      return;
+    }
+    tgBack.show();
+    tgBack.onClick(handleGoHome);
+    return () => { tgBack.offClick(handleGoHome); };
+  }, [screen]);
+
   async function handleSaveTemplate(name: string, emoji: string) {
     const opts = session?.options ?? []; // snapshot before await — prevents polling race
     const trimmed = opts.map(o => o.trim()).filter(Boolean);
@@ -243,6 +269,7 @@ export default function App() {
     return (
       <>
         {offline && <OfflineBanner />}
+        <HomeButton onClick={handleGoHome} />
         <ShareStep
           shareUrl={shareUrl}
           sessionId={pendingShareSessionId.current ?? ''}
@@ -280,6 +307,7 @@ export default function App() {
     return (
       <>
         {offline && <OfflineBanner />}
+        <HomeButton onClick={handleGoHome} />
         <FullCenter>
           <div style={{ textAlign: 'center', padding: 24 }}>
             <div style={{ fontSize: 32, marginBottom: 16 }}>⚠️</div>
@@ -299,6 +327,7 @@ export default function App() {
     return (
       <>
         {offline && <OfflineBanner />}
+        <HomeButton onClick={handleGoHome} />
         <FullCenter>
           <div style={{ textAlign: 'center', padding: 24, maxWidth: 320 }}>
             <div style={{ fontSize: 36, marginBottom: 16 }}>{isEmpty ? '📭' : '⏳'}</div>
@@ -326,6 +355,7 @@ export default function App() {
     return (
       <>
         {offline && <OfflineBanner />}
+        <HomeButton onClick={handleGoHome} />
         <Compare
           key={`${tournament.currentRound}-${tournament.currentMatchup}`}
           matchup={matchup}
@@ -344,6 +374,7 @@ export default function App() {
     return (
       <>
         {offline && <OfflineBanner />}
+        <HomeButton onClick={handleGoHome} />
         <ByeScreen option={matchup.optionA} onDone={handleByeDone} />
       </>
     );
@@ -354,6 +385,7 @@ export default function App() {
     return (
       <>
         {offline && <OfflineBanner />}
+        <HomeButton onClick={handleGoHome} />
         <TierList
           rankedList={rankedList}
           sessionClosed={session?.status === 'closed'}
@@ -372,6 +404,7 @@ export default function App() {
     return (
       <>
         {offline && <OfflineBanner />}
+        <HomeButton onClick={handleGoHome} />
         <LiveResults
           sessionName={session.name}
           bordaRanking={session.borda_ranking}
@@ -390,6 +423,31 @@ export default function App() {
   }
 
   return <FullCenter><Spinner /></FullCenter>;
+}
+
+function HomeButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        position: 'fixed',
+        bottom: 16,
+        left: 16,
+        zIndex: 60,
+        background: 'var(--tg-theme-secondary-bg-color)',
+        color: '#FF4D4D',
+        border: 'none',
+        borderRadius: 10,
+        padding: '8px 14px',
+        fontSize: 13,
+        fontWeight: 700,
+        cursor: 'pointer',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+      }}
+    >
+      ← Меню
+    </button>
+  );
 }
 
 function OfflineBanner() {

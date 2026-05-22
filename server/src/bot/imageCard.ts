@@ -123,13 +123,91 @@ function drawBadge(ctx: Ctx, text: string, bg: string): number {
 
 /** Auto-shrink font size so text fits maxW. Returns chosen px size. */
 function fitFont(ctx: Ctx, text: string, maxW: number, startPx: number, font: string, minPx = 22): number {
+  ctx.letterSpacing = '0px';
   let sz = startPx;
   ctx.font = `${sz}px ${font}`;
   while (ctx.measureText(text).width > maxW && sz > minPx) {
-    sz -= 2;
+    sz -= 1;
     ctx.font = `${sz}px ${font}`;
   }
   return sz;
+}
+
+// ── Title layout helpers ──────────────────────────────────────────────────────
+
+interface TitleLayout { lines: string[]; fontSize: number; }
+
+/**
+ * Find the best 1- or 2-line layout for `text` within `maxW`.
+ * Chooses 2 lines when they give a ≥15 % larger font than squeezing to 1.
+ */
+function layoutTitle(
+  ctx: Ctx,
+  text: string,
+  maxW: number,
+  startPx: number,
+  font: string,
+): TitleLayout {
+  ctx.letterSpacing = '0px';
+
+  // Option A — single line
+  const sz1 = fitFont(ctx, text, maxW, startPx, font, 26);
+  ctx.font = `${sz1}px ${font}`;
+  const fits1 = ctx.measureText(text).width <= maxW;
+
+  // Option B — two lines (only useful with ≥ 2 words)
+  const words = text.split(/\s+/);
+  let bestSplit = -1;
+  let bestSz2 = 0;
+  if (words.length >= 2) {
+    for (let i = 1; i < words.length; i++) {
+      const l1 = words.slice(0, i).join(' ');
+      const l2 = words.slice(i).join(' ');
+      const longer = l1.length >= l2.length ? l1 : l2;
+      const sz = fitFont(ctx, longer, maxW, startPx, font, 20);
+      if (sz > bestSz2) { bestSz2 = sz; bestSplit = i; }
+    }
+  }
+
+  // Choose 2 lines when single line overflows OR 2-line gives ≥15 % bigger font
+  if (bestSplit >= 1 && (!fits1 || bestSz2 >= sz1 * 1.15)) {
+    return {
+      lines: [words.slice(0, bestSplit).join(' '), words.slice(bestSplit).join(' ')],
+      fontSize: bestSz2,
+    };
+  }
+  return { lines: [text], fontSize: sz1 };
+}
+
+/**
+ * Draw a 1- or 2-line title block vertically centred inside [zoneTop, zoneBot].
+ * ascent ≈ 0.75 sz, descent ≈ 0.18 sz, line-height advance ≈ 0.92 sz.
+ */
+function drawTitleBlock(
+  ctx: Ctx,
+  layout: TitleLayout,
+  x: number,
+  zoneTop: number,
+  zoneBot: number,
+  color: string,
+  font: string,
+  letterSpacing = '-1px',
+) {
+  const { lines, fontSize: sz } = layout;
+  const LH     = Math.round(sz * 0.92);
+  const ASCENT = Math.round(sz * 0.75);
+  const DESC   = Math.round(sz * 0.18);
+  const blockH = ASCENT + (lines.length - 1) * LH + DESC;
+  const blockTop  = zoneTop + Math.round((zoneBot - zoneTop - blockH) / 2);
+  const baseline0 = blockTop + ASCENT;
+
+  ctx.fillStyle     = color;
+  ctx.font          = `${sz}px ${font}`;
+  ctx.letterSpacing = letterSpacing;
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], x, baseline0 + i * LH);
+  }
+  ctx.letterSpacing = '0px';
 }
 
 function timeLabel(n: number): string {
@@ -197,16 +275,11 @@ export function generateVotingCard(name: string, optionCount: number): Buffer {
   ctx.fillText('TOURNAMENT',   PAD, 57);
   ctx.letterSpacing = '0px';
 
-  // Poll name — auto-shrinks to fit LEFT_W
-  const display = name.toUpperCase();
-  const titleSz = fitFont(ctx, display, LEFT_W, 76, 'Display');
-  // Center baseline vertically between header bottom (≈70) and metrics top (≈155)
-  const titleY  = Math.round(70 + (155 - 70) / 2 + titleSz * 0.37);
-  ctx.fillStyle     = FG;
-  ctx.font          = `${titleSz}px Display`;
-  ctx.letterSpacing = '-1px';
-  ctx.fillText(display, PAD, titleY);
-  ctx.letterSpacing = '0px';
+  // Poll name — auto-shrinks and wraps to fit within LEFT_W
+  // Zone: below two-line header (≈ y 65) and above metrics row (≈ y 190)
+  const display     = name.toUpperCase();
+  const titleLayout = layoutTitle(ctx, display, LEFT_W, 76, 'Display');
+  drawTitleBlock(ctx, titleLayout, PAD, 65, 190, FG, 'Display', '-1px');
 
   // Bottom metrics
   const numY = H - PAD - 12;  // Montserrat Black 40px baseline ≈ 200
@@ -275,18 +348,12 @@ export function generateWinnerCard(name: string, winner: string): Buffer {
   ctx.fillText(shortName.toUpperCase(), PAD, 42 + 10 + 16);  // baseline ≈ 68
   ctx.letterSpacing = '0px';
 
-  // Winner name — large gold, auto-shrinks
-  const sessionY = 68;
-  const footerY  = H - PAD + 4;   // ≈ 216
-  const display  = winner.toUpperCase();
-  const winnerSz = fitFont(ctx, display, LEFT_W, 88, 'Display');
-  // Place baseline at ≈ 55% of the remaining space below session name
-  const winnerY  = Math.round(sessionY + 14 + winnerSz * 0.76);
-  ctx.fillStyle     = TIER_B;
-  ctx.font          = `${winnerSz}px Display`;
-  ctx.letterSpacing = '-2px';
-  ctx.fillText(display, PAD, winnerY);
-  ctx.letterSpacing = '0px';
+  // Winner name — large gold, auto-shrinks and wraps to fit within LEFT_W
+  // Zone: below session name line (≈ y 80) and above footer (≈ y 202)
+  const footerY      = H - PAD + 4;   // ≈ 216
+  const display      = winner.toUpperCase();
+  const winnerLayout = layoutTitle(ctx, display, LEFT_W, 88, 'Display');
+  drawTitleBlock(ctx, winnerLayout, PAD, 80, 202, TIER_B, 'Display', '-2px');
 
   // Footer
   ctx.fillStyle     = MUTED_LBL;

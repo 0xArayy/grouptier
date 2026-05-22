@@ -19,6 +19,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS sessions_one_collecting_per_chat
 -- If status='voting' AND message_sent=false the server crashed between the status
 -- flip and sendMessage — treat this session as 'collecting' until the message lands.
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS message_sent BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS creator_user_id BIGINT;
 
 CREATE TABLE IF NOT EXISTS options (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -53,3 +54,6 @@ CREATE TABLE IF NOT EXISTS saved_polls (
 );
 
 CREATE INDEX IF NOT EXISTS saved_polls_user_id_idx ON saved_polls(user_id);
+
+CREATE INDEX IF NOT EXISTS options_session_id_idx ON options(session_id);
+CREATE INDEX IF NOT EXISTS user_results_session_id_idx ON user_results(session_id);

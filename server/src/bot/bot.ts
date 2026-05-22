@@ -5,12 +5,6 @@ import { computeBorda } from '../db/borda.js';
 import { buildVoteUrl } from '../lib/urls.js';
 import { buildSetupCard, buildVotingCard, buildWinnerCard } from './cards.js';
 
-const MAX_OPTIONS = 32;
-
-function escapeMarkdown(s: string): string {
-  return s.replace(/[_*`[]/g, '\\$&');
-}
-
 export const bot = new Bot(process.env.BOT_TOKEN ?? '');
 
 bot.catch((err) => {
@@ -32,8 +26,8 @@ bot.command('newpoll', async (ctx) => {
     sessionId = existing.rows[0].id;
   } else {
     const res = await pool.query(
-      "INSERT INTO sessions (chat_id, name, status) VALUES ($1, 'Untitled Poll', 'collecting') RETURNING id",
-      [ctx.chat.id],
+      "INSERT INTO sessions (chat_id, creator_user_id, name, status) VALUES ($1, $2, 'Untitled Poll', 'collecting') RETURNING id",
+      [ctx.chat.id, ctx.from?.id ?? null],
     );
     sessionId = res.rows[0].id;
   }
@@ -45,166 +39,6 @@ bot.command('newpoll', async (ctx) => {
   });
 });
 
-// LEGACY — superseded by /newpoll flow
-bot.command('startsession', async (ctx) => {
-  if (!ctx.chat || ctx.chat.type === 'private') {
-    return ctx.reply('Use /startsession in a group chat.');
-  }
-  const name = ctx.match?.trim() || 'Untitled Session';
-
-  const existing = await pool.query(
-    "SELECT id FROM sessions WHERE chat_id = $1 AND status = 'collecting' LIMIT 1",
-    [ctx.chat.id],
-  );
-  if (existing.rows.length > 0) {
-    return ctx.reply('There is already an active session in this group. Use /newpoll to manage it.');
-  }
-
-  const res = await pool.query(
-    `INSERT INTO sessions (chat_id, name, status)
-     VALUES ($1, $2, 'collecting')
-     RETURNING id`,
-    [ctx.chat.id, name],
-  );
-  const sessionId: string = res.rows[0].id;
-
-  await ctx.reply(
-    `📋 New session: *${escapeMarkdown(name)}*\n\nAdd options with /addoption <text>. Up to 32 options.\nAdmin starts voting with /vote.\n\nSession ID: \`${sessionId}\``,
-    { parse_mode: 'Markdown' },
-  );
-});
-
-// LEGACY — superseded by /newpoll flow
-bot.command('addoption', async (ctx) => {
-  if (!ctx.chat || ctx.chat.type === 'private') return;
-  const text = ctx.match?.trim();
-  if (!text) return ctx.reply('Usage: /addoption <option text>');
-
-  const sessionRes = await pool.query(
-    `SELECT id FROM sessions WHERE chat_id = $1 AND status = 'collecting' ORDER BY created_at DESC LIMIT 1`,
-    [ctx.chat.id],
-  );
-  if (sessionRes.rows.length === 0) {
-    return ctx.reply('No active session. Start one with /startsession.');
-  }
-  const sessionId: string = sessionRes.rows[0].id;
-
-  const countRes = await pool.query(
-    'SELECT COUNT(*) FROM options WHERE session_id = $1',
-    [sessionId],
-  );
-  if (parseInt(countRes.rows[0].count) >= MAX_OPTIONS) {
-    return ctx.reply(`Max ${MAX_OPTIONS} options reached.`);
-  }
-
-  const dupRes = await pool.query(
-    'SELECT 1 FROM options WHERE session_id = $1 AND LOWER(text) = LOWER($2)',
-    [sessionId, text],
-  );
-  if (dupRes.rows.length > 0) {
-    return ctx.reply(`"${text}" is already in the list.`);
-  }
-
-  await pool.query('INSERT INTO options (session_id, text) VALUES ($1, $2)', [sessionId, text]);
-
-  const allRes = await pool.query(
-    'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
-    [sessionId],
-  );
-  const list = allRes.rows.map((r: { text: string }, i: number) => `${i + 1}. ${r.text}`).join('\n');
-  await ctx.reply(`✅ Added! Current options:\n${list}`);
-});
-
-// LEGACY — superseded by /newpoll flow
-bot.command('vote', async (ctx) => {
-  if (!ctx.chat || ctx.chat.type === 'private') return;
-
-  const sessionRes = await pool.query(
-    `SELECT id, name FROM sessions WHERE chat_id = $1 AND status = 'collecting' ORDER BY created_at DESC LIMIT 1`,
-    [ctx.chat.id],
-  );
-  if (sessionRes.rows.length === 0) {
-    return ctx.reply('No active session in collecting mode. Start one with /startsession.');
-  }
-  const session = sessionRes.rows[0];
-
-  const countRes = await pool.query(
-    'SELECT COUNT(*) FROM options WHERE session_id = $1',
-    [session.id],
-  );
-  if (parseInt(countRes.rows[0].count) < 2) {
-    return ctx.reply('Need at least 2 options. Add more with /addoption.');
-  }
-
-  await pool.query(`UPDATE sessions SET status = 'voting' WHERE id = $1`, [session.id]);
-
-  const miniAppUrl = buildVoteUrl(session.id);
-  const name = session.name ?? 'Untitled Session';
-
-  const optRes = await pool.query(
-    'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
-    [session.id],
-  );
-  const options: string[] = optRes.rows.map((r: { text: string }) => r.text);
-
-  let sent;
-  try {
-    const card = buildVotingCard(name, options, 0, 0, miniAppUrl);
-    sent = await ctx.replyWithPhoto(new InputFile(card.image, 'card.png'), {
-      caption: card.caption,
-      parse_mode: card.parse_mode,
-      reply_markup: card.reply_markup,
-    });
-  } catch (err) {
-    await pool.query(`UPDATE sessions SET status = 'collecting' WHERE id = $1`, [session.id]);
-    console.error('/vote reply failed:', err);
-    await ctx.reply('❌ Failed to open voting. Check server logs.');
-    return;
-  }
-
-  await pool.query('UPDATE sessions SET message_id = $1, message_sent = true WHERE id = $2', [
-    sent.message_id,
-    session.id,
-  ]);
-});
-
-// LEGACY — superseded by /newpoll flow
-bot.command('closesession', async (ctx) => {
-  if (!ctx.chat || ctx.chat.type === 'private') return;
-
-  const res = await pool.query(
-    `UPDATE sessions SET status = 'closed'
-     WHERE id = (
-       SELECT id FROM sessions
-       WHERE chat_id = $1 AND status = 'voting'
-       ORDER BY created_at DESC LIMIT 1
-     )
-     RETURNING id, name`,
-    [ctx.chat.id],
-  );
-
-  if (res.rows.length === 0) {
-    return ctx.reply('No open voting session found.');
-  }
-  const { id: sessionId, name } = res.rows[0];
-
-  const resultsRes = await pool.query(
-    'SELECT ranked_list FROM user_results WHERE session_id = $1',
-    [sessionId],
-  );
-
-  if (resultsRes.rows.length === 0) {
-    return ctx.reply('No votes recorded — session closed.');
-  }
-
-  const borda = computeBorda(resultsRes.rows.map((r: { ranked_list: string[] }) => r.ranked_list));
-  const sessionName = name ?? 'Untitled Session';
-  const card = buildWinnerCard(sessionName, borda);
-  await ctx.replyWithPhoto(new InputFile(card.image, 'winner.png'), {
-    caption: card.caption,
-    parse_mode: card.parse_mode,
-  });
-});
 
 // Noop handler for display-only option grid buttons (answer all to prevent Telegram spinner timeout)
 bot.on('callback_query:data', async (ctx) => {

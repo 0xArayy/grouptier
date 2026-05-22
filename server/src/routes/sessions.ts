@@ -6,10 +6,7 @@ import { computeBorda } from '../db/borda.js';
 import { bot } from '../bot/bot.js';
 import { buildVoteUrl } from '../lib/urls.js';
 import { buildVotingCard, buildVotingCaption, buildWinnerCard } from '../bot/cards.js';
-
-const MAX_NAME_LENGTH = 100;
-const MAX_OPTION_TEXT_LENGTH = 100;
-const MAX_OPTIONS = 32;
+import { MAX_NAME_LENGTH, MAX_OPTION_TEXT_LENGTH, MAX_OPTIONS } from '../lib/constants.js';
 
 export async function sessionRoutes(fastify: FastifyInstance) {
   // POST /api/sessions — create session from Mini App (chat_id from validated initData)
@@ -304,6 +301,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     { preHandler: initDataMiddleware },
     async (request, reply) => {
       const { id } = request.params;
+      const userId = request.telegramUser.id;
       const name = (request.body?.name ?? '').trim();
       if (!name) {
         return reply.status(400).send({ error: 'name is required' });
@@ -312,13 +310,19 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'Name must be 100 characters or fewer' });
       }
 
-      const res = await pool.query(
-        "UPDATE sessions SET name = $1 WHERE id = $2 AND status = 'collecting' RETURNING id",
-        [name, id],
+      const sessionCheck = await pool.query(
+        "SELECT creator_user_id FROM sessions WHERE id = $1 AND status = 'collecting'",
+        [id],
       );
-      if (res.rows.length === 0) {
+      if (sessionCheck.rows.length === 0) {
         return reply.status(404).send({ error: 'Session not found or not in collecting state' });
       }
+      const { creator_user_id } = sessionCheck.rows[0];
+      if (creator_user_id && String(creator_user_id) !== String(userId)) {
+        return reply.status(403).send({ error: 'Only the creator can rename this poll' });
+      }
+
+      await pool.query('UPDATE sessions SET name = $1 WHERE id = $2', [name, id]);
       return { ok: true };
     },
   );
@@ -354,35 +358,48 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         return reply.status(403).send({ error: 'Session is not collecting options' });
       }
 
-      const countRes = await pool.query(
-        'SELECT COUNT(*) FROM options WHERE session_id = $1',
-        [id],
-      );
-      if (parseInt(countRes.rows[0].count) >= MAX_OPTIONS) {
-        return reply.status(422).send({ error: `Max ${MAX_OPTIONS} options reached` });
-      }
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        // Lock the session row to serialize concurrent option inserts (TOCTOU guard)
+        await client.query('SELECT 1 FROM sessions WHERE id = $1 FOR UPDATE', [id]);
 
-      const dupRes = await pool.query(
-        'SELECT 1 FROM options WHERE session_id = $1 AND LOWER(text) = LOWER($2)',
-        [id, text],
-      );
+        const countRes = await client.query(
+          'SELECT COUNT(*) FROM options WHERE session_id = $1',
+          [id],
+        );
+        if (parseInt(countRes.rows[0].count) >= MAX_OPTIONS) {
+          await client.query('ROLLBACK');
+          return reply.status(422).send({ error: `Max ${MAX_OPTIONS} options reached` });
+        }
 
-      if (dupRes.rows.length > 0) {
-        // Duplicate from concurrent add — return current list silently
-        const allRes = await pool.query(
+        const dupRes = await client.query(
+          'SELECT 1 FROM options WHERE session_id = $1 AND LOWER(text) = LOWER($2)',
+          [id, text],
+        );
+        if (dupRes.rows.length > 0) {
+          await client.query('ROLLBACK');
+          const allRes = await client.query(
+            'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
+            [id],
+          );
+          return reply.status(200).send({ options: allRes.rows.map((r: { text: string }) => r.text) });
+        }
+
+        await client.query('INSERT INTO options (session_id, text) VALUES ($1, $2)', [id, text]);
+
+        const afterRes = await client.query(
           'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
           [id],
         );
-        return reply.status(200).send({ options: allRes.rows.map((r: { text: string }) => r.text) });
+        await client.query('COMMIT');
+        return reply.status(201).send({ options: afterRes.rows.map((r: { text: string }) => r.text) });
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
       }
-
-      await pool.query('INSERT INTO options (session_id, text) VALUES ($1, $2)', [id, text]);
-
-      const afterRes = await pool.query(
-        'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
-        [id],
-      );
-      return reply.status(201).send({ options: afterRes.rows.map((r: { text: string }) => r.text) });
     },
   );
 
@@ -396,17 +413,23 @@ export async function sessionRoutes(fastify: FastifyInstance) {
 
       const chat = request.telegramChat;
 
+      const userId = request.telegramUser.id;
+
       const sessionRes = await pool.query(
-        'SELECT status, chat_id FROM sessions WHERE id = $1',
+        'SELECT status, chat_id, creator_user_id FROM sessions WHERE id = $1',
         [id],
       );
       if (sessionRes.rows.length === 0) {
         return reply.status(404).send({ error: 'Session not found' });
       }
-      if (chat && sessionRes.rows[0].chat_id !== chat.id) {
+      const sess = sessionRes.rows[0];
+      if (chat && sess.chat_id !== chat.id) {
         return reply.status(403).send({ error: 'Forbidden' });
       }
-      if (sessionRes.rows[0].status !== 'collecting') {
+      if (sess.creator_user_id && String(sess.creator_user_id) !== String(userId)) {
+        return reply.status(403).send({ error: 'Only the creator can remove options' });
+      }
+      if (sess.status !== 'collecting') {
         return reply.status(403).send({ error: 'Session is not collecting options' });
       }
 
@@ -609,9 +632,8 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         return reply.status(409).send({ error: 'Session is not in voting state' });
       }
 
-      // Chatless sessions: only the creator can close.
       // pg returns BIGINT as string — compare via String() to avoid type mismatch.
-      if (!session.chat_id && session.creator_user_id && String(session.creator_user_id) !== String(userId)) {
+      if (session.creator_user_id && String(session.creator_user_id) !== String(userId)) {
         return reply.status(403).send({ error: 'Only the creator can close this poll' });
       }
 

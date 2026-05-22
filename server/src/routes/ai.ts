@@ -51,7 +51,7 @@ async function callGroq(prompt: string, apiKey: string): Promise<string> {
 export async function aiRoutes(fastify: FastifyInstance) {
   fastify.post<{ Body: { name?: string; existingOptions?: unknown } }>(
     '/api/ai/generate-options',
-    { preHandler: initDataMiddleware },
+    { preHandler: initDataMiddleware, config: { rateLimit: { max: 3, timeWindow: '1 minute' } } },
     async (request, reply) => {
       const name = (request.body?.name ?? '').trim();
       if (!name) return reply.status(400).send({ error: 'name is required' });

@@ -233,18 +233,25 @@ describe('GET /api/sessions/:id', () => {
 
 describe('POST /api/sessions/:id/options', () => {
   let app: FastifyInstance;
+  let mockClient: { query: ReturnType<typeof vi.fn>; release: ReturnType<typeof vi.fn> };
+
   beforeEach(async () => {
     vi.resetAllMocks();
     app = await buildApp();
+    mockClient = { query: vi.fn(), release: vi.fn() };
+    mockConnect.mockResolvedValue(mockClient);
   });
 
   it('adds option and returns updated list', async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }) // session check
-      .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // count check
+    mockQuery.mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }); // session check
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [] }) // FOR UPDATE
+      .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // COUNT
       .mockResolvedValueOnce({ rows: [] }) // dup check
-      .mockResolvedValueOnce({ rows: [] }) // insert
-      .mockResolvedValueOnce({ rows: [{ text: 'Pizza' }, { text: 'Sushi' }] }); // all options
+      .mockResolvedValueOnce({ rows: [] }) // INSERT
+      .mockResolvedValueOnce({ rows: [{ text: 'Pizza' }, { text: 'Sushi' }] }) // SELECT all
+      .mockResolvedValueOnce({ rows: [] }); // COMMIT
 
     const res = await app.inject({
       method: 'POST',
@@ -258,11 +265,14 @@ describe('POST /api/sessions/:id/options', () => {
   });
 
   it('returns 200 with current options on duplicate option', async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] })
-      .mockResolvedValueOnce({ rows: [{ count: '1' }] })
+    mockQuery.mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }); // session check
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [] }) // FOR UPDATE
+      .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // COUNT
       .mockResolvedValueOnce({ rows: [{ '?column?': 1 }] }) // dup found
-      .mockResolvedValueOnce({ rows: [{ text: 'Pizza' }] }); // current options
+      .mockResolvedValueOnce({ rows: [] }) // ROLLBACK
+      .mockResolvedValueOnce({ rows: [{ text: 'Pizza' }] }); // SELECT all
 
     const res = await app.inject({
       method: 'POST',
@@ -276,9 +286,12 @@ describe('POST /api/sessions/:id/options', () => {
   });
 
   it('returns 422 when 32-option limit reached', async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] })
-      .mockResolvedValueOnce({ rows: [{ count: '32' }] });
+    mockQuery.mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }); // session check
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [] }) // FOR UPDATE
+      .mockResolvedValueOnce({ rows: [{ count: '32' }] }) // COUNT — limit reached
+      .mockResolvedValueOnce({ rows: [] }); // ROLLBACK
 
     const res = await app.inject({
       method: 'POST',

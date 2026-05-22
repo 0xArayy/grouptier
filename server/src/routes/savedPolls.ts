@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { pool } from '../db/client.js';
 import { initDataMiddleware } from '../middleware/initData.js';
+import { MAX_OPTIONS, MAX_OPTION_TEXT_LENGTH } from '../lib/constants.js';
 
 interface SavedPoll {
   id: string;
@@ -44,10 +45,10 @@ export async function savedPollRoutes(fastify: FastifyInstance) {
       if (!Array.isArray(options) || options.length < 2) {
         return reply.status(400).send({ error: 'At least 2 options required' });
       }
-      if (options.length > 32) {
+      if (options.length > MAX_OPTIONS) {
         return reply.status(400).send({ error: 'Max 32 options allowed' });
       }
-      if (!options.every(o => typeof o === 'string' && o.trim().length > 0 && o.length <= 100)) {
+      if (!options.every(o => typeof o === 'string' && o.trim().length > 0 && o.length <= MAX_OPTION_TEXT_LENGTH)) {
         return reply.status(400).send({ error: 'Each option must be a non-empty string of 100 characters or fewer' });
       }
 
@@ -80,10 +81,10 @@ export async function savedPollRoutes(fastify: FastifyInstance) {
         if (!Array.isArray(options) || options.length < 2) {
           return reply.status(400).send({ error: 'At least 2 options required' });
         }
-        if (options.length > 32) {
+        if (options.length > MAX_OPTIONS) {
           return reply.status(400).send({ error: 'Max 32 options allowed' });
         }
-        if (!options.every(o => typeof o === 'string' && o.trim().length > 0 && o.length <= 100)) {
+        if (!options.every(o => typeof o === 'string' && o.trim().length > 0 && o.length <= MAX_OPTION_TEXT_LENGTH)) {
           return reply.status(400).send({ error: 'Each option must be a non-empty string of 100 characters or fewer' });
         }
       }

@@ -65,29 +65,29 @@ describe('POST /api/ai/generate-options', () => {
   });
 
   it('returns options for a valid clean JSON response', async () => {
-    groqReturns('["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin"]');
+    groqReturns('["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin","TypeScript","Ruby","PHP","Scala"]');
     const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Top languages' } });
     expect(res.statusCode).toBe(200);
-    expect(res.json().options).toHaveLength(8);
+    expect(res.json().options).toHaveLength(12);
     expect(res.json().options[0]).toBe('Python');
   });
 
   it('extracts options from fenced JSON (```json ... ```)', async () => {
-    groqReturns('```json\n["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin"]\n```');
+    groqReturns('```json\n["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin","TypeScript","Ruby","PHP","Scala"]\n```');
     const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Top languages' } });
     expect(res.statusCode).toBe(200);
-    expect(res.json().options).toHaveLength(8);
+    expect(res.json().options).toHaveLength(12);
   });
 
   it('extracts options when model adds a preamble sentence', async () => {
-    groqReturns('Here are 8 options:\n["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin"]');
+    groqReturns('Here are 12 options:\n["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin","TypeScript","Ruby","PHP","Scala"]');
     const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Top languages' } });
     expect(res.statusCode).toBe(200);
-    expect(res.json().options).toHaveLength(8);
+    expect(res.json().options).toHaveLength(12);
   });
 
   it('filters out existingOptions case-insensitively', async () => {
-    groqReturns('["python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin"]');
+    groqReturns('["python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin","TypeScript","Ruby","PHP","Scala"]');
     const res = await app.inject({
       method: 'POST', url: '/api/ai/generate-options',
       payload: { name: 'Top languages', existingOptions: ['Python', 'JAVASCRIPT'] },
@@ -96,7 +96,7 @@ describe('POST /api/ai/generate-options', () => {
     const options: string[] = res.json().options;
     expect(options).not.toContain('python');
     expect(options).not.toContain('JavaScript');
-    expect(options.length).toBe(6);
+    expect(options.length).toBe(10);
   });
 
   it('trims options longer than 100 characters', async () => {
@@ -110,7 +110,7 @@ describe('POST /api/ai/generate-options', () => {
   it('retries once on invalid JSON and succeeds on second attempt', async () => {
     mockFetch
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ choices: [{ message: { content: 'not json' } }] }) })
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ choices: [{ message: { content: '["A","B","C","D","E","F","G","H"]' } }] }) });
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ choices: [{ message: { content: '["A","B","C","D","E","F","G","H","I","J","K","L"]' } }] }) });
     const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Test' } });
     expect(res.statusCode).toBe(200);
     expect(mockFetch).toHaveBeenCalledTimes(2);
@@ -123,11 +123,11 @@ describe('POST /api/ai/generate-options', () => {
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
-  it('returns fewer than 8 options when all are filtered by existingOptions', async () => {
-    groqReturns('["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin"]');
+  it('returns fewer than 12 options when most are filtered by existingOptions', async () => {
+    groqReturns('["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin","TypeScript","Ruby","PHP","Scala"]');
     const res = await app.inject({
       method: 'POST', url: '/api/ai/generate-options',
-      payload: { name: 'Test', existingOptions: ['Python','JavaScript','Java','C++','Go','Rust'] },
+      payload: { name: 'Test', existingOptions: ['Python','JavaScript','Java','C++','Go','Rust','Swift','Kotlin','TypeScript','Ruby'] },
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().options.length).toBe(2);

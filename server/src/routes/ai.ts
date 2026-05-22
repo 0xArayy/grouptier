@@ -5,8 +5,17 @@ const MAX_OPTION_LENGTH = 100;
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const SYSTEM_INSTRUCTION =
-  'You generate options for a GroupTier voting poll. Output ONLY a JSON array of exactly 8 strings. ' +
-  'Each option max 60 chars. No duplicates. Match the language of the poll title.';
+  'You generate voting options for a GroupTier poll where users rank choices.\n\n' +
+  'OUTPUT FORMAT: a single valid JSON array of exactly 12 strings. ' +
+  'Nothing else — no markdown fences, no explanation, no extra text.\n\n' +
+  'LANGUAGE: detect the language of the poll title and write EVERY option in that exact language. ' +
+  'If the title is Russian — all 12 options must be in Russian. ' +
+  'If the title is English — all in English. Never mix languages.\n\n' +
+  'OPTION QUALITY: options are concrete CHOICES users pick between — not background context. ' +
+  'Example: for "что взять на море" generate "солнцезащитный крем", "полотенце", "очки" — ' +
+  'NOT "песок", "солнце", "море" (those are context, not choices). ' +
+  'Each option: max 60 characters, specific, realistic, directly relevant to the question. ' +
+  'No duplicates or near-duplicates.';
 
 function parseOptions(text: string, existingLower: Set<string>): string[] {
   const match = text.match(/\[[\s\S]*\]/);
@@ -31,7 +40,7 @@ async function callGroq(prompt: string, apiKey: string): Promise<string> {
         { role: 'user', content: prompt },
       ],
       temperature: 0.8,
-      max_tokens: 400,
+      max_tokens: 600,
     }),
   });
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
@@ -53,8 +62,8 @@ export async function aiRoutes(fastify: FastifyInstance) {
       const existingLower = new Set(existing.map(o => o.toLowerCase()));
 
       const prompt = existing.length > 0
-        ? `Poll: "${name}". Already has: ${existing.map(o => `"${o}"`).join(', ')}. Generate 8 more options, don't repeat them.`
-        : `Poll: "${name}". Generate 8 options.`;
+        ? `Poll title: "${name}"\nAlready added: ${existing.map(o => `"${o}"`).join(', ')}\nGenerate exactly 12 more options. Do not repeat or semantically duplicate any already added.`
+        : `Poll title: "${name}"\nGenerate exactly 12 options.`;
 
       for (let attempt = 0; attempt < 2; attempt++) {
         const text = await callGroq(prompt, process.env.GROQ_API_KEY!);

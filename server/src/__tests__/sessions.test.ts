@@ -283,6 +283,8 @@ describe('POST /api/sessions/:id/options', () => {
 
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).options).toEqual(['Pizza']);
+    expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(mockClient.release).toHaveBeenCalled();
   });
 
   it('returns 422 when 32-option limit reached', async () => {
@@ -302,6 +304,7 @@ describe('POST /api/sessions/:id/options', () => {
 
     expect(res.statusCode).toBe(422);
     expect(JSON.parse(res.body).error).toBe('Max 32 options reached');
+    expect(mockClient.release).toHaveBeenCalled();
   });
 
   it('returns 400 when option text exceeds 100 characters', async () => {
@@ -430,7 +433,9 @@ describe('PATCH /api/sessions/:id', () => {
   });
 
   it('updates session name and returns ok', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: SESSION_ID }] });
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ creator_user_id: null }] }) // session check
+      .mockResolvedValueOnce({ rows: [] }); // UPDATE
 
     const res = await app.inject({
       method: 'PATCH',
@@ -454,6 +459,20 @@ describe('PATCH /api/sessions/:id', () => {
     });
 
     expect(res.statusCode).toBe(404);
+  });
+
+  it('returns 403 when caller is not the creator', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ creator_user_id: 99 }] }); // creator_user_id 99 ≠ middleware userId 42
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/sessions/${SESSION_ID}`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { name: 'Hijacked' },
+    });
+
+    expect(res.statusCode).toBe(403);
+    expect(JSON.parse(res.body).error).toBe('Only the creator can rename this poll');
   });
 });
 
@@ -559,7 +578,7 @@ describe('DELETE /api/sessions/:id/options/:text', () => {
 
   it('removes option and returns remaining list', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }) // session check
+      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001, creator_user_id: null }] }) // session check
       .mockResolvedValueOnce({ rows: [] }) // delete
       .mockResolvedValueOnce({ rows: [{ text: 'Pizza' }] }); // remaining options
 
@@ -574,7 +593,7 @@ describe('DELETE /api/sessions/:id/options/:text', () => {
   });
 
   it('returns 403 when session is not collecting', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ status: 'voting', chat_id: -1001 }] });
+    mockQuery.mockResolvedValueOnce({ rows: [{ status: 'voting', chat_id: -1001, creator_user_id: null }] });
 
     const res = await app.inject({
       method: 'DELETE',
@@ -583,6 +602,19 @@ describe('DELETE /api/sessions/:id/options/:text', () => {
     });
 
     expect(res.statusCode).toBe(403);
+  });
+
+  it('returns 403 when caller is not the creator', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001, creator_user_id: 99 }] }); // creator 99 ≠ middleware userId 42
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/sessions/${SESSION_ID}/options/${encodeURIComponent('Sushi')}`,
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(403);
+    expect(JSON.parse(res.body).error).toBe('Only the creator can remove options');
   });
 });
 
@@ -600,7 +632,7 @@ describe('PUT /api/sessions/:id/options', () => {
   it('replaces options atomically and returns 200', async () => {
     mockClient.query
       .mockResolvedValueOnce({ rows: [] }) // BEGIN
-      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }) // session
+      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001, creator_user_id: null }] }) // session
       .mockResolvedValueOnce({ rows: [] }) // DELETE
       .mockResolvedValueOnce({ rows: [] }) // INSERT
       .mockResolvedValueOnce({ rows: [{ text: 'Pizza' }, { text: 'Sushi' }] }) // SELECT
@@ -620,7 +652,7 @@ describe('PUT /api/sessions/:id/options', () => {
   it('updates name atomically when provided', async () => {
     mockClient.query
       .mockResolvedValueOnce({ rows: [] }) // BEGIN
-      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }) // session
+      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001, creator_user_id: null }] }) // session
       .mockResolvedValueOnce({ rows: [] }) // UPDATE name
       .mockResolvedValueOnce({ rows: [] }) // DELETE
       .mockResolvedValueOnce({ rows: [] }) // INSERT
@@ -641,7 +673,7 @@ describe('PUT /api/sessions/:id/options', () => {
   it('handles empty options array (clears all options)', async () => {
     mockClient.query
       .mockResolvedValueOnce({ rows: [] }) // BEGIN
-      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }) // session
+      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001, creator_user_id: null }] }) // session
       .mockResolvedValueOnce({ rows: [] }) // DELETE
       .mockResolvedValueOnce({ rows: [] }) // SELECT (no INSERT since empty)
       .mockResolvedValueOnce({ rows: [] }); // COMMIT
@@ -660,7 +692,7 @@ describe('PUT /api/sessions/:id/options', () => {
   it('deduplicates options case-insensitively', async () => {
     mockClient.query
       .mockResolvedValueOnce({ rows: [] }) // BEGIN
-      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }) // session
+      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001, creator_user_id: null }] }) // session
       .mockResolvedValueOnce({ rows: [] }) // DELETE
       .mockResolvedValueOnce({ rows: [] }) // INSERT (2 unique, not 3)
       .mockResolvedValueOnce({ rows: [{ text: 'Pizza' }, { text: 'Sushi' }] }) // SELECT
@@ -760,7 +792,7 @@ describe('PUT /api/sessions/:id/options', () => {
   it('rolls back transaction and returns 500 on DB error', async () => {
     mockClient.query
       .mockResolvedValueOnce({ rows: [] }) // BEGIN
-      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001 }] }) // session
+      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001, creator_user_id: null }] }) // session
       .mockResolvedValueOnce({ rows: [] }) // DELETE
       .mockRejectedValueOnce(new Error('DB failure')) // INSERT fails
       .mockResolvedValueOnce({ rows: [] }); // ROLLBACK
@@ -774,6 +806,24 @@ describe('PUT /api/sessions/:id/options', () => {
 
     expect(res.statusCode).toBe(500);
     expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(mockClient.release).toHaveBeenCalled();
+  });
+
+  it('returns 403 when caller is not the creator', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001, creator_user_id: 99 }] }) // session — creator 99 ≠ middleware userId 42
+      .mockResolvedValueOnce({ rows: [] }); // ROLLBACK
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/sessions/${SESSION_ID}/options`,
+      headers: { 'x-init-data': 'dev' },
+      payload: { options: ['Pizza', 'Sushi'] },
+    });
+
+    expect(res.statusCode).toBe(403);
+    expect(JSON.parse(res.body).error).toBe('Only the creator can replace options');
     expect(mockClient.release).toHaveBeenCalled();
   });
 });
@@ -829,6 +879,19 @@ describe('POST /api/sessions/:id/close', () => {
 
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).winner).toBeNull();
+  });
+
+  it('returns 403 when caller is not the creator (group session)', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, creator_user_id: 99, status: 'voting' }] }); // creator 99 ≠ middleware userId 42
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/sessions/${SESSION_ID}/close`,
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(403);
+    expect(JSON.parse(res.body).error).toBe('Only the creator can close this poll');
   });
 });
 

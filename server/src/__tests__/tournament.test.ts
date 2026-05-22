@@ -185,6 +185,7 @@ describe('pick + buildRankedList', () => {
     expect(tiers.A).toBe(1);  // final loser only (fromEnd=0 < ceil(4/4)=1)
     expect(tiers.B).toBe(1);  // semifinal loser (fromEnd=1 < ceil(4/2)=2)
     expect(tiers.C).toBe(9);  // everything earlier
+    expect(tiers.S + tiers.A + tiers.B + tiers.C).toBe(12);
   });
 
   it('N=32 tier distribution — proportional thresholds reduce C-tier crowding', () => {

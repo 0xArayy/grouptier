@@ -322,7 +322,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         return reply.status(403).send({ error: 'Only the creator can rename this poll' });
       }
 
-      await pool.query('UPDATE sessions SET name = $1 WHERE id = $2', [name, id]);
+      await pool.query("UPDATE sessions SET name = $1 WHERE id = $2 AND status = 'collecting'", [name, id]);
       return { ok: true };
     },
   );
@@ -484,12 +484,13 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       }
 
       const chat = request.telegramChat;
+      const userId = request.telegramUser.id;
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
 
         const sessionRes = await client.query(
-          'SELECT status, chat_id FROM sessions WHERE id = $1',
+          'SELECT status, chat_id, creator_user_id FROM sessions WHERE id = $1',
           [id],
         );
         if (sessionRes.rows.length === 0) {
@@ -499,6 +500,10 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         if (chat && sessionRes.rows[0].chat_id !== chat.id) {
           await client.query('ROLLBACK');
           return reply.status(403).send({ error: 'Forbidden' });
+        }
+        if (sessionRes.rows[0].creator_user_id && String(sessionRes.rows[0].creator_user_id) !== String(userId)) {
+          await client.query('ROLLBACK');
+          return reply.status(403).send({ error: 'Only the creator can replace options' });
         }
         if (sessionRes.rows[0].status !== 'collecting') {
           await client.query('ROLLBACK');

@@ -71,23 +71,7 @@ await fastify.register(fastifyRateLimit, {
   global: true,
   max: 100,
   timeWindow: '1 minute',
-  keyGenerator: (req) => {
-    // Best-effort user ID extraction for per-user keying; falls back to IP
-    try {
-      const raw = req.headers['x-init-data'] as string | undefined;
-      if (raw && raw !== 'dev') {
-        const params = new URLSearchParams(raw);
-        const userJson = params.get('user');
-        if (userJson) {
-          const uid = (JSON.parse(userJson) as { id?: number }).id;
-          if (uid) return String(uid);
-        }
-      }
-    } catch {
-      // ignore parse errors — fall through to IP
-    }
-    return req.ip;
-  },
+  keyGenerator: (req) => req.ip,
   errorResponseBuilder: () => ({ error: 'Too many requests, please try again later' }),
 });
 

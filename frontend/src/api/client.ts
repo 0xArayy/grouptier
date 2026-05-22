@@ -1,5 +1,22 @@
 const BASE = '/api';
 
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly body: { error?: string; id?: string; [key: string]: unknown },
+  ) {
+    super(body.error ?? `HTTP ${status}`);
+    this.name = 'ApiError';
+  }
+}
+
+async function throwOnError(res: Response): Promise<void> {
+  if (res.ok) return;
+  let body: { error?: string; id?: string } = {};
+  try { body = await res.json(); } catch { /* non-JSON body, leave body empty */ }
+  throw new ApiError(res.status, body);
+}
+
 function getInitData(): string {
   if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
     return window.Telegram.WebApp.initData;
@@ -14,7 +31,7 @@ export async function createSession(name: string): Promise<{ id: string }> {
     headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
     body: JSON.stringify({ name }),
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  await throwOnError(res);
   return res.json();
 }
 
@@ -22,7 +39,7 @@ export async function fetchActiveSession(): Promise<{ id: string; name: string; 
   const res = await fetch(`${BASE}/sessions/active`, {
     headers: { 'x-init-data': getInitData() },
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  await throwOnError(res);
   return res.json();
 }
 
@@ -32,7 +49,7 @@ export async function updateSessionName(sessionId: string, name: string): Promis
     headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
     body: JSON.stringify({ name }),
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  await throwOnError(res);
 }
 
 export async function addOption(sessionId: string, text: string): Promise<{ options: string[] }> {
@@ -41,7 +58,7 @@ export async function addOption(sessionId: string, text: string): Promise<{ opti
     headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
     body: JSON.stringify({ text }),
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  await throwOnError(res);
   return res.json();
 }
 
@@ -51,7 +68,7 @@ export async function bulkReplaceOptions(sessionId: string, options: string[], n
     headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
     body: JSON.stringify({ options, ...(name !== undefined && { name }) }),
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  await throwOnError(res);
   return res.json();
 }
 
@@ -60,7 +77,7 @@ export async function removeOption(sessionId: string, text: string): Promise<{ o
     method: 'DELETE',
     headers: { 'x-init-data': getInitData() },
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  await throwOnError(res);
   return res.json();
 }
 
@@ -69,7 +86,7 @@ export async function startVoting(sessionId: string): Promise<{ share_url?: stri
     method: 'POST',
     headers: { 'x-init-data': getInitData() },
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  await throwOnError(res);
   return res.json();
 }
 
@@ -77,7 +94,7 @@ export async function fetchSessionOptions(sessionId: string): Promise<{ options:
   const res = await fetch(`${BASE}/sessions/${sessionId}/options`, {
     headers: { 'x-init-data': getInitData() },
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  await throwOnError(res);
   return res.json();
 }
 
@@ -85,7 +102,7 @@ export async function fetchSession(sessionId: string) {
   const res = await fetch(`${BASE}/sessions/${sessionId}`, {
     headers: { 'x-init-data': getInitData() },
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  await throwOnError(res);
   return res.json();
 }
 
@@ -94,7 +111,7 @@ export async function closeSession(sessionId: string): Promise<{ ok: boolean; wi
     method: 'POST',
     headers: { 'x-init-data': getInitData() },
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  await throwOnError(res);
   return res.json();
 }
 
@@ -111,7 +128,7 @@ export async function fetchSavedPolls(): Promise<SavedPoll[]> {
   const res = await fetch(`${BASE}/saved-polls`, {
     headers: { 'x-init-data': getInitData() },
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  await throwOnError(res);
   return res.json();
 }
 
@@ -121,7 +138,7 @@ export async function createSavedPoll(name: string, options: string[], emoji: st
     headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
     body: JSON.stringify({ name, options, emoji }),
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  await throwOnError(res);
   return res.json();
 }
 
@@ -131,7 +148,7 @@ export async function updateSavedPoll(id: string, data: { name?: string; options
     headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  await throwOnError(res);
 }
 
 export async function deleteSavedPoll(id: string): Promise<void> {
@@ -139,7 +156,7 @@ export async function deleteSavedPoll(id: string): Promise<void> {
     method: 'DELETE',
     headers: { 'x-init-data': getInitData() },
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  await throwOnError(res);
 }
 
 export async function generateAiOptions(
@@ -151,7 +168,7 @@ export async function generateAiOptions(
     headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
     body: JSON.stringify({ name, ...(existingOptions?.length ? { existingOptions } : {}) }),
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  await throwOnError(res);
   return res.json();
 }
 
@@ -164,6 +181,6 @@ export async function submitResults(sessionId: string, rankedList: string[]) {
     },
     body: JSON.stringify({ ranked_list: rankedList }),
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  await throwOnError(res);
   return res.json();
 }

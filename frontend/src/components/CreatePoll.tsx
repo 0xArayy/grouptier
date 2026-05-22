@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import {
+  ApiError,
   createSession,
   addOption,
   removeOption,
@@ -123,8 +124,13 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
       }
       setStep('options');
     } catch (err: unknown) {
-      const msg = String(err);
-      setError(msg.includes('409') ? 'В этой группе уже идёт сбор вариантов.' : msg);
+      if (err instanceof ApiError && err.status === 409 && typeof err.body.id === 'string') {
+        setSessionId(err.body.id);
+        setSessionName(customName.trim() || 'Без названия');
+        setStep('options');
+      } else {
+        setError(err instanceof ApiError ? err.message : String(err));
+      }
     } finally { setBusy(false); }
   }
 
@@ -154,9 +160,14 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
       const { options: loaded } = await bulkReplaceOptions(id!, pollOptions, sessionId ? name : undefined);
       setOptions(loaded); setSavedId(savedPollId);
     } catch (err: unknown) {
-      const msg = String(err);
-      setStep(prevStep);
-      setError(msg.includes('409') ? 'В этой группе уже идёт сбор вариантов.' : msg);
+      if (err instanceof ApiError && err.status === 409 && typeof err.body.id === 'string') {
+        setSessionId(err.body.id);
+        setSessionName(name);
+        setStep('options');
+      } else {
+        setStep(prevStep);
+        setError(err instanceof ApiError ? err.message : String(err));
+      }
     } finally { busyRef.current = false; setBusy(false); }
   }
 

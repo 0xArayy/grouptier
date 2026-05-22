@@ -17,6 +17,7 @@ import { HomeStep } from './create-poll/HomeStep.tsx';
 import { PresetsStep, type Preset } from './create-poll/PresetsStep.tsx';
 import { MyPollsStep } from './create-poll/MyPollsStep.tsx';
 import { OptionsStep } from './create-poll/OptionsStep.tsx';
+import { AiSuggestStep } from './create-poll/AiSuggestStep.tsx';
 import { DEFAULT_SAVE_EMOJI } from '../lib/constants.ts';
 
 interface Props {
@@ -25,7 +26,7 @@ interface Props {
   existingSession?: { id: string; name: string; options: string[] };
 }
 
-type Step = 'home' | 'presets' | 'my-polls' | 'options' | 'starting';
+type Step = 'home' | 'presets' | 'my-polls' | 'options' | 'starting' | 'ai-suggest';
 
 
 export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Props) {
@@ -51,6 +52,7 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [startingTimedOut, setStartingTimedOut] = useState(false);
   const [externalEdit, setExternalEdit] = useState(false);
+  const [aiExistingOptions, setAiExistingOptions] = useState<string[]>([]);
 
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const externalEditTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -169,6 +171,35 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
     finally { setRemovingOption(null); }
   }
 
+  async function handleAiConfirmBlankCanvas(selected: string[]) {
+    setBusy(true); setError('');
+    try {
+      const name = customName.trim() || 'Без названия';
+      const { id } = await createSession(name);
+      setSessionId(id); setSessionName(name);
+      const { options: loaded } = await bulkReplaceOptions(id, selected);
+      setOptions(loaded);
+      setStep('options');
+    } finally { setBusy(false); }
+  }
+
+  async function handleAiConfirmFillTheRest(selected: string[]) {
+    if (!sessionId) return;
+    if (options.length + selected.length > 32) {
+      throw new Error('Слишком много вариантов — убери лишние перед добавлением');
+    }
+    setBusy(true); setError('');
+    try {
+      let current = options;
+      for (const opt of selected) {
+        const { options: updated } = await addOption(sessionId, opt);
+        current = updated;
+      }
+      setOptions(current);
+      setStep('options');
+    } finally { setBusy(false); }
+  }
+
   async function handleStartVoting() {
     if (!sessionId || busy) return;
     setBusy(true); setError(''); setStep('starting');
@@ -219,6 +250,7 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
       onNavigateMyPolls={() => { setError(''); setStep('my-polls'); }}
       onNavigatePresets={() => { setError(''); setStep('presets'); }}
       onCreate={handleCreateCustom}
+      onGenerateWithAi={() => { setError(''); setAiExistingOptions([]); setStep('ai-suggest'); }}
     />
   );
 
@@ -258,6 +290,19 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
       onStartVoting={handleStartVoting}
       onSaveTemplate={handleSaveTemplate}
       onSaveName={handleSaveName}
+      onGenerateWithAi={() => { setError(''); setAiExistingOptions([...options]); setStep('ai-suggest'); }}
+    />
+  );
+
+  if (step === 'ai-suggest') return (
+    <AiSuggestStep
+      sessionName={customName.trim() || sessionName || 'Без названия'}
+      existingOptions={aiExistingOptions}
+      onBack={() => {
+        setError('');
+        setStep(aiExistingOptions.length > 0 ? 'options' : 'home');
+      }}
+      onConfirm={aiExistingOptions.length > 0 ? handleAiConfirmFillTheRest : handleAiConfirmBlankCanvas}
     />
   );
 

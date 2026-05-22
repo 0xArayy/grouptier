@@ -142,6 +142,19 @@ export async function deleteSavedPoll(id: string): Promise<void> {
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
 }
 
+export async function generateAiOptions(
+  name: string,
+  existingOptions?: string[],
+): Promise<{ options: string[] }> {
+  const res = await fetch(`${BASE}/ai/generate-options`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
+    body: JSON.stringify({ name, ...(existingOptions?.length ? { existingOptions } : {}) }),
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
 export async function submitResults(sessionId: string, rankedList: string[]) {
   const res = await fetch(`${BASE}/sessions/${sessionId}/results`, {
     method: 'POST',

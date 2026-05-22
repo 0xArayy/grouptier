@@ -27,6 +27,7 @@ interface Props {
   onStartVoting: () => void;
   onSaveTemplate: () => void;
   onSaveName: () => void;
+  onGenerateWithAi?: () => void;
 }
 
 export function OptionsStep({
@@ -35,6 +36,7 @@ export function OptionsStep({
   savedId, showSaveForm, setShowSaveForm, saveEmoji, setSaveEmoji,
   saving, saveSuccess,
   onBack, onAddOption, onRemoveOption, onStartVoting, onSaveTemplate, onSaveName,
+  onGenerateWithAi,
 }: Props) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const primaryBtn: React.CSSProperties = {
@@ -148,6 +150,19 @@ export function OptionsStep({
               </div>
             ))}
           </div>
+        )}
+
+        {options.length < 4 && onGenerateWithAi && (
+          <button
+            onClick={onGenerateWithAi}
+            disabled={busy}
+            style={{
+              background: 'none', border: 'none', padding: '0 0 12px 0',
+              color: 'var(--accent)', fontSize: 13, fontWeight: 600,
+              cursor: busy ? 'not-allowed' : 'pointer', textAlign: 'left',
+              opacity: busy ? 0.5 : 1,
+            }}
+          >✨ Предложить варианты</button>
         )}
 
         {options.length < 32 && (

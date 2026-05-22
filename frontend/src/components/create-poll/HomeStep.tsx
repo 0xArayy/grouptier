@@ -10,12 +10,13 @@ interface Props {
   onNavigateMyPolls: () => void;
   onNavigatePresets: () => void;
   onCreate: () => void;
+  onGenerateWithAi: () => void;
 }
 
 export function HomeStep({
   customName, setCustomName, error, busy,
   savedPolls, savedPollsLoading,
-  onNavigateMyPolls, onNavigatePresets, onCreate,
+  onNavigateMyPolls, onNavigatePresets, onCreate, onGenerateWithAi,
 }: Props) {
   const primaryBtn: React.CSSProperties = {
     width: '100%',
@@ -103,14 +104,29 @@ export function HomeStep({
         autoFocus
       />
       {error && <div style={{ color: 'var(--accent)', fontSize: 13, marginTop: 8 }}>{error}</div>}
-      <div style={{ marginTop: 10 }}>
+      <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
         <button
           style={{
             ...primaryBtn,
             background: 'var(--surface)',
             color: 'var(--text)',
             boxShadow: 'none',
+            opacity: (busy || !customName.trim()) ? 0.5 : 1,
+          }}
+          disabled={busy || !customName.trim()}
+          onClick={onGenerateWithAi}
+        >
+          Сгенерировать с ИИ ✨
+        </button>
+        <button
+          style={{
+            ...primaryBtn,
+            background: 'transparent',
+            color: 'var(--text-hint)',
+            boxShadow: 'none',
+            border: '1px solid var(--surface)',
             opacity: busy ? 0.5 : 1,
+            fontSize: 14,
           }}
           disabled={busy}
           onClick={onCreate}

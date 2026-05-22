@@ -6,6 +6,7 @@ import fastifyCors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import { sessionRoutes } from './routes/sessions.js';
 import { savedPollRoutes } from './routes/savedPolls.js';
+import { aiRoutes } from './routes/ai.js';
 import { pool } from './db/client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -21,6 +22,10 @@ if (!process.env.DATABASE_URL) {
 }
 if (!process.env.MINI_APP_TGLINK) {
   console.error('FATAL: MINI_APP_TGLINK environment variable is not set (e.g. https://t.me/grouptier_bot/vote).');
+  process.exit(1);
+}
+if (!process.env.GEMINI_API_KEY) {
+  console.error('FATAL: GEMINI_API_KEY is not set.');
   process.exit(1);
 }
 
@@ -62,6 +67,7 @@ fastify.get('/health', async () => ({ ok: true }));
 
 await fastify.register(sessionRoutes);
 await fastify.register(savedPollRoutes);
+await fastify.register(aiRoutes);
 
 // Serve React Mini App — only if dist exists
 const frontendDist = path.join(__dirname, '../../frontend/dist');

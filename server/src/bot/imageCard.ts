@@ -1,5 +1,22 @@
-import { createCanvas, GlobalFonts } from '@napi-rs/canvas';
+import { createCanvas, GlobalFonts, loadImage } from '@napi-rs/canvas';
 import { createRequire } from 'module';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const _dirname = dirname(fileURLToPath(import.meta.url));
+
+type LoadedImage = Awaited<ReturnType<typeof loadImage>>;
+
+// Pre-load logo PNG at module init (top-level await, ESM)
+const _logoImg: LoadedImage | null = await (async () => {
+  try {
+    const buf = readFileSync(join(_dirname, 'assets', 'logo.png'));
+    return await loadImage(buf);
+  } catch {
+    return null;
+  }
+})();
 
 const _require = createRequire(import.meta.url);
 
@@ -32,7 +49,7 @@ const CARD_GRADIENT_RED: [string, string] = ['#FF4D4D', '#FF7A52'];
 
 type Ctx = ReturnType<ReturnType<typeof createCanvas>['getContext']>;
 
-// Mini tier-bar logomark — mirrors the grouptier-g02.svg mark
+// Mini tier-bar logomark — fallback for when logo PNG is unavailable
 const LOGO_BARS = [
   { color: '#E63946', w: 1.00, label: 'S' },
   { color: '#F77F00', w: 0.82, label: 'A' },
@@ -40,26 +57,34 @@ const LOGO_BARS = [
   { color: '#90BE6D', w: 0.46, label: 'C' },
 ];
 
-function drawLogoMark(ctx: Ctx, rightX: number, topY: number, opacity = 1) {
-  const barH = 10;
-  const gap = 2.5;
-  const maxW = 46;
+const LOGO_SIZE = 72; // rendered size on card (px)
 
+function drawLogoMark(ctx: Ctx, rightX: number, topY: number, opacity = 1) {
   ctx.save();
   ctx.globalAlpha = opacity;
-  for (let i = 0; i < LOGO_BARS.length; i++) {
-    const { color, w, label } = LOGO_BARS[i];
-    const barW = maxW * w;
-    const barX = rightX - maxW; // left-aligned within the fixed-width column
-    const barY = topY + i * (barH + gap);
 
-    ctx.fillStyle = color;
-    ctx.fillRect(barX, barY, barW, barH);
-
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.font = `${barH - 1}px MontserratBold`;
-    ctx.fillText(label, barX + 3, barY + barH - 1.5);
+  if (_logoImg) {
+    // screen blend: black logo background disappears, colored bars/text blend through
+    ctx.globalCompositeOperation = 'screen';
+    ctx.drawImage(_logoImg, rightX - LOGO_SIZE, topY, LOGO_SIZE, LOGO_SIZE);
+  } else {
+    // Programmatic fallback
+    const barH = 10;
+    const gap = 2.5;
+    const maxW = 46;
+    for (let i = 0; i < LOGO_BARS.length; i++) {
+      const { color, w, label } = LOGO_BARS[i];
+      const barW = maxW * w;
+      const barX = rightX - maxW;
+      const barY = topY + i * (barH + gap);
+      ctx.fillStyle = color;
+      ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.font = `${barH - 1}px MontserratBold`;
+      ctx.fillText(label, barX + 3, barY + barH - 1.5);
+    }
   }
+
   ctx.restore();
 }
 

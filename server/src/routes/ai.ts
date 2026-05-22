@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { initDataMiddleware } from '../middleware/initData.js';
 
 const MAX_OPTION_LENGTH = 100;
-const GEMINI_MODEL = 'gemini-2.0-flash-lite';
+const GEMINI_MODEL = 'gemini-2.0-flash';
 const SYSTEM_INSTRUCTION =
   'You generate options for a GroupTier voting poll. Output ONLY a JSON array of exactly 8 strings. ' +
   'Each option max 60 chars. No duplicates. Match the language of the poll title.';

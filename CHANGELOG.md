@@ -2,6 +2,20 @@
 
 All notable changes to GroupTier are documented here.
 
+## [1.0.5.1] - 2026-05-23
+
+### Security
+- `initData.ts` — `auth_date` freshness now validated: initData older than 24 hours is rejected with 401 per Telegram docs. Previously captured initData tokens were permanent credentials.
+- `savedPolls.ts` — individual option content validated on `POST /api/saved-polls` and `PUT /api/saved-polls/:id`: each option must be a non-empty string ≤ 100 characters. Previously oversized strings could be stored in the JSONB column without limit.
+- `bot.ts` — session names in legacy `/startsession` command are now passed through `escapeMarkdown()` before insertion into `parse_mode:'Markdown'` messages. Names containing `_` or `*` no longer break Telegram formatting.
+
+### Fixed
+- `GET /api/sessions/:id/options` now returns 404 for unknown session IDs instead of an empty array. Callers can now distinguish "session has no options" from "session doesn't exist".
+- `@keyframes gtPulse` added to `frontend/src/index.css` — the "someone is editing" pulse animation in `OptionsStep` and `LiveResults` was rendering static (keyframe was referenced but never defined).
+
+### Tests
+- New test: `GET /api/sessions/:id/options` returns 404 for unknown session (248 tests total).
+
 ## [1.0.5.0] - 2026-05-20
 
 ### Added

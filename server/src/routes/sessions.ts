@@ -204,6 +204,10 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     { preHandler: initDataMiddleware },
     async (request, reply) => {
       const { id } = request.params;
+      const sessionRes = await pool.query('SELECT 1 FROM sessions WHERE id = $1', [id]);
+      if (sessionRes.rows.length === 0) {
+        return reply.status(404).send({ error: 'Session not found' });
+      }
       const res = await pool.query(
         'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
         [id],

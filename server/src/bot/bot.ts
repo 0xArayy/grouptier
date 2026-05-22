@@ -7,6 +7,10 @@ import { buildSetupCard, buildVotingCard, buildWinnerCard } from './cards.js';
 
 const MAX_OPTIONS = 32;
 
+function escapeMarkdown(s: string): string {
+  return s.replace(/[_*`[]/g, '\\$&');
+}
+
 export const bot = new Bot(process.env.BOT_TOKEN ?? '');
 
 bot.catch((err) => {
@@ -65,7 +69,7 @@ bot.command('startsession', async (ctx) => {
   const sessionId: string = res.rows[0].id;
 
   await ctx.reply(
-    `📋 New session: *${name}*\n\nAdd options with /addoption <text>. Up to 32 options.\nAdmin starts voting with /vote.\n\nSession ID: \`${sessionId}\``,
+    `📋 New session: *${escapeMarkdown(name)}*\n\nAdd options with /addoption <text>. Up to 32 options.\nAdmin starts voting with /vote.\n\nSession ID: \`${sessionId}\``,
     { parse_mode: 'Markdown' },
   );
 });

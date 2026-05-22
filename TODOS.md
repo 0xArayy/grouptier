@@ -26,8 +26,7 @@ Currently mixed: `{ error, id }` for 409 session conflict, bare string for other
 ### [test-mocks] Migrate sessions.test.ts from positional to query-text mocks
 74 tests chain `mockResolvedValueOnce` by position — fragile when query order changes. Consider matching by SQL substring to decouple test assertions from query ordering.
 
-### [options-unknown-session] GET /api/sessions/:id/options returns [] for unknown session
-Should return 404 instead of empty array so callers can distinguish "no options" from "no session".
+### ~~[options-unknown-session]~~ ✅ Done — GET `/api/sessions/:id/options` now returns 404 for unknown session
 
 ### [shared-constants] Export MAX_NAME_LENGTH / MAX_OPTION_TEXT_LENGTH from shared lib
 Currently defined only in sessions.ts; frontend has no corresponding constant. Extract to a shared constants file so a limit change propagates everywhere.
@@ -38,23 +37,19 @@ Currently defined only in sessions.ts; frontend has no corresponding constant. E
 ### [auth-ownership-checks] Add ownership checks to session mutation endpoints
 `POST /close`, `PATCH /:id` (rename), `POST /:id/vote` have no chat_id/creator guard — any authenticated user who knows a session UUID can close or rename another group's session. `POST /vote` also bypasses the check when telegramChat is null (URL-button launches).
 
-### [auth-date-expiry] Validate auth_date in Telegram initData
-HMAC is verified but `auth_date` is never checked. Captured initData is a permanent API credential. Should reject initData older than 24h per Telegram docs.
+### ~~[auth-date-expiry]~~ ✅ Done — `auth_date` freshness check (24h window) added to `initData.ts`
 
 ### [options-race] Fix TOCTOU race in POST /options count check
 Count check and insert are non-atomic — two concurrent requests at 31/32 options both pass the guard and yield 33. Needs a DB-level CHECK constraint or a SELECT...FOR UPDATE lock.
 
-### [markdown-injection] Escape user content in bot Markdown messages
-`session.name` and option text are inserted raw into `parse_mode: 'Markdown'` messages. Underscores trigger italic, asterisks break bold spans. Apply `escapeMarkdown()` to all user-provided strings in bot announcements.
+### ~~[markdown-injection]~~ ✅ Done — `escapeMarkdown()` added to `bot.ts`, applied in `/startsession` legacy command
 
 ### [tier-assertions] Add S/A/B/C tier assertions to tournament tests
 All full-run tests (N=4, N=8, N=6) verify list length and uniqueness but never check which tier each option received. An `assignTier` regression would pass undetected. Add assertions like `expect(eliminated.find(e => e.option === loser).tier).toBe('B')` for each full-run test.
 
-### [gtPulse-undefined] Define @keyframes gtPulse in index.css
-`OptionsStep.tsx:113` and `LiveResults.tsx:280` use `animation: 'gtPulse 1.2s infinite'` but `@keyframes gtPulse` is never defined anywhere in CSS. Elements render static. Add `@keyframes gtPulse { 0%,100% { opacity:1 } 50% { opacity:0.3 } }` to `frontend/src/index.css`.
+### ~~[gtPulse-undefined]~~ ✅ Done — `@keyframes gtPulse` added to `frontend/src/index.css`
 
-### [saved-polls-item-validation] Validate individual option items in saved-polls API
-`POST /api/saved-polls` and `PUT /api/saved-polls/:id` check `options.length` (2–32) but never validate individual items: each option should be a non-empty string ≤ 100 characters. Currently an attacker can store 32 options of arbitrary length in the JSONB column. Add `options.every(o => typeof o === 'string' && o.trim().length > 0 && o.length <= 100)` on both routes.
+### ~~[saved-polls-item-validation]~~ ✅ Done — individual option validation added to POST and PUT in `savedPolls.ts`
 
 ---
 

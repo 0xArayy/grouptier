@@ -40,6 +40,11 @@ function validateInitData(initData: string, botToken: string): ValidatedInitData
 
   if (expectedHash !== hash) return null;
 
+  const authDate = params.get('auth_date');
+  if (!authDate) return null;
+  const authTimestamp = parseInt(authDate, 10);
+  if (isNaN(authTimestamp) || Math.floor(Date.now() / 1000) - authTimestamp > 86400) return null;
+
   const userRaw = params.get('user');
   if (!userRaw) return null;
 

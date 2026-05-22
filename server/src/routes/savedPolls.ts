@@ -47,6 +47,9 @@ export async function savedPollRoutes(fastify: FastifyInstance) {
       if (options.length > 32) {
         return reply.status(400).send({ error: 'Max 32 options allowed' });
       }
+      if (!options.every(o => typeof o === 'string' && o.trim().length > 0 && o.length <= 100)) {
+        return reply.status(400).send({ error: 'Each option must be a non-empty string of 100 characters or fewer' });
+      }
 
       const res = await pool.query<{ id: string }>(
         `INSERT INTO saved_polls (user_id, name, options, emoji)
@@ -79,6 +82,9 @@ export async function savedPollRoutes(fastify: FastifyInstance) {
         }
         if (options.length > 32) {
           return reply.status(400).send({ error: 'Max 32 options allowed' });
+        }
+        if (!options.every(o => typeof o === 'string' && o.trim().length > 0 && o.length <= 100)) {
+          return reply.status(400).send({ error: 'Each option must be a non-empty string of 100 characters or fewer' });
         }
       }
 

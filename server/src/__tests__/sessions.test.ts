@@ -511,6 +511,7 @@ describe('GET /api/sessions/:id/options', () => {
   });
 
   it('returns options list', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{}] }); // session exists
     mockQuery.mockResolvedValueOnce({ rows: [{ text: 'Pizza' }, { text: 'Sushi' }] });
 
     const res = await app.inject({
@@ -521,6 +522,18 @@ describe('GET /api/sessions/:id/options', () => {
 
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).options).toEqual(['Pizza', 'Sushi']);
+  });
+
+  it('returns 404 for unknown session', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] }); // session not found
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/sessions/${SESSION_ID}/options`,
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(404);
   });
 });
 

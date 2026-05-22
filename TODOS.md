@@ -5,11 +5,9 @@
 ### [canvas-worker] Offload PNG card generation to worker_threads
 `generateVotingCard`, `generateSetupCard`, and `generateWinnerCard` in `imageCard.ts` call `canvas.toBuffer('image/png')` synchronously, blocking Node's event loop for ~5–30ms per card. Acceptable for single-group scale but will cause request queuing under multi-group load. Fix: use `piscina` or a manual `worker_threads` pool to keep the main thread free.
 
-### [rate-limiting] Rate limiting on voting endpoints
-Telegram bots are public surfaces — no rate limit means anyone with valid initData can hammer the tournament logic. Needs infrastructure decision (Redis token bucket or Fastify rate-limit plugin).
+### ~~[rate-limiting]~~ ✅ Done — `@fastify/rate-limit` added (100 req/min global, 3 req/min AI endpoint), key by IP
 
-### [cors-lockdown] Restrict CORS to production domain
-Currently `origin: true` (all origins). Lock down to `MINI_APP_TGLINK` domain once that's finalized.
+### ~~[cors-lockdown]~~ ✅ Done — CORS locked to `ALLOWED_ORIGIN` env var in production; warns if unset
 
 ### [css-modules] Migrate inline styles to CSS modules
 Every component uses `style={...}` objects. Large surface area — separate PR after code-health cleanup lands.
@@ -28,24 +26,19 @@ Currently mixed: `{ error, id }` for 409 session conflict, bare string for other
 
 ### ~~[options-unknown-session]~~ ✅ Done — GET `/api/sessions/:id/options` now returns 404 for unknown session
 
-### [shared-constants] Export MAX_NAME_LENGTH / MAX_OPTION_TEXT_LENGTH from shared lib
-Currently defined only in sessions.ts; frontend has no corresponding constant. Extract to a shared constants file so a limit change propagates everywhere.
+### ~~[shared-constants]~~ ✅ Done — `server/src/lib/constants.ts` exports `MAX_NAME_LENGTH`, `MAX_OPTION_TEXT_LENGTH`, `MAX_OPTIONS`; used in sessions.ts and savedPolls.ts
 
-### [bot-legacy-cleanup] Delete legacy bot commands
-/startsession, /addoption, /vote, /closesession are superseded by /newpoll + Mini App flow. Commented in code-health PR, deletion deferred.
+### ~~[bot-legacy-cleanup]~~ ✅ Done — `/startsession`, `/addoption`, `/vote`, `/closesession` and `escapeMarkdown` deleted from `bot.ts`
 
-### [auth-ownership-checks] Add ownership checks to session mutation endpoints
-`POST /close`, `PATCH /:id` (rename), `POST /:id/vote` have no chat_id/creator guard — any authenticated user who knows a session UUID can close or rename another group's session. `POST /vote` also bypasses the check when telegramChat is null (URL-button launches).
+### ~~[auth-ownership-checks]~~ ✅ Done — `creator_user_id` stored at session creation; PATCH, DELETE, POST /close, PUT /options, POST /options all 403 on non-creator
 
 ### ~~[auth-date-expiry]~~ ✅ Done — `auth_date` freshness check (24h window) added to `initData.ts`
 
-### [options-race] Fix TOCTOU race in POST /options count check
-Count check and insert are non-atomic — two concurrent requests at 31/32 options both pass the guard and yield 33. Needs a DB-level CHECK constraint or a SELECT...FOR UPDATE lock.
+### ~~[options-race]~~ ✅ Done — `POST /options` count check wrapped in `BEGIN … SELECT … FOR UPDATE … INSERT … COMMIT` transaction; concurrent inserts serialized at DB level
 
 ### ~~[markdown-injection]~~ ✅ Done — `escapeMarkdown()` added to `bot.ts`, applied in `/startsession` legacy command
 
-### [tier-assertions] Add S/A/B/C tier assertions to tournament tests
-All full-run tests (N=4, N=8, N=6) verify list length and uniqueness but never check which tier each option received. An `assignTier` regression would pass undetected. Add assertions like `expect(eliminated.find(e => e.option === loser).tier).toBe('B')` for each full-run test.
+### ~~[tier-assertions]~~ ✅ Done — S/A/B/C tier count assertions added to N=4, N=6, N=8, N=12, N=32 full-run tests in `tournament.test.ts`
 
 ### ~~[gtPulse-undefined]~~ ✅ Done — `@keyframes gtPulse` added to `frontend/src/index.css`
 

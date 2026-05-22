@@ -2,6 +2,27 @@
 
 All notable changes to GroupTier are documented here.
 
+## [1.0.5.2] - 2026-05-23
+
+### Security
+- `index.ts` — rate limiting added via `@fastify/rate-limit`: 100 req/min global (keyed by IP), 3 req/min on `POST /api/ai/generate-options`. Rate-limit key is IP-only; never derived from unvalidated `x-init-data` header.
+- `index.ts` — CORS restricted to `ALLOWED_ORIGIN` env var in production; server warns on startup when unset. Previously `origin: true` allowed any origin.
+- `sessions.ts` — `creator_user_id` ownership checks added to all session mutation endpoints: `PATCH /:id`, `DELETE /:id`, `POST /:id/close`, `POST /:id/options`, `PUT /:id/options`. Non-creators receive 403. Sessions without a `creator_user_id` (legacy rows) are exempt.
+- `sessions.ts` — `POST /options` option-count check and insert wrapped in a `BEGIN … SELECT … FOR UPDATE … INSERT … COMMIT` transaction to eliminate TOCTOU race. Previously two concurrent requests at 31/32 options could both pass the count guard and yield 33 options.
+- `sessions.ts` — `PATCH /:id` UPDATE query restored `AND status = 'collecting'` guard that was silently dropped when the endpoint was refactored from a single atomic UPDATE to a SELECT + UPDATE pattern.
+- `schema.sql` — `creator_user_id BIGINT` column added (idempotent `ALTER TABLE … ADD COLUMN IF NOT EXISTS`); indexes on `options(session_id)` and `user_results(session_id)` added.
+- `bot.ts` — `creator_user_id` now stored at session creation via `/newpoll` command (`ctx.from?.id ?? null`).
+
+### Removed
+- `bot.ts` — legacy bot commands `/startsession`, `/addoption`, `/vote`, `/closesession` and helper `escapeMarkdown` deleted; all superseded by `/newpoll` + Mini App flow.
+
+### Refactored
+- `lib/constants.ts` — new shared constants file exports `MAX_NAME_LENGTH` (100), `MAX_OPTION_TEXT_LENGTH` (100), `MAX_OPTIONS` (32); imported by `sessions.ts` and `savedPolls.ts` to replace scattered magic numbers.
+
+### Tests
+- `sessions.test.ts` — 4 new 403 tests covering ownership checks on PATCH, DELETE, POST /close, PUT /options; `POST /options` tests updated to mock `pool.connect()` transaction pattern (252 tests total).
+- `tournament.test.ts` — S/A/B/C tier count assertions added to N=4, N=6, N=8, N=12, N=32 full-run tests.
+
 ## [1.0.5.1] - 2026-05-23
 
 ### Security

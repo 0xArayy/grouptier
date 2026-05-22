@@ -4,15 +4,7 @@ import type { FastifyInstance } from 'fastify';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
-const mockGenerateContent = vi.hoisted(() => vi.fn());
-
-vi.mock('@google/generative-ai', () => ({
-  GoogleGenerativeAI: class {
-    getGenerativeModel() {
-      return { generateContent: mockGenerateContent };
-    }
-  },
-}));
+const mockFetch = vi.fn();
 
 let mockRejectAuth = false;
 vi.mock('../middleware/initData.js', () => ({
@@ -28,8 +20,11 @@ vi.mock('../middleware/initData.js', () => ({
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function geminiReturns(text: string) {
-  mockGenerateContent.mockResolvedValue({ response: { text: () => text } });
+function groqReturns(content: string) {
+  mockFetch.mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve({ choices: [{ message: { content } }] }),
+  });
 }
 
 async function buildApp(): Promise<FastifyInstance> {
@@ -47,8 +42,9 @@ describe('POST /api/ai/generate-options', () => {
 
   beforeEach(async () => {
     vi.resetAllMocks();
+    vi.stubGlobal('fetch', mockFetch);
     mockRejectAuth = false;
-    mockGenerateContent.mockResolvedValue({ response: { text: () => '[]' } });
+    groqReturns('[]');
     app = await buildApp();
   });
 
@@ -69,30 +65,29 @@ describe('POST /api/ai/generate-options', () => {
   });
 
   it('returns options for a valid clean JSON response', async () => {
-    geminiReturns('["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin"]');
+    groqReturns('["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin"]');
     const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Top languages' } });
     expect(res.statusCode).toBe(200);
-    const body = res.json();
-    expect(body.options).toHaveLength(8);
-    expect(body.options[0]).toBe('Python');
+    expect(res.json().options).toHaveLength(8);
+    expect(res.json().options[0]).toBe('Python');
   });
 
   it('extracts options from fenced JSON (```json ... ```)', async () => {
-    geminiReturns('```json\n["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin"]\n```');
+    groqReturns('```json\n["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin"]\n```');
     const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Top languages' } });
     expect(res.statusCode).toBe(200);
     expect(res.json().options).toHaveLength(8);
   });
 
-  it('extracts options when Gemini adds a preamble sentence', async () => {
-    geminiReturns('Here are 8 options:\n["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin"]');
+  it('extracts options when model adds a preamble sentence', async () => {
+    groqReturns('Here are 8 options:\n["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin"]');
     const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Top languages' } });
     expect(res.statusCode).toBe(200);
     expect(res.json().options).toHaveLength(8);
   });
 
   it('filters out existingOptions case-insensitively', async () => {
-    geminiReturns('["python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin"]');
+    groqReturns('["python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin"]');
     const res = await app.inject({
       method: 'POST', url: '/api/ai/generate-options',
       payload: { name: 'Top languages', existingOptions: ['Python', 'JAVASCRIPT'] },
@@ -106,31 +101,30 @@ describe('POST /api/ai/generate-options', () => {
 
   it('trims options longer than 100 characters', async () => {
     const longOption = 'A'.repeat(120);
-    geminiReturns(`["${longOption}","B","C","D","E","F","G","H"]`);
+    groqReturns(`["${longOption}","B","C","D","E","F","G","H"]`);
     const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Test' } });
     expect(res.statusCode).toBe(200);
-    const options: string[] = res.json().options;
-    expect(options[0].length).toBe(100);
+    expect((res.json().options as string[])[0].length).toBe(100);
   });
 
   it('retries once on invalid JSON and succeeds on second attempt', async () => {
-    mockGenerateContent
-      .mockResolvedValueOnce({ response: { text: () => 'not valid json at all' } })
-      .mockResolvedValueOnce({ response: { text: () => '["A","B","C","D","E","F","G","H"]' } });
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ choices: [{ message: { content: 'not json' } }] }) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ choices: [{ message: { content: '["A","B","C","D","E","F","G","H"]' } }] }) });
     const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Test' } });
     expect(res.statusCode).toBe(200);
-    expect(mockGenerateContent).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
   it('returns 502 after two failed parse attempts', async () => {
-    geminiReturns('not json at all');
+    groqReturns('not json at all');
     const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Test' } });
     expect(res.statusCode).toBe(502);
-    expect(mockGenerateContent).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
   it('returns fewer than 8 options when all are filtered by existingOptions', async () => {
-    geminiReturns('["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin"]');
+    groqReturns('["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin"]');
     const res = await app.inject({
       method: 'POST', url: '/api/ai/generate-options',
       payload: { name: 'Test', existingOptions: ['Python','JavaScript','Java','C++','Go','Rust'] },

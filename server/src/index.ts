@@ -24,8 +24,8 @@ if (!process.env.MINI_APP_TGLINK) {
   console.error('FATAL: MINI_APP_TGLINK environment variable is not set (e.g. https://t.me/grouptier_bot/vote).');
   process.exit(1);
 }
-if (!process.env.GEMINI_API_KEY) {
-  console.error('FATAL: GEMINI_API_KEY is not set.');
+if (!process.env.GROQ_API_KEY) {
+  console.error('FATAL: GROQ_API_KEY is not set.');
   process.exit(1);
 }
 

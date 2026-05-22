@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { initDataMiddleware } from '../middleware/initData.js';
 
 const MAX_OPTION_LENGTH = 100;
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const SYSTEM_INSTRUCTION =
   'You generate options for a GroupTier voting poll. Output ONLY a JSON array of exactly 8 strings. ' +
   'Each option max 60 chars. No duplicates. Match the language of the poll title.';
@@ -20,14 +20,26 @@ function parseOptions(text: string, existingLower: Set<string>): string[] {
     .filter(o => o.length > 0 && !existingLower.has(o.toLowerCase()));
 }
 
-export async function aiRoutes(fastify: FastifyInstance) {
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-  const gemini = genAI.getGenerativeModel({
-    model: GEMINI_MODEL,
-    systemInstruction: SYSTEM_INSTRUCTION,
-    generationConfig: { temperature: 0.8, maxOutputTokens: 400 },
+async function callGroq(prompt: string, apiKey: string): Promise<string> {
+  const res = await fetch(GROQ_URL, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [
+        { role: 'system', content: SYSTEM_INSTRUCTION },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.8,
+      max_tokens: 400,
+    }),
   });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  const data = await res.json() as { choices: { message: { content: string } }[] };
+  return data.choices[0].message.content;
+}
 
+export async function aiRoutes(fastify: FastifyInstance) {
   fastify.post<{ Body: { name?: string; existingOptions?: unknown } }>(
     '/api/ai/generate-options',
     { preHandler: initDataMiddleware },
@@ -45,8 +57,8 @@ export async function aiRoutes(fastify: FastifyInstance) {
         : `Poll: "${name}". Generate 8 options.`;
 
       for (let attempt = 0; attempt < 2; attempt++) {
-        const result = await gemini.generateContent(prompt);
-        const options = parseOptions(result.response.text(), existingLower);
+        const text = await callGroq(prompt, process.env.GROQ_API_KEY!);
+        const options = parseOptions(text, existingLower);
         if (options.length > 0) return reply.send({ options });
       }
 

@@ -1,18 +1,19 @@
 import { createCanvas, GlobalFonts, loadImage } from '@napi-rs/canvas';
 import { createRequire } from 'module';
-import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const _dirname = dirname(fileURLToPath(import.meta.url));
 
-type LoadedImage = Awaited<ReturnType<typeof loadImage>>;
+// Load logo PNG at module init. The logo has a dark background; we use 'screen'
+// blend mode when drawing it so the dark background becomes transparent on
+// any gradient card while the colored bars and text glow through cleanly.
+const LOGO_SIZE = 160; // rendered size on the card (px)
 
-// Pre-load logo PNG at module init (top-level await, ESM)
+type LoadedImage = Awaited<ReturnType<typeof loadImage>>;
 const _logoImg: LoadedImage | null = await (async () => {
   try {
-    const buf = readFileSync(join(_dirname, 'assets', 'logo.png'));
-    return await loadImage(buf);
+    return await loadImage(join(_dirname, 'assets', 'logo.png'));
   } catch {
     return null;
   }
@@ -49,7 +50,7 @@ const CARD_GRADIENT_RED: [string, string] = ['#FF4D4D', '#FF7A52'];
 
 type Ctx = ReturnType<ReturnType<typeof createCanvas>['getContext']>;
 
-// Mini tier-bar logomark — fallback for when logo PNG is unavailable
+// Mini tier-bar logomark — programmatic fallback only
 const LOGO_BARS = [
   { color: '#E63946', w: 1.00, label: 'S' },
   { color: '#F77F00', w: 0.82, label: 'A' },
@@ -57,14 +58,13 @@ const LOGO_BARS = [
   { color: '#90BE6D', w: 0.46, label: 'C' },
 ];
 
-const LOGO_SIZE = 72; // rendered size on card (px)
-
 function drawLogoMark(ctx: Ctx, rightX: number, topY: number, opacity = 1) {
   ctx.save();
   ctx.globalAlpha = opacity;
 
   if (_logoImg) {
-    // screen blend: black logo background disappears, colored bars/text blend through
+    // 'screen' blend: dark background pixels become invisible on any light gradient;
+    // colored bars and white text shine through cleanly.
     ctx.globalCompositeOperation = 'screen';
     ctx.drawImage(_logoImg, rightX - LOGO_SIZE, topY, LOGO_SIZE, LOGO_SIZE);
   } else {
@@ -134,21 +134,24 @@ function timeLabel(optionCount: number): string {
     : `~${Math.round(secs / 60)} мин`;
 }
 
+// Max text width leaving room for the 120px logo + gap in the right column
+const TEXT_MAX_W = W - PAD - LOGO_SIZE - 16;
+
 export function generateVotingCard(name: string, optionCount: number): Buffer {
   ensureFonts();
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext('2d');
   drawBase(ctx, ...CARD_GRADIENT_RED);
-  drawLogoMark(ctx, W - PAD, 18, 0.88);
+  drawLogoMark(ctx, W - PAD, (H - LOGO_SIZE) / 2, 0.92);
 
   // "GROUPTIER · TOURNAMENT" label
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   ctx.font = '13px MontserratBold';
   ctx.fillText(BRAND_LABEL, PAD, PAD + 2);
 
-  // Poll name — auto-shrinks if too long
+  // Poll name — auto-shrinks if too long, respects logo column
   const display = name.toUpperCase();
-  const sz = fitText(ctx, display, W - PAD * 2, 54);
+  const sz = fitText(ctx, display, TEXT_MAX_W, 54);
   ctx.fillStyle = '#ffffff';
   ctx.fillText(display, PAD, PAD + sz + 18);
 
@@ -165,7 +168,7 @@ export function generateSetupCard(): Buffer {
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext('2d');
   drawBase(ctx, ...CARD_GRADIENT_RED);
-  drawLogoMark(ctx, W - PAD, 18, 0.88);
+  drawLogoMark(ctx, W - PAD, (H - LOGO_SIZE) / 2, 0.92);
 
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   ctx.font = '13px MontserratBold';
@@ -187,8 +190,7 @@ export function generateWinnerCard(name: string, winner: string): Buffer {
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext('2d');
   drawBase(ctx, '#FF9F40', '#FFD43A');
-  // Re-draw logomark with darker blend for golden background
-  drawLogoMark(ctx, W - PAD, 18, 0.55);
+  drawLogoMark(ctx, W - PAD, (H - LOGO_SIZE) / 2, 0.60);
 
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
   ctx.font = '13px MontserratBold';
@@ -200,7 +202,7 @@ export function generateWinnerCard(name: string, winner: string): Buffer {
   ctx.fillText(shortName.toUpperCase(), PAD, 72);
 
   const display = winner.toUpperCase();
-  const sz = fitText(ctx, display, W - PAD * 2, 54);
+  const sz = fitText(ctx, display, TEXT_MAX_W, 54);
   ctx.fillStyle = '#5a4400';
   ctx.fillText(display, PAD, 72 + sz + 14);
 

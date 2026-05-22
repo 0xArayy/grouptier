@@ -6,17 +6,23 @@
  *   Text     — Montserrat 400        (subtitle, small session name)
  *   Mono     — JetBrains Mono 400    (header, labels, badges; full Cyrillic)
  *   Bebas    — Bebas Neue 400        (tier S/A/B/C labels only — ASCII-only font)
+ *
+ * Quality improvements (v3):
+ *   • 2× supersampling — draw at 1440×480, downscale via drawImage → sharp edges
+ *   • safeTextWidth() — max(measured, char-count estimate) guards Cyrillic overflow
+ *   • Real TextMetrics — actualBoundingBoxAscent/Descent for pixel-perfect centering
  */
 
-import { createCanvas, GlobalFonts } from '@napi-rs/canvas';
+import { createCanvas, GlobalFonts, type Canvas } from '@napi-rs/canvas';
 import { createRequire } from 'module';
 
 const _require = createRequire(import.meta.url);
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
-const W   = 720;
-const H   = 240;
-const PAD = 28;
+const W     = 720;
+const H     = 240;
+const PAD   = 28;
+const SCALE = 2;   // supersampling factor
 
 const BG         = '#111111';
 const FG         = '#ffffff';
@@ -38,7 +44,7 @@ const BARS = [
 const TIER_BLOCK_W = 160;
 const BAR_H        = 24;
 const BAR_GAP      = 4.8;
-const TIER_TOTAL_H = BARS.length * BAR_H + (BARS.length - 1) * BAR_GAP;  // ≈ 110 px
+const TIER_TOTAL_H = BARS.length * BAR_H + (BARS.length - 1) * BAR_GAP;
 
 // Left column width (W minus padding minus tier block minus gap)
 const LEFT_W = W - PAD * 2 - TIER_BLOCK_W - 16;   // 488 px
@@ -51,15 +57,34 @@ function ensureFonts() {
   if (_fontsReady) return;
   _fontsReady = true;
   const list: [string, string][] = [
-    ['@expo-google-fonts/montserrat/900Black/Montserrat_900Black.ttf',              'Display'],
-    ['@expo-google-fonts/montserrat/400Regular/Montserrat_400Regular.ttf',          'Text'],
-    ['@expo-google-fonts/jetbrains-mono/400Regular/JetBrainsMono_400Regular.ttf',  'Mono'],
-    ['@expo-google-fonts/bebas-neue/400Regular/BebasNeue_400Regular.ttf',          'Bebas'],
+    ['@expo-google-fonts/montserrat/900Black/Montserrat_900Black.ttf',             'Display'],
+    ['@expo-google-fonts/montserrat/400Regular/Montserrat_400Regular.ttf',         'Text'],
+    ['@expo-google-fonts/jetbrains-mono/400Regular/JetBrainsMono_400Regular.ttf', 'Mono'],
+    ['@expo-google-fonts/bebas-neue/400Regular/BebasNeue_400Regular.ttf',         'Bebas'],
   ];
   for (const [pkg, name] of list) {
     try { GlobalFonts.registerFromPath(_require.resolve(pkg), name); }
     catch (err) { console.warn(`imageCard: font "${name}" failed:`, err); }
   }
+}
+
+// ── Supersampling ─────────────────────────────────────────────────────────────
+
+/** Create a 2× canvas. All drawing coordinates use original (1×) values. */
+function createHires(): { canvas: Canvas; ctx: Ctx } {
+  const canvas = createCanvas(W * SCALE, H * SCALE);
+  const ctx    = canvas.getContext('2d');
+  ctx.scale(SCALE, SCALE);
+  return { canvas, ctx };
+}
+
+/** Downscale hi-res canvas → 720×240 PNG via a second canvas drawImage pass. */
+function exportBuffer(hires: Canvas): Buffer {
+  const out    = createCanvas(W, H);
+  const outCtx = out.getContext('2d');
+  // drawImage with explicit src/dst dimensions applies bilinear downsampling
+  outCtx.drawImage(hires, 0, 0, W * SCALE, H * SCALE, 0, 0, W, H);
+  return out.toBuffer('image/png');
 }
 
 // ── Drawing helpers ───────────────────────────────────────────────────────────
@@ -121,12 +146,35 @@ function drawBadge(ctx: Ctx, text: string, bg: string): number {
   return bX;
 }
 
+// ── Text measurement helpers ──────────────────────────────────────────────────
+
+/**
+ * Safe text width: returns max(measured, character-count estimate).
+ * Guards against @napi-rs/canvas returning implausibly small values for
+ * Cyrillic text when custom fonts aren't fully loaded at measure time.
+ *
+ * Coefficient 0.56 is conservative for Montserrat Black uppercase
+ * (real average ≈ 0.60 em) — avoids false positives on short words.
+ */
+function safeTextWidth(ctx: Ctx, text: string, fontSize: number): number {
+  const measured  = ctx.measureText(text).width;
+  const estimated = text.length * fontSize * 0.56;
+  return Math.max(measured, estimated);
+}
+
 /** Auto-shrink font size so text fits maxW. Returns chosen px size. */
-function fitFont(ctx: Ctx, text: string, maxW: number, startPx: number, font: string, minPx = 22): number {
+function fitFont(
+  ctx: Ctx,
+  text: string,
+  maxW: number,
+  startPx: number,
+  font: string,
+  minPx = 22,
+): number {
   ctx.letterSpacing = '0px';
   let sz = startPx;
   ctx.font = `${sz}px ${font}`;
-  while (ctx.measureText(text).width > maxW && sz > minPx) {
+  while (safeTextWidth(ctx, text, sz) > maxW && sz > minPx) {
     sz -= 1;
     ctx.font = `${sz}px ${font}`;
   }
@@ -153,7 +201,7 @@ function layoutTitle(
   // Option A — single line
   const sz1 = fitFont(ctx, text, maxW, startPx, font, 26);
   ctx.font = `${sz1}px ${font}`;
-  const fits1 = ctx.measureText(text).width <= maxW;
+  const fits1 = safeTextWidth(ctx, text, sz1) <= maxW;
 
   // Option B — two lines (only useful with ≥ 2 words)
   const words = text.split(/\s+/);
@@ -181,7 +229,9 @@ function layoutTitle(
 
 /**
  * Draw a 1- or 2-line title block vertically centred inside [zoneTop, zoneBot].
- * ascent ≈ 0.75 sz, descent ≈ 0.18 sz, line-height advance ≈ 0.92 sz.
+ *
+ * Uses real TextMetrics (actualBoundingBoxAscent / Descent) for pixel-perfect
+ * vertical placement instead of hardcoded ascent ratio estimates.
  */
 function drawTitleBlock(
   ctx: Ctx,
@@ -194,10 +244,24 @@ function drawTitleBlock(
   letterSpacing = '-1px',
 ) {
   const { lines, fontSize: sz } = layout;
-  const LH     = Math.round(sz * 0.92);
-  const ASCENT = Math.round(sz * 0.75);
-  const DESC   = Math.round(sz * 0.18);
-  const blockH = ASCENT + (lines.length - 1) * LH + DESC;
+  const LH = Math.round(sz * 0.92);  // line advance
+
+  // Measure real ascent/descent for this font + size
+  ctx.font          = `${sz}px ${font}`;
+  ctx.letterSpacing = '0px';
+  const m      = ctx.measureText(lines[0]);
+  const ASCENT = Math.round(
+    (m.actualBoundingBoxAscent  != null && m.actualBoundingBoxAscent  > 0)
+      ? m.actualBoundingBoxAscent
+      : sz * 0.75
+  );
+  const DESC   = Math.round(
+    (m.actualBoundingBoxDescent != null && m.actualBoundingBoxDescent >= 0)
+      ? m.actualBoundingBoxDescent
+      : sz * 0.18
+  );
+
+  const blockH    = ASCENT + (lines.length - 1) * LH + DESC;
   const blockTop  = zoneTop + Math.round((zoneBot - zoneTop - blockH) / 2);
   const baseline0 = blockTop + ASCENT;
 
@@ -210,9 +274,13 @@ function drawTitleBlock(
   ctx.letterSpacing = '0px';
 }
 
+// ── Utility ───────────────────────────────────────────────────────────────────
+
 function timeLabel(n: number): string {
   const secs = Math.max((n - 1) * 13, 10);
-  return secs <= 90 ? `~${Math.round(secs / 10) * 10}с` : `~${Math.round(secs / 60)}мин`;
+  return secs <= 90
+    ? `~${Math.round(secs / 10) * 10}с`
+    : `~${Math.round(secs / 60)}мин`;
 }
 
 function variantLabel(n: number): string {
@@ -226,12 +294,11 @@ function variantLabel(n: number): string {
 // ── Card 1: New Poll ──────────────────────────────────────────────────────────
 export function generateSetupCard(): Buffer {
   ensureFonts();
-  const canvas = createCanvas(W, H);
-  const ctx    = canvas.getContext('2d');
+  const { canvas, ctx } = createHires();
   drawBg(ctx);
-  drawTierBars(ctx, -1);  // no highlight
+  drawTierBars(ctx, -1);
 
-  // Header line
+  // Header
   ctx.fillStyle     = MUTED_DEEP;
   ctx.font          = '13px Mono';
   ctx.letterSpacing = '2.9px';
@@ -240,12 +307,12 @@ export function generateSetupCard(): Buffer {
 
   // "НОВЫЙ / ОПРОС" — two-line Montserrat Black 64px
   const SZ   = 64;
-  const LINE = Math.round(SZ * 0.92);  // ≈ 59
+  const LINE = Math.round(SZ * 0.92);
   ctx.fillStyle     = FG;
   ctx.font          = `${SZ}px Display`;
   ctx.letterSpacing = '-1.5px';
-  ctx.fillText('НОВЫЙ', PAD, 42 + 14 + SZ);          // baseline ≈ 120
-  ctx.fillText('ОПРОС', PAD, 42 + 14 + SZ + LINE);   // baseline ≈ 179
+  ctx.fillText('НОВЫЙ', PAD, 42 + 14 + SZ);
+  ctx.fillText('ОПРОС', PAD, 42 + 14 + SZ + LINE);
   ctx.letterSpacing = '0px';
 
   // Subtitle
@@ -253,14 +320,13 @@ export function generateSetupCard(): Buffer {
   ctx.font      = '16px Text';
   ctx.fillText('Настройте варианты и запустите турнир', PAD, H - PAD + 4);
 
-  return canvas.toBuffer('image/png');
+  return exportBuffer(canvas);
 }
 
 // ── Card 2: Active / Voting ───────────────────────────────────────────────────
 export function generateVotingCard(name: string, optionCount: number): Buffer {
   ensureFonts();
-  const canvas = createCanvas(W, H);
-  const ctx    = canvas.getContext('2d');
+  const { canvas, ctx } = createHires();
   drawBg(ctx);
   drawTierBars(ctx, 1);  // A highlighted
 
@@ -275,15 +341,14 @@ export function generateVotingCard(name: string, optionCount: number): Buffer {
   ctx.fillText('TOURNAMENT',   PAD, 57);
   ctx.letterSpacing = '0px';
 
-  // Poll name — auto-shrinks and wraps to fit within LEFT_W
-  // Zone: below two-line header (≈ y 65) and above metrics row (≈ y 190)
+  // Poll name — auto-shrinks and wraps; zone between header (≈65) and metrics (≈190)
   const display     = name.toUpperCase();
   const titleLayout = layoutTitle(ctx, display, LEFT_W, 76, 'Display');
   drawTitleBlock(ctx, titleLayout, PAD, 65, 190, FG, 'Display', '-1px');
 
   // Bottom metrics
-  const numY = H - PAD - 12;  // Montserrat Black 40px baseline ≈ 200
-  const lblY = H - PAD + 4;   // small label baseline ≈ 216
+  const numY = H - PAD - 12;  // ≈ 200
+  const lblY = H - PAD + 4;   // ≈ 216
 
   // Col 1: option count
   ctx.fillStyle = TIER_A;
@@ -319,14 +384,13 @@ export function generateVotingCard(name: string, optionCount: number): Buffer {
   ctx.fillText('НА ГОЛОС', c2x, lblY);
   ctx.letterSpacing = '0px';
 
-  return canvas.toBuffer('image/png');
+  return exportBuffer(canvas);
 }
 
 // ── Card 3: Winner / Results ──────────────────────────────────────────────────
 export function generateWinnerCard(name: string, winner: string): Buffer {
   ensureFonts();
-  const canvas = createCanvas(W, H);
-  const ctx    = canvas.getContext('2d');
+  const { canvas, ctx } = createHires();
   drawBg(ctx);
   drawTierBars(ctx, 0);  // S highlighted
 
@@ -340,7 +404,7 @@ export function generateWinnerCard(name: string, winner: string): Buffer {
   ctx.fillText('GROUPTIER  //  ИТОГИ', PAD, 42);
   ctx.letterSpacing = '0px';
 
-  // Session name — small, muted
+  // Session name — small, muted; truncate long names
   const shortName = name.length > 40 ? name.slice(0, 39) + '…' : name;
   ctx.fillStyle     = MUTED;
   ctx.font          = '16px Text';
@@ -348,9 +412,7 @@ export function generateWinnerCard(name: string, winner: string): Buffer {
   ctx.fillText(shortName.toUpperCase(), PAD, 42 + 10 + 16);  // baseline ≈ 68
   ctx.letterSpacing = '0px';
 
-  // Winner name — large gold, auto-shrinks and wraps to fit within LEFT_W
-  // Zone: below session name line (≈ y 80) and above footer (≈ y 202)
-  const footerY      = H - PAD + 4;   // ≈ 216
+  // Winner name — auto-shrinks and wraps; zone between session line (≈80) and footer (≈202)
   const display      = winner.toUpperCase();
   const winnerLayout = layoutTitle(ctx, display, LEFT_W, 88, 'Display');
   drawTitleBlock(ctx, winnerLayout, PAD, 80, 202, TIER_B, 'Display', '-2px');
@@ -359,8 +421,8 @@ export function generateWinnerCard(name: string, winner: string): Buffer {
   ctx.fillStyle     = MUTED_LBL;
   ctx.font          = '11px Mono';
   ctx.letterSpacing = '2.5px';
-  ctx.fillText('ПОБЕДИТЕЛЬ  ·  #1', PAD, footerY);
+  ctx.fillText('ПОБЕДИТЕЛЬ  ·  #1', PAD, H - PAD + 4);
   ctx.letterSpacing = '0px';
 
-  return canvas.toBuffer('image/png');
+  return exportBuffer(canvas);
 }

@@ -25,7 +25,7 @@ import { DEFAULT_SAVE_EMOJI } from '../lib/constants.ts';
 interface Props {
   onSessionReady: (sessionId: string) => void;
   onShareReady?: (sessionId: string, shareUrl: string) => void;
-  existingSession?: { id: string; name: string; options: string[] };
+  existingSession?: { id: string; name: string; options: string[]; shareUrl?: string };
 }
 
 type Step = 'home' | 'presets' | 'my-polls' | 'options' | 'starting' | 'ai-suggest';
@@ -43,6 +43,8 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
   const [removingOption, setRemovingOption] = useState<string | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(existingSession?.name ?? '');
+
+  const [shareUrl, setShareUrl] = useState<string | null>(existingSession?.shareUrl ?? null);
 
   const [savedPolls, setSavedPolls] = useState<SavedPoll[]>([]);
   const [savedPollsLoading, setSavedPollsLoading] = useState(false);
@@ -120,14 +122,15 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
         if (customName.trim()) await updateSessionName(sessionId, name);
         setSessionName(name);
       } else {
-        const { id } = await createSession(name);
-        setSessionId(id); setSessionName(name);
+        const { id, share_url } = await createSession(name);
+        setSessionId(id); setSessionName(name); setShareUrl(share_url);
       }
       setStep('options');
     } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 409 && typeof err.body.id === 'string') {
         setSessionId(err.body.id);
         setSessionName(customName.trim() || 'Без названия');
+        if (typeof err.body.share_url === 'string') setShareUrl(err.body.share_url);
         setStep('options');
       } else {
         setError(err instanceof ApiError ? err.message : String(err));
@@ -154,7 +157,7 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
       let id = sessionId;
       if (!id) {
         const res = await createSession(name);
-        id = res.id; setSessionId(id);
+        id = res.id; setSessionId(id); setShareUrl(res.share_url);
       }
       // Single atomic PUT: deletes all existing options and inserts new ones in one transaction.
       // Also updates the session name when replacing into an existing session.
@@ -164,6 +167,7 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
       if (err instanceof ApiError && err.status === 409 && typeof err.body.id === 'string') {
         setSessionId(err.body.id);
         setSessionName(name);
+        if (typeof err.body.share_url === 'string') setShareUrl(err.body.share_url);
         setStep('options');
       } else {
         setStep(prevStep);
@@ -187,8 +191,8 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
     setBusy(true); setError('');
     try {
       const name = customName.trim() || 'Без названия';
-      const { id } = await createSession(name);
-      setSessionId(id); setSessionName(name);
+      const { id, share_url } = await createSession(name);
+      setSessionId(id); setSessionName(name); setShareUrl(share_url);
       const { options: loaded } = await bulkReplaceOptions(id, selected);
       setOptions(loaded);
       setStep('options');
@@ -296,6 +300,7 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
       showSaveForm={showSaveForm} setShowSaveForm={setShowSaveForm}
       saveEmoji={saveEmoji} setSaveEmoji={setSaveEmoji}
       saving={saving} saveSuccess={saveSuccess}
+      shareUrl={shareUrl}
       onBack={() => { setError(''); setSessionId(null); setOptions([]); setStep('home'); }}
       onAddOption={handleAddOption}
       onRemoveOption={handleRemoveOption}

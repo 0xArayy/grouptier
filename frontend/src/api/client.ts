@@ -25,7 +25,7 @@ function getInitData(): string {
   return import.meta.env.DEV ? 'dev' : '';
 }
 
-export async function createSession(name: string): Promise<{ id: string }> {
+export async function createSession(name: string): Promise<{ id: string; share_url: string }> {
   const res = await fetch(`${BASE}/sessions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },

@@ -2,6 +2,19 @@
 
 All notable changes to GroupTier are documented here.
 
+## [1.0.5.3] - 2026-05-23
+
+### Fixed
+- `frontend/src/api/client.ts` — structured `ApiError` class preserves HTTP status and parsed JSON body (including `id` field from 409 responses); all fetch helpers use a shared `throwOnError()` instead of ad-hoc `if (!res.ok)` text throws.
+- `frontend/src/components/CreatePoll.tsx` — 409 "session already exists" responses now redirect to the existing session (using `err.body.id`) instead of showing a raw error string. Affects both `handleCreateCustom` and `loadOptionSet`.
+- `server/package.json` — downgraded `@fastify/rate-limit` from `^10.3.0` to `^9.1.0`; v10 requires Fastify 5.x but the server runs Fastify 4.28.1 (`FST_ERR_PLUGIN_VERSION_MISMATCH` on Railway deployment).
+
+### Tests
+- `server/src/__tests__/sessions.test.ts` — added `qMocks()` helper: SQL-substring-matching mock router that routes each `pool.query()` call to the first pending expectation whose `match` string appears in the SQL, then splices it out. Order-independent and robust to query reordering. Migrated GET /sessions/:id, POST /vote, POST /results, POST /close to use `qMocks()` instead of fragile positional `mockResolvedValueOnce` chains (252 tests, all passing).
+
+### Docs
+- `CONTRIBUTING.md` — new file covering: env setup, schema auto-init, dev bypass (`x-init-data: dev` / `dev-chatless`), test runner, `qMocks` / `mockClient` mock patterns, project structure, architecture notes (session lifecycle, auth, ownership, TOCTOU safety).
+
 ## [1.0.5.2] - 2026-05-23
 
 ### Security

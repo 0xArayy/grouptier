@@ -15,14 +15,11 @@ Every component uses `style={...}` objects. Large surface area — separate PR a
 ### [websocket] Replace polling with WebSocket for real-time results
 REST polling at 3s is acceptable but will not scale. Upgrade path: WebSocket + Redis pub/sub. Week-2 infrastructure.
 
-### [contributing] Add CONTRIBUTING.md
-No onboarding docs exist. Include: env setup, schema auto-init, dev mode bypass, test runner. Also: Telegram stub mode (`TELEGRAM_STUB=true`) so TTHW doesn't require a real bot token.
+### ~~[contributing]~~ ✅ Done — `CONTRIBUTING.md` added: env setup, dev bypass, test runner, qMocks/mockClient patterns, project structure, architecture notes
 
-### [error-envelope] Standardize API error response shape
-Currently mixed: `{ error, id }` for 409 session conflict, bare string for other 409s, `{ error }` for 400s. Adopt `{ error: string, code?: string }` everywhere and document it.
+### ~~[error-envelope]~~ ✅ Done — `ApiError` class in `frontend/src/api/client.ts` preserves status + parsed body; 409 session conflict redirects to existing session via `err.body.id`
 
-### [test-mocks] Migrate sessions.test.ts from positional to query-text mocks
-74 tests chain `mockResolvedValueOnce` by position — fragile when query order changes. Consider matching by SQL substring to decouple test assertions from query ordering.
+### ~~[test-mocks]~~ ✅ Done — `qMocks()` helper added to `sessions.test.ts`: SQL-substring-matching mock router, order-independent; GET /sessions/:id, POST /vote, POST /results, POST /close migrated
 
 ### ~~[options-unknown-session]~~ ✅ Done — GET `/api/sessions/:id/options` now returns 404 for unknown session
 

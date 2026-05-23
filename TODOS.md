@@ -2,6 +2,8 @@
 
 ## Remaining
 
+### ~~[options-pre-vote-share]~~ ✅ Done — "Поделиться" button on OptionsStep copies session link so others can add options before voting; `POST /api/sessions` now returns `share_url`; 409 catch added to AI blank-canvas path
+
 ### [canvas-worker] Offload PNG card generation to worker_threads
 `generateVotingCard`, `generateSetupCard`, and `generateWinnerCard` in `imageCard.ts` call `canvas.toBuffer('image/png')` synchronously, blocking Node's event loop for ~5–30ms per card. Acceptable for single-group scale but will cause request queuing under multi-group load. Fix: use `piscina` or a manual `worker_threads` pool to keep the main thread free.
 

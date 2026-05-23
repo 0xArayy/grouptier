@@ -2,6 +2,15 @@
 
 All notable changes to GroupTier are documented here.
 
+## [1.0.5.6] - 2026-05-23
+
+### Fixed
+- `frontend/src/App.tsx` — **Mini App blank screen / "No active session" error** for users opening the app directly from the bot without an active session. Root cause: `fetchActiveSession()` 404 was detected with `String(err).includes('404')`, which matched old plain-string errors but never matches `ApiError.message` (which is the server's `body.error` value, e.g. `"No active session"`). Fix: replaced both status-string checks in App.tsx with `err instanceof ApiError && err.status === 404/403`.
+- Same regression applied to `handleSubmit`: a 403 "session closed" response during tier-list submission was not caught and fell through to the generic error display instead of redirecting to live results.
+
+### Tests
+- `server/src/__tests__/sessions.test.ts` — strengthened `GET /api/sessions/active` 404 test to assert `body.error === 'No active session'`, with a regression comment explaining the `ApiError.message` vs status code contract.
+
 ## [1.0.5.5] - 2026-05-23
 
 ### Added

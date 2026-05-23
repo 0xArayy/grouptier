@@ -2,6 +2,11 @@
 
 All notable changes to GroupTier are documented here.
 
+## [1.0.5.4] - 2026-05-23
+
+### Refactor
+- `frontend/src/` — migrated all components from inline `style={{}}` objects to co-located CSS Modules (`*.module.css`). 11 new module files created; 11 TSX files updated. Only truly dynamic values (progress widths, tier colors from JS variables, drag ghost pixel coordinates, state-driven opacity) remain as inline styles. Static layout, spacing, typography, and color are now in CSS classes.
+
 ## [1.0.5.3] - 2026-05-23
 
 ### Fixed

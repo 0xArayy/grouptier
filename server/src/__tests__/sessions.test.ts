@@ -155,7 +155,10 @@ describe('GET /api/sessions/active', () => {
     expect(JSON.parse(res.body).id).toBe(SESSION_ID);
   });
 
-  it('returns 404 when no active session', async () => {
+  it('returns 404 with error body when no active session', async () => {
+    // Regression: frontend App.tsx used msg.includes('404') to detect this case,
+    // but ApiError.message is body.error ("No active session"), not "HTTP 404".
+    // The server must return status 404 — the frontend now checks err.status === 404.
     mockQuery.mockResolvedValueOnce({ rows: [] });
 
     const res = await app.inject({
@@ -165,6 +168,7 @@ describe('GET /api/sessions/active', () => {
     });
 
     expect(res.statusCode).toBe(404);
+    expect(JSON.parse(res.body).error).toBe('No active session');
   });
 });
 

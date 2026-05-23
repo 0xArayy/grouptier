@@ -14,6 +14,7 @@ import {
   deleteSavedPoll,
   type SavedPoll,
 } from '../api/client.ts';
+import appStyles from '../App.module.css';
 import { HomeStep } from './create-poll/HomeStep.tsx';
 import { PresetsStep, type Preset } from './create-poll/PresetsStep.tsx';
 import { MyPollsStep } from './create-poll/MyPollsStep.tsx';
@@ -319,23 +320,23 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
 
   // ── Starting ───────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', flexDirection: 'column', gap: 12, padding: '0 24px', textAlign: 'center' }}>
+    <div className={appStyles.startingScreen}>
       {startingTimedOut ? (
         <>
-          <div style={{ fontSize: 32 }}>⚠️</div>
-          <div style={{ fontSize: 16, fontWeight: 600 }}>Что-то пошло не так</div>
-          <div style={{ fontSize: 14, color: 'var(--text-hint)', lineHeight: 1.5 }}>
+          <div className={appStyles.timeoutEmoji}>⚠️</div>
+          <div className={appStyles.timeoutTitle}>Что-то пошло не так</div>
+          <div className={appStyles.timeoutText}>
             Не удалось отправить сообщение в группу. Попробуй ещё раз.
           </div>
           <button
             onClick={() => { setStartingTimedOut(false); setBusy(false); setStep('options'); setError(''); }}
-            style={{ marginTop: 8, padding: '12px 24px', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}
+            className={appStyles.timeoutBtn}
           >Вернуться к вариантам</button>
         </>
       ) : (
         <>
-          <div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid var(--surface)', borderTopColor: 'var(--accent)', animation: 'spin 0.9s linear infinite' }} />
-          <div style={{ fontSize: 16, fontWeight: 600 }}>Открываем голосование в группе…</div>
+          <div className={appStyles.startingSpinner} />
+          <div className={appStyles.startingText}>Открываем голосование в группе…</div>
         </>
       )}
     </div>

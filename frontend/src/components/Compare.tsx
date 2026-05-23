@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Matchup } from '../lib/tournament.ts';
+import styles from './Compare.module.css';
 
 interface Props {
   matchup: Matchup;
@@ -27,26 +28,24 @@ export function Compare({ matchup, currentRound, totalRounds, completedMatchups,
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <span style={styles.roundLabel}>Round {currentRound + 1} of {totalRounds}</span>
-        <div style={styles.progressBar}>
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <span className={styles.roundLabel}>Round {currentRound + 1} of {totalRounds}</span>
+        <div className={styles.progressBar}>
           <div
-            style={{
-              ...styles.progressFill,
-              width: `${(completedMatchups / totalMatchups) * 100}%`,
-            }}
+            className={styles.progressFill}
+            style={{ width: `${(completedMatchups / totalMatchups) * 100}%` }}
           />
         </div>
-        <span style={styles.progressText}>{completedMatchups}/{totalMatchups}</span>
+        <span className={styles.progressText}>{completedMatchups}/{totalMatchups}</span>
       </div>
 
-      <div style={styles.prompt}>Which do you prefer?</div>
+      <div className={styles.prompt}>Which do you prefer?</div>
 
-      <div style={styles.cards}>
+      <div className={styles.cards}>
         <button
+          className={styles.card}
           style={{
-            ...styles.card,
             opacity: picking && picking !== matchup.optionA ? 0.5 : 1,
             transform: picking === matchup.optionA ? 'scale(0.96)' : 'scale(1)',
           }}
@@ -56,11 +55,11 @@ export function Compare({ matchup, currentRound, totalRounds, completedMatchups,
           {matchup.optionA}
         </button>
 
-        <div style={styles.vs}>VS</div>
+        <div className={styles.vs}>VS</div>
 
         <button
+          className={styles.card}
           style={{
-            ...styles.card,
             opacity: picking && picking !== matchup.optionB ? 0.5 : 1,
             transform: picking === matchup.optionB ? 'scale(0.96)' : 'scale(1)',
           }}
@@ -72,94 +71,10 @@ export function Compare({ matchup, currentRound, totalRounds, completedMatchups,
       </div>
 
       {error && (
-        <div style={styles.errorToast} onClick={() => setError(null)}>
+        <div className={styles.errorToast} onClick={() => setError(null)}>
           {error}
         </div>
       )}
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: '24px 16px',
-    gap: 24,
-    flex: 1,
-  },
-  header: {
-    width: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-    alignItems: 'center',
-  },
-  roundLabel: {
-    fontSize: 13,
-    color: 'var(--text-hint)',
-    fontWeight: 500,
-  },
-  progressBar: {
-    width: '100%',
-    height: 4,
-    background: 'var(--surface)',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    background: 'var(--accent)',
-    borderRadius: 2,
-    transition: 'width 0.3s ease',
-  },
-  progressText: {
-    fontSize: 12,
-    color: 'var(--text-hint)',
-  },
-  prompt: {
-    fontSize: 20,
-    fontWeight: 600,
-    textAlign: 'center',
-  },
-  cards: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12,
-    width: '100%',
-    maxWidth: 400,
-    alignItems: 'center',
-  },
-  card: {
-    width: '100%',
-    minHeight: 'var(--tap-target-min)',
-    padding: '20px 24px',
-    background: 'var(--surface)',
-    color: 'var(--text)',
-    borderRadius: 'var(--radius)',
-    fontSize: 18,
-    fontWeight: 600,
-    textAlign: 'center',
-    transition: 'transform 0.1s ease, opacity 0.2s ease',
-    cursor: 'pointer',
-    lineHeight: 1.3,
-    boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.06), 0 2px 8px rgba(0,0,0,0.15)',
-  },
-  vs: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: 'var(--text-hint)',
-    letterSpacing: 2,
-  },
-  errorToast: {
-    background: 'var(--accent)',
-    color: '#fff',
-    padding: '12px 20px',
-    borderRadius: 'var(--radius)',
-    fontSize: 14,
-    fontWeight: 500,
-    cursor: 'pointer',
-    textAlign: 'center',
-  },
-};

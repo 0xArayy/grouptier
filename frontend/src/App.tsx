@@ -8,6 +8,7 @@ import { CreatePoll } from './components/CreatePoll.tsx';
 import { ShareStep } from './components/ShareStep.tsx';
 import { createTournament, pick, buildRankedList } from './lib/tournament.ts';
 import type { TournamentState } from './lib/tournament.ts';
+import styles from './App.module.css';
 
 type Screen = 'loading' | 'error' | 'waiting' | 'compare' | 'bye' | 'tierlist' | 'live' | 'create' | 'share';
 
@@ -309,12 +310,10 @@ export default function App() {
         {offline && <OfflineBanner />}
         <HomeButton onClick={handleGoHome} />
         <FullCenter>
-          <div style={{ textAlign: 'center', padding: 24 }}>
-            <div style={{ fontSize: 32, marginBottom: 16 }}>⚠️</div>
-            <div style={{ color: 'var(--text-hint)', fontSize: 15 }}>{errorMsg}</div>
-            <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-hint)' }}>
-              Open this link from Telegram.
-            </div>
+          <div className={styles.errorBox}>
+            <div className={styles.errorEmoji}>⚠️</div>
+            <div className={styles.errorText}>{errorMsg}</div>
+            <div className={styles.errorHint}>Open this link from Telegram.</div>
           </div>
         </FullCenter>
       </>
@@ -329,17 +328,15 @@ export default function App() {
         {offline && <OfflineBanner />}
         <HomeButton onClick={handleGoHome} />
         <FullCenter>
-          <div style={{ textAlign: 'center', padding: 24, maxWidth: 320 }}>
-            <div style={{ fontSize: 36, marginBottom: 16 }}>{isEmpty ? '📭' : '⏳'}</div>
-            <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
-              {session?.name ?? 'Session'}
-            </div>
+          <div className={styles.waitingBox}>
+            <div className={styles.waitingEmoji}>{isEmpty ? '📭' : '⏳'}</div>
+            <div className={styles.waitingTitle}>{session?.name ?? 'Session'}</div>
             {isEmpty ? (
-              <div style={{ color: 'var(--text-hint)', fontSize: 15, lineHeight: 1.5 }}>
+              <div className={styles.waitingText}>
                 No options added yet. The group admin can add options and start voting from the Mini App.
               </div>
             ) : (
-              <div style={{ color: 'var(--text-hint)', fontSize: 15, lineHeight: 1.5 }}>
+              <div className={styles.waitingText}>
                 {optCount} option{optCount !== 1 ? 's' : ''} added. Waiting for admin to start voting.
               </div>
             )}
@@ -427,24 +424,7 @@ export default function App() {
 
 function HomeButton({ onClick }: { onClick: () => void }) {
   return (
-    <button
-      onClick={onClick}
-      style={{
-        position: 'fixed',
-        bottom: 16,
-        left: 16,
-        zIndex: 60,
-        background: 'var(--tg-theme-secondary-bg-color)',
-        color: '#FF4D4D',
-        border: 'none',
-        borderRadius: 10,
-        padding: '8px 14px',
-        fontSize: 13,
-        fontWeight: 700,
-        cursor: 'pointer',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-      }}
-    >
+    <button onClick={onClick} className={styles.homeBtn}>
       ← Меню
     </button>
   );
@@ -452,19 +432,7 @@ function HomeButton({ onClick }: { onClick: () => void }) {
 
 function OfflineBanner() {
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 100,
-      background: '#c62828',
-      color: '#fff',
-      fontSize: 13,
-      fontWeight: 500,
-      textAlign: 'center',
-      padding: '8px 16px',
-    }}>
+    <div className={styles.offlineBanner}>
       No internet connection
     </div>
   );
@@ -472,21 +440,14 @@ function OfflineBanner() {
 
 function CompareSkeleton() {
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      padding: '24px 16px',
-      gap: 24,
-      flex: 1,
-    }}>
-      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+    <div className={styles.skeletonContainer}>
+      <div className={styles.skeletonHeader}>
         <div className="skeleton" style={{ width: 100, height: 14 }} />
         <div className="skeleton" style={{ width: '100%', height: 4 }} />
         <div className="skeleton" style={{ width: 40, height: 12 }} />
       </div>
       <div className="skeleton" style={{ width: 160, height: 24 }} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 400, alignItems: 'center' }}>
+      <div className={styles.skeletonCards}>
         <div className="skeleton" style={{ width: '100%', height: 80 }} />
         <div className="skeleton" style={{ width: 32, height: 16, borderRadius: 4 }} />
         <div className="skeleton" style={{ width: '100%', height: 80 }} />
@@ -497,21 +458,12 @@ function CompareSkeleton() {
 
 function FullCenter({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, minHeight: '100dvh' }}>
+    <div className={styles.fullCenter}>
       {children}
     </div>
   );
 }
 
 function Spinner() {
-  return (
-    <div style={{
-      width: 36,
-      height: 36,
-      border: '3px solid var(--surface)',
-      borderTop: '3px solid var(--accent)',
-      borderRadius: '50%',
-      animation: 'spin 0.8s linear infinite',
-    }} />
-  );
+  return <div className={styles.spinner} />;
 }

@@ -1,0 +1,185 @@
+.container {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.stickyHeader {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  padding: 14px 16px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--surface);
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: var(--text-hint);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  font-family: inherit;
+}
+
+.headerTitle {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.errorText {
+  padding: 10px 16px;
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.list {
+  padding: 12px 16px 32px;
+}
+
+.emptyState {
+  text-align: center;
+  color: var(--text-hint);
+  font-size: 14px;
+  padding: 40px 0;
+}
+
+.emptyHint {
+  font-size: 12px;
+}
+
+.pollWrap {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.pollCard {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 12px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--surface);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.pollCard:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pollEmoji {
+  font-size: 36px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.pollBody {
+  min-width: 0;
+  flex: 1;
+}
+
+.pollName {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.pollTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.pollTag {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: var(--bg);
+  color: var(--text-hint);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.pollArrow {
+  font-size: 18px;
+  color: var(--text-hint);
+  flex-shrink: 0;
+  margin-left: auto;
+  align-self: center;
+}
+
+.deleteBtn {
+  position: absolute;
+  top: 8px;
+  right: 40px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  opacity: 0.5;
+  padding: 4px;
+  color: var(--text-hint);
+  line-height: 1;
+  font-family: inherit;
+}
+
+.deleteBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.footer {
+  padding: 0 16px 32px;
+}
+
+.createBtn {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px var(--accent-shadow);
+  min-height: var(--tap-target-min);
+  font-family: inherit;
+}
+
+.createBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loadingOverlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  gap: 12px;
+}
+
+.loadingEmoji {
+  font-size: 36px;
+}
+
+.loadingText {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}

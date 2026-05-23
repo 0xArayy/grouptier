@@ -9,8 +9,7 @@
 
 ### ~~[cors-lockdown]~~ ✅ Done — CORS locked to `ALLOWED_ORIGIN` env var in production; warns if unset
 
-### [css-modules] Migrate inline styles to CSS modules
-Every component uses `style={...}` objects. Large surface area — separate PR after code-health cleanup lands.
+### ~~[css-modules]~~ ✅ Done — 11 `*.module.css` files created; all static styles moved out of inline `style={{}}` objects across every frontend component
 
 ### [websocket] Replace polling with WebSocket for real-time results
 REST polling at 3s is acceptable but will not scale. Upgrade path: WebSocket + Redis pub/sub. Week-2 infrastructure.

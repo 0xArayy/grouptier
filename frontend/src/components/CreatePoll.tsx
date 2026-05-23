@@ -191,7 +191,17 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
     setBusy(true); setError('');
     try {
       const name = customName.trim() || 'Без названия';
-      const { id, share_url } = await createSession(name);
+      let id: string;
+      let share_url: string;
+      try {
+        const res = await createSession(name);
+        id = res.id; share_url = res.share_url;
+      } catch (err: unknown) {
+        if (err instanceof ApiError && err.status === 409 && typeof err.body.id === 'string') {
+          id = err.body.id;
+          share_url = typeof err.body.share_url === 'string' ? err.body.share_url : '';
+        } else { throw err; }
+      }
       setSessionId(id); setSessionName(name); setShareUrl(share_url);
       const { options: loaded } = await bulkReplaceOptions(id, selected);
       setOptions(loaded);

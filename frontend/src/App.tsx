@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { fetchSession, submitResults, fetchActiveSession, closeSession, createSavedPoll } from './api/client.ts';
+import { fetchSession, submitResults, fetchActiveSession, closeSession, createSavedPoll, ApiError } from './api/client.ts';
 import { Compare } from './components/Compare.tsx';
 import { ByeScreen } from './components/ByeScreen.tsx';
 import { TierList } from './components/TierList.tsx';
@@ -86,9 +86,8 @@ export default function App() {
       fetchActiveSession()
         .then(active => { setSessionId(active.id); })
         .catch((err: unknown) => {
-          const msg = String(err);
-          if (msg.includes('404')) setScreen('create');
-          else { setErrorMsg(msg); setScreen('error'); }
+          if (err instanceof ApiError && err.status === 404) setScreen('create');
+          else { setErrorMsg(String(err)); setScreen('error'); }
         });
       return;
     }
@@ -161,8 +160,7 @@ export default function App() {
       setScreen('live');
       startPolling(sessionId);
     } catch (err) {
-      const msg = String(err);
-      if (msg.includes('403')) {
+      if (err instanceof ApiError && err.status === 403) {
         // Session was closed while the user was on the tier list.
         // Redirect to group results — no point showing an error for something
         // the user can't fix. Refetch to get the latest borda_ranking.
@@ -172,7 +170,7 @@ export default function App() {
         } catch { /* keep stale session data — live screen handles empty ranking */ }
         setScreen('live');
       } else {
-        setSubmitError(msg);
+        setSubmitError(String(err));
       }
     } finally {
       setSubmitting(false);

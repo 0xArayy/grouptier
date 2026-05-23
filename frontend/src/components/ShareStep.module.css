@@ -1,0 +1,106 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 16px 24px;
+  gap: 24px;
+  min-height: 100dvh;
+}
+
+.hero {
+  text-align: center;
+}
+
+.heroEmoji {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.heroTitle {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.heroSubtitle {
+  font-size: 14px;
+  color: var(--text-hint);
+  line-height: 1.5;
+}
+
+.linkBox {
+  width: 100%;
+  max-width: 400px;
+}
+
+.linkLabel {
+  font-size: 12px;
+  color: var(--text-hint);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.linkValue {
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text);
+  word-break: break-all;
+  line-height: 1.5;
+  font-family: monospace;
+  user-select: text;
+}
+
+.actions {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.copyBtn {
+  width: 100%;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  box-shadow: 0 2px 8px var(--accent-shadow);
+}
+
+.copyBtnCopied {
+  background: #7ED957;
+  box-shadow: 0 2px 8px rgba(126, 217, 87, 0.3);
+}
+
+.tgBtn {
+  width: 100%;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.doneBtn {
+  width: 100%;
+  max-width: 400px;
+  height: 44px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-hint);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}

@@ -1,0 +1,187 @@
+.container {
+  padding: 24px 16px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.emoji {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: var(--text-hint);
+  margin-bottom: 24px;
+}
+
+/* Shared button base */
+.primaryBtn {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px var(--accent-shadow);
+  min-height: var(--tap-target-min);
+  font-family: inherit;
+}
+
+.primaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondaryBtn {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: var(--tap-target-min);
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.secondaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.myPollsWrap {
+  margin-top: 12px;
+}
+
+.myPollsLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.myPollsLeftEmoji {
+  font-size: 18px;
+}
+
+.myPollsRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.myPollsCount {
+  font-size: 12px;
+  color: var(--text-hint);
+  font-weight: 500;
+}
+
+.myPollsArrow {
+  font-size: 18px;
+  color: var(--text-hint);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: var(--surface);
+}
+
+.dividerLabel {
+  font-size: 12px;
+  color: var(--text-hint);
+  font-weight: 500;
+}
+
+.sectionLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-hint);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--surface);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.errorText {
+  color: var(--accent);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.bottomActions {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aiBtn {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: var(--tap-target-min);
+  font-family: inherit;
+}
+
+.aiBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ghostBtn {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--surface);
+  background: transparent;
+  color: var(--text-hint);
+  font-size: 14px;
+  cursor: pointer;
+  min-height: var(--tap-target-min);
+  font-family: inherit;
+}
+
+.ghostBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { EMOJI_PRESETS } from '../../lib/constants.ts';
+import styles from './OptionsStep.module.css';
 
 interface Props {
   sessionName: string;
@@ -39,63 +40,27 @@ export function OptionsStep({
   onGenerateWithAi,
 }: Props) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const primaryBtn: React.CSSProperties = {
-    width: '100%',
-    padding: '13px 16px',
-    borderRadius: 'var(--radius-md)',
-    border: 'none',
-    background: 'var(--accent)',
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: 700,
-    cursor: busy ? 'not-allowed' : 'pointer',
-    opacity: busy ? 0.6 : 1,
-    boxShadow: '0 2px 8px var(--accent-shadow)',
-    minHeight: 'var(--tap-target-min)',
-  };
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '12px 14px',
-    borderRadius: 'var(--radius-md)',
-    border: '1px solid var(--surface)',
-    background: 'var(--bg)',
-    color: 'var(--text)',
-    fontSize: 15,
-    boxSizing: 'border-box',
-  };
 
   const votingLabel = `Запустить голосование (${options.length} вар${options.length === 1 ? 'иант' : options.length < 5 ? 'ианта' : 'иантов'})`;
 
   return (
-    <div style={{ maxWidth: 400, margin: '0 auto' }}>
+    <div className={styles.container}>
       {busy && options.length === 0 && (
-        <div style={{
-          position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(0,0,0,0.45)', gap: 12, zIndex: 100,
-        }}>
-          <div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.25)', borderTopColor: '#fff', animation: 'spin 0.9s linear infinite' }} />
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>Загружаем варианты…</div>
+        <div className={styles.loadingOverlay}>
+          <div className={styles.loadingSpinner} />
+          <div className={styles.loadingText}>Загружаем варианты…</div>
         </div>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 0' }}>
-        <button
-          onClick={onBack}
-          style={{ background: 'none', border: 'none', color: 'var(--text-hint)', fontSize: 20, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
-        >←</button>
+
+      <div className={styles.navRow}>
+        <button onClick={onBack} className={styles.backBtn}>←</button>
       </div>
 
-      <div style={{ padding: '12px 16px 24px' }}>
+      <div className={styles.content}>
         {editingName ? (
           <input
             autoFocus
-            style={{
-              fontSize: 16, fontWeight: 700, width: '100%',
-              border: 'none', borderBottom: '2px solid var(--accent)',
-              background: 'transparent', color: 'var(--text)',
-              padding: '2px 0', marginBottom: 2, outline: 'none', boxSizing: 'border-box',
-            }}
+            className={styles.nameInput}
             value={nameInput}
             onChange={e => setNameInput(e.target.value)}
             onBlur={onSaveName}
@@ -104,47 +69,33 @@ export function OptionsStep({
         ) : (
           <div
             onClick={() => { setNameInput(sessionName); setEditingName(true); }}
-            style={{ fontSize: 16, fontWeight: 700, marginBottom: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+            className={styles.nameDisplay}
           >
             {sessionName || 'Без названия'}
-            <span style={{ fontSize: 12, color: 'var(--text-hint)', fontWeight: 400 }}>✏️</span>
+            <span className={styles.nameEditIcon}>✏️</span>
           </div>
         )}
 
-        <div style={{ fontSize: 13, color: 'var(--text-hint)', marginBottom: externalEdit ? 10 : 20 }}>
+        <div className={externalEdit ? styles.hintCompact : styles.hint}>
           Добавь или удали варианты, затем запускай.
         </div>
 
         {externalEdit && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px',
-            borderRadius: 'var(--radius-md)', background: 'var(--surface)',
-            fontSize: 13, color: 'var(--text-hint)', fontWeight: 500, marginBottom: 14,
-            animation: 'fadeIn 0.2s ease',
-          }}>
-            <span style={{ animation: 'gtPulse 1.2s infinite', display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
+          <div className={styles.externalEditBanner}>
+            <span className={styles.liveIndicator} />
             Кто-то редактирует список…
           </div>
         )}
 
         {options.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
+          <div className={styles.optionsList}>
             {options.map((opt, i) => (
-              <div key={opt} style={{
-                padding: '9px 12px', borderRadius: 'var(--radius-md)', background: 'var(--surface)',
-                marginBottom: 6, fontSize: 14, display: 'flex', alignItems: 'center',
-                justifyContent: 'space-between', gap: 8,
-              }}>
-                <span style={{ color: 'var(--text)' }}>{i + 1}. {opt}</span>
+              <div key={opt} className={styles.optionRow}>
+                <span className={styles.optionText}>{i + 1}. {opt}</span>
                 <button
                   onClick={() => onRemoveOption(opt)}
                   disabled={removingOption === opt || busy}
-                  style={{
-                    background: 'none', border: 'none', color: 'var(--text-hint)',
-                    cursor: (removingOption === opt || busy) ? 'not-allowed' : 'pointer',
-                    fontSize: 18, lineHeight: 1, padding: '2px 4px',
-                    opacity: removingOption === opt ? 0.3 : 0.5, flexShrink: 0,
-                  }}
+                  className={styles.optionRemoveBtn}
                   aria-label={`Удалить ${opt}`}
                 >×</button>
               </div>
@@ -156,20 +107,15 @@ export function OptionsStep({
           <button
             onClick={onGenerateWithAi}
             disabled={busy}
-            style={{
-              background: 'none', border: 'none', padding: '0 0 12px 0',
-              color: 'var(--accent)', fontSize: 13, fontWeight: 600,
-              cursor: busy ? 'not-allowed' : 'pointer', textAlign: 'left',
-              opacity: busy ? 0.5 : 1,
-            }}
+            className={styles.aiLink}
           >✨ Предложить варианты</button>
         )}
 
         {options.length < 32 && (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
+          <div className={styles.addRow}>
+            <div className={styles.addInputGroup}>
               <input
-                style={{ ...inputStyle, flex: 1 }}
+                className={styles.addInput}
                 placeholder="Добавить вариант…"
                 maxLength={100}
                 value={optionInput}
@@ -179,105 +125,73 @@ export function OptionsStep({
               <button
                 onClick={onAddOption}
                 disabled={!optionInput.trim() || busy}
-                style={{
-                  padding: '12px 16px', borderRadius: 'var(--radius-md)', border: 'none',
-                  background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 15,
-                  cursor: (!optionInput.trim() || busy) ? 'not-allowed' : 'pointer',
-                  opacity: (!optionInput.trim() || busy) ? 0.5 : 1,
-                }}
+                className={styles.addBtn}
               >+</button>
             </div>
             {optionInput.length >= 80 && (
-              <div style={{ fontSize: 12, textAlign: 'right', marginTop: 4, color: optionInput.length >= 100 ? 'var(--accent)' : 'var(--text-hint)' }}>
+              <div className={`${styles.charCount}${optionInput.length >= 100 ? ` ${styles.charCountWarn}` : ''}`}>
                 {optionInput.length}/100
               </div>
             )}
           </div>
         )}
 
-        {error && <div style={{ color: 'var(--accent)', fontSize: 13, marginBottom: 10 }}>{error}</div>}
+        {error && <div className={styles.errorText}>{error}</div>}
 
         <button
-          style={{ ...primaryBtn, opacity: (options.length < 2 || busy) ? 0.5 : 1 }}
+          className={styles.startBtn}
+          style={{ opacity: (options.length < 2 || busy) ? 0.5 : 1 }}
           disabled={options.length < 2 || busy}
           onClick={onStartVoting}
         >{votingLabel}</button>
 
-        <div style={{ marginTop: 12 }}>
+        <div className={styles.saveSection}>
           {saveSuccess && (
-            <div style={{ fontSize: 13, color: '#7ED957', textAlign: 'center', marginBottom: 8, fontWeight: 600 }}>
-              ✓ Шаблон сохранён
-            </div>
+            <div className={styles.saveSuccess}>✓ Шаблон сохранён</div>
           )}
           {showSaveForm ? (
-            <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-hint)', marginBottom: 10 }}>
+            <div className={styles.saveForm}>
+              <div className={styles.saveFormTitle}>
                 {savedId ? 'Обновить шаблон' : 'Сохранить как шаблон'}
               </div>
-              <div style={{ display: 'flex', gap: 8, marginBottom: showEmojiPicker ? 8 : 10 }}>
+              <div className={styles.saveFormTop}>
                 <button
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  style={{
-                    width: 56, height: 48, flexShrink: 0, fontSize: 26, lineHeight: 1,
-                    borderRadius: 'var(--radius-md)',
-                    border: showEmojiPicker ? '2px solid var(--accent)' : '1px solid var(--surface)',
-                    background: 'var(--bg)', cursor: 'pointer', display: 'flex',
-                    alignItems: 'center', justifyContent: 'center',
-                  }}
+                  className={`${styles.emojiPickerToggle}${showEmojiPicker ? ` ${styles.emojiPickerToggleOpen}` : ''}`}
                 >{saveEmoji}</button>
-                <div style={{ flex: 1, fontSize: 13, color: 'var(--text-hint)', display: 'flex', alignItems: 'center' }}>
+                <div className={styles.saveFormInfo}>
                   «{sessionName}» · {options.length} вариантов
                 </div>
               </div>
               {showEmojiPicker && (
-                <div style={{
-                  display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 4,
-                  marginBottom: 10, padding: '8px', background: 'var(--bg)', borderRadius: 'var(--radius-md)',
-                }}>
+                <div className={styles.emojiGrid}>
                   {EMOJI_PRESETS.map(e => (
                     <button
                       key={e}
                       onClick={() => { setSaveEmoji(e); setShowEmojiPicker(false); }}
-                      style={{
-                        fontSize: 22, lineHeight: 1, padding: '6px 0', border: 'none',
-                        background: saveEmoji === e ? 'var(--surface)' : 'transparent',
-                        borderRadius: 6, cursor: 'pointer',
-                      }}
+                      className={`${styles.emojiCell}${saveEmoji === e ? ` ${styles.emojiCellActive}` : ''}`}
                     >{e}</button>
                   ))}
                 </div>
               )}
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={() => setShowSaveForm(false)}
-                  style={{
-                    flex: 1, padding: '10px', borderRadius: 'var(--radius-md)', border: 'none',
-                    background: 'var(--bg)', color: 'var(--text-hint)', fontSize: 14, cursor: 'pointer',
-                  }}
-                >Отмена</button>
+              <div className={styles.saveFormBtns}>
+                <button onClick={() => setShowSaveForm(false)} className={styles.cancelBtn}>
+                  Отмена
+                </button>
                 <button
                   onClick={onSaveTemplate}
                   disabled={saving}
-                  style={{
-                    flex: 2, padding: '10px', borderRadius: 'var(--radius-md)', border: 'none',
-                    background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 700,
-                    cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1,
-                  }}
-                >{saving ? 'Сохраняем…' : (savedId ? 'Обновить' : 'Сохранить')}</button>
+                  className={styles.saveConfirmBtn}
+                >
+                  {saving ? 'Сохраняем…' : (savedId ? 'Обновить' : 'Сохранить')}
+                </button>
               </div>
             </div>
           ) : (
             <button
               onClick={() => options.length >= 2 && setShowSaveForm(true)}
               disabled={options.length < 2}
-              style={{
-                width: '100%', padding: '11px 16px', borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--surface)', background: 'transparent',
-                color: 'var(--text-hint)', fontSize: 14,
-                cursor: options.length < 2 ? 'not-allowed' : 'pointer',
-                opacity: options.length < 2 ? 0.4 : 1,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}
+              className={styles.saveTemplateBtn}
             >
               <span>💾</span>
               <span>{savedId ? 'Обновить шаблон' : 'Сохранить шаблон'}</span>

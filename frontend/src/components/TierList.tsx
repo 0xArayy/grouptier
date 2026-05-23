@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import styles from './TierList.module.css';
 
 type Tier = 'S' | 'A' | 'B' | 'C';
 
@@ -171,12 +172,12 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
   }
 
   return (
-    <div style={styles.container}>
+    <div className={styles.container}>
       {sessionClosed && (
-        <div style={styles.closedBanner}>🔒 Voting closed</div>
+        <div className={styles.closedBanner}>🔒 Voting closed</div>
       )}
 
-      <div style={styles.grid}>
+      <div className={styles.grid}>
         {rows.map(({ tier, options }) => {
           const meta = TIER_META[tier];
           const isTargeted = overTier === tier && activeOption !== null;
@@ -187,23 +188,15 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
                 if (el) rowRefs.current.set(tier, el);
                 else rowRefs.current.delete(tier);
               }}
-              style={{
-                ...styles.row,
-                outline: isTargeted ? '2px solid var(--accent)' : '2px solid transparent',
-                background: 'var(--surface)',
-              }}
+              className={`${styles.row}${isTargeted ? ` ${styles.rowTargeted}` : ''}`}
             >
               <div
-                style={{
-                  ...styles.tierLabel,
-                  background: meta.bg,
-                  color: meta.text,
-                  textShadow: meta.shadow,
-                }}
+                className={styles.tierLabel}
+                style={{ background: meta.bg, color: meta.text, textShadow: meta.shadow }}
               >
                 {tier}
               </div>
-              <div style={styles.chips}>
+              <div className={styles.chips}>
                 {options.map((opt, i) => {
                   const isDragging = activeOption === opt;
                   const showIndicator = isTargeted && overIndex === i && !isDragging;
@@ -217,14 +210,7 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
                           if (el) chipRefs.current.set(key, el);
                           else chipRefs.current.delete(key);
                         }}
-                        style={{
-                          ...styles.chip,
-                          opacity: isDragging ? 0.25 : 1,
-                          cursor: canDrag ? (isDragging ? 'grabbing' : 'grab') : 'default',
-                          touchAction: 'none',
-                          userSelect: 'none',
-                          transition: isDragging ? 'none' : 'opacity 0.15s',
-                        }}
+                        className={`${styles.chip}${isDragging ? ` ${styles.chipGrabbing}` : canDrag ? ` ${styles.chipGrab}` : ''}`}
                         onPointerDown={e => onChipPointerDown(e, opt, tier)}
                       >
                         {opt}
@@ -235,7 +221,7 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
                 {/* Indicator after the last chip */}
                 {isTargeted && overIndex === options.length && <DropIndicator />}
                 {options.length === 0 && (
-                  <span style={styles.emptyHint}>drop here</span>
+                  <span className={styles.emptyHint}>drop here</span>
                 )}
               </div>
             </div>
@@ -244,42 +230,28 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
       </div>
 
       {canDrag && rows.length > 1 && (
-        <div style={styles.dragHint}>Hold &amp; drag chips to rearrange</div>
+        <div className={styles.dragHint}>Hold &amp; drag chips to rearrange</div>
       )}
 
       {/* Floating ghost chip during drag */}
       {floatPos && activeOption && (
         <div
-          style={{
-            position: 'fixed',
-            left: floatPos.x - 40,
-            top: floatPos.y - 16,
-            zIndex: 1000,
-            pointerEvents: 'none',
-            background: 'var(--bg)',
-            borderRadius: 'var(--radius-sm)',
-            padding: '3px 8px',
-            fontSize: 12,
-            fontWeight: 600,
-            color: 'var(--text)',
-            boxShadow: '0 6px 20px rgba(0,0,0,0.35)',
-            transform: 'scale(1.1) rotate(-2deg)',
-          }}
+          className={styles.floatingChip}
+          style={{ left: floatPos.x - 40, top: floatPos.y - 16 }}
         >
           {activeOption}
         </div>
       )}
 
       {submitError && (
-        <div style={{ color: 'var(--tier-s)', fontSize: 13, textAlign: 'center', padding: '4px 0' }}>
-          {submitError}
-        </div>
+        <div className={styles.submitError}>{submitError}</div>
       )}
 
-      <div style={styles.footer}>
+      <div className={styles.footer}>
         {onSubmit && !sessionClosed && (
           <button
-            style={{ ...styles.submitBtn, opacity: submitting ? 0.7 : 1 }}
+            className={styles.submitBtn}
+            style={{ opacity: submitting ? 0.7 : 1 }}
             onClick={handleSubmit}
             disabled={submitting}
           >
@@ -287,7 +259,7 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
           </button>
         )}
         {onViewGroup && (
-          <button style={styles.groupBtn} onClick={onViewGroup}>
+          <button className={styles.groupBtn} onClick={onViewGroup}>
             See group →
           </button>
         )}
@@ -297,124 +269,5 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
 }
 
 function DropIndicator() {
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        width: 2,
-        height: 20,
-        background: 'var(--accent)',
-        borderRadius: 1,
-        flexShrink: 0,
-        alignSelf: 'center',
-      }}
-    />
-  );
+  return <span className={styles.dropIndicator} />;
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-    padding: '0 0 16px',
-    flex: 1,
-  },
-  closedBanner: {
-    background: 'var(--surface)',
-    color: 'var(--text-hint)',
-    padding: '10px 16px',
-    margin: '0 14px',
-    borderRadius: 'var(--radius-md)',
-    textAlign: 'center',
-    fontSize: 14,
-    fontWeight: 500,
-  },
-  grid: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 3,
-    padding: '4px 14px',
-  },
-  row: {
-    display: 'flex',
-    alignItems: 'stretch',
-    borderRadius: 'var(--radius-md)',
-    overflow: 'hidden',
-    boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.06)',
-    transition: 'outline-color 0.1s, background 0.1s',
-  },
-  tierLabel: {
-    width: 56,
-    height: 56,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontFamily: 'var(--font-display)',
-    fontSize: 35,
-    fontWeight: 900,
-    lineHeight: 1,
-    letterSpacing: -1.5,
-    flexShrink: 0,
-  },
-  chips: {
-    flex: 1,
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 6,
-    padding: '8px 10px',
-    alignItems: 'center',
-    minHeight: 56,
-  },
-  chip: {
-    background: 'var(--bg)',
-    borderRadius: 'var(--radius-sm)',
-    padding: '3px 8px',
-    fontSize: 12,
-    fontWeight: 600,
-    color: 'var(--text)',
-  },
-  emptyHint: {
-    fontSize: 11,
-    color: 'var(--text-hint)',
-    fontStyle: 'italic',
-    opacity: 0.6,
-  },
-  dragHint: {
-    textAlign: 'center',
-    fontSize: 11,
-    color: 'var(--text-hint)',
-    opacity: 0.6,
-    padding: '0 14px',
-    marginTop: -4,
-  },
-  footer: {
-    padding: '4px 14px 0',
-    display: 'flex',
-    gap: 8,
-  },
-  submitBtn: {
-    flex: 1,
-    padding: '14px',
-    background: 'var(--accent)',
-    color: '#fff',
-    borderRadius: 'var(--radius-md)',
-    fontSize: 15,
-    fontWeight: 800,
-    minHeight: 'var(--tap-target-min)',
-    transition: 'opacity 0.2s',
-    cursor: 'pointer',
-    boxShadow: '0 2px 8px var(--accent-shadow)',
-  },
-  groupBtn: {
-    flex: 1,
-    padding: '14px',
-    background: 'var(--surface)',
-    color: 'var(--accent)',
-    borderRadius: 'var(--radius-md)',
-    fontSize: 15,
-    fontWeight: 700,
-    minHeight: 'var(--tap-target-min)',
-    cursor: 'pointer',
-  },
-};

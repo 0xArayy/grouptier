@@ -22,6 +22,7 @@ interface Props {
   setSaveEmoji: (v: string) => void;
   saving: boolean;
   saveSuccess: boolean;
+  shareUrl: string | null;
   onBack: () => void;
   onAddOption: () => void;
   onRemoveOption: (text: string) => void;
@@ -35,11 +36,20 @@ export function OptionsStep({
   sessionName, options, optionInput, setOptionInput, error, busy, removingOption,
   editingName, setEditingName, nameInput, setNameInput, externalEdit,
   savedId, showSaveForm, setShowSaveForm, saveEmoji, setSaveEmoji,
-  saving, saveSuccess,
+  saving, saveSuccess, shareUrl,
   onBack, onAddOption, onRemoveOption, onStartVoting, onSaveTemplate, onSaveName,
   onGenerateWithAi,
 }: Props) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  function handleShare() {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2500);
+    }).catch(() => {});
+  }
 
   const votingLabel = `Запустить голосование (${options.length} вар${options.length === 1 ? 'иант' : options.length < 5 ? 'ианта' : 'иантов'})`;
 
@@ -54,6 +64,15 @@ export function OptionsStep({
 
       <div className={styles.navRow}>
         <button onClick={onBack} className={styles.backBtn}>←</button>
+        {shareUrl && (
+          <button
+            onClick={handleShare}
+            className={`${styles.shareBtn}${shareCopied ? ` ${styles.shareBtnCopied}` : ''}`}
+            title="Поделиться ссылкой для добавления вариантов"
+          >
+            {shareCopied ? '✓ Скопировано' : 'Поделиться'}
+          </button>
+        )}
       </div>
 
       <div className={styles.content}>

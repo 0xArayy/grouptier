@@ -24,7 +24,8 @@ export async function sessionRoutes(fastify: FastifyInstance) {
           [chat.id],
         );
         if (existing.rows.length > 0) {
-          return reply.status(409).send({ error: 'Session already exists', id: existing.rows[0].id });
+          const existingId = existing.rows[0].id;
+          return reply.status(409).send({ error: 'Session already exists', id: existingId, share_url: buildVoteUrl(existingId) });
         }
       }
 
@@ -38,7 +39,8 @@ export async function sessionRoutes(fastify: FastifyInstance) {
           "INSERT INTO sessions (chat_id, creator_user_id, name, status) VALUES ($1, $2, $3, 'collecting') RETURNING id",
           [chat?.id ?? null, userId, name],
         );
-        return reply.status(201).send({ id: res.rows[0].id });
+        const newId = res.rows[0].id;
+        return reply.status(201).send({ id: newId, share_url: buildVoteUrl(newId) });
       } catch (err: unknown) {
         if ((err as { code?: string }).code === '23505') {
           // Concurrent INSERT raced past the SELECT — unique index caught it (group only)
@@ -46,7 +48,8 @@ export async function sessionRoutes(fastify: FastifyInstance) {
             "SELECT id FROM sessions WHERE chat_id = $1 AND status = 'collecting' LIMIT 1",
             [chat?.id],
           );
-          return reply.status(409).send({ error: 'Session already exists', id: fallback.rows[0]?.id });
+          const fallbackId = fallback.rows[0]?.id;
+          return reply.status(409).send({ error: 'Session already exists', id: fallbackId, share_url: fallbackId ? buildVoteUrl(fallbackId) : undefined });
         }
         throw err;
       }

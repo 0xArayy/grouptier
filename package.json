@@ -1,6 +1,6 @@
 {
   "name": "grouptier",
-  "version": "1.0.5.4",
+  "version": "1.0.5.5",
   "private": true,
   "scripts": {
     "dev:server": "cd server && npm run dev",

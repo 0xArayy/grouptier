@@ -50,6 +50,24 @@
   font-family: inherit;
 }
 
+.shareBtn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+
+.shareBtnCopied {
+  color: #7ED957;
+}
+
 /* Content area */
 .content {
   padding: 12px 16px 24px;

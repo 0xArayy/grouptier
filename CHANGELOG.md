@@ -2,6 +2,16 @@
 
 All notable changes to GroupTier are documented here.
 
+## [1.0.5.5] - 2026-05-23
+
+### Added
+- `frontend/src/components/create-poll/OptionsStep.tsx` — **Share button** in the nav row of the OptionsStep screen. When a session is in `collecting` status, a "Поделиться" button appears; tapping it copies the session link to the clipboard so other participants can add their own options before voting starts. Button turns green with a "✓ Скопировано" label for 2.5 s after a successful copy.
+- `frontend/src/components/CreatePoll.tsx` — `shareUrl` state threaded from every session-creation path (`handleCreateCustom`, `loadOptionSet`, `handleAiConfirmBlankCanvas`) through to `OptionsStep`.
+- `server/src/routes/sessions.ts` — `POST /api/sessions` now returns `share_url` alongside `id` in both 201 and 409 responses so the client can display the share button immediately without an extra round-trip.
+
+### Fixed
+- `frontend/src/components/CreatePoll.tsx` (`handleAiConfirmBlankCanvas`) — missing 409 catch caused `shareUrl` to remain null when an existing session was re-used via the AI blank-canvas path, hiding the share button. Now mirrors the guard used by the other create paths.
+
 ## [1.0.5.4] - 2026-05-23
 
 ### Refactor

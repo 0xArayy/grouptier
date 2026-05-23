@@ -285,7 +285,7 @@ export default function App() {
 
   if (screen === 'create') {
     const existing = session?.status === 'collecting'
-      ? { id: session.id, name: session.name, options: session.options }
+      ? { id: session.id, name: session.name, options: session.options, shareUrl: session.share_url }
       : undefined;
     return (
       <>

@@ -57,7 +57,7 @@ export function PublicPollsStep({ busy, onBack, onUse }: Props) {
       <div className={styles.list}>
         {loading ? (
           <div className={styles.loadingText}>Загружаем…</div>
-        ) : polls.length === 0 ? (
+        ) : !error && polls.length === 0 ? (
           <div className={styles.emptyState}>
             {q ? 'Ничего не найдено.' : 'Пока нет публичных опросов.'}
             {!q && (

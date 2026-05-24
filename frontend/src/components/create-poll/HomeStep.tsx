@@ -32,15 +32,17 @@ export function HomeStep({
         Выбрать тему →
       </button>
 
-      <button className={styles.secondaryBtn} disabled={busy} onClick={onNavigatePublicPolls} style={{ marginTop: 8 }}>
-        <span className={styles.myPollsLeft}>
-          <span className={styles.myPollsLeftEmoji}>🌍</span>
-          <span>Публичные опросы</span>
-        </span>
-        <span className={styles.myPollsRight}>
-          <span className={styles.myPollsArrow}>›</span>
-        </span>
-      </button>
+      <div className={styles.myPollsWrap}>
+        <button className={styles.secondaryBtn} disabled={busy} onClick={onNavigatePublicPolls}>
+          <span className={styles.myPollsLeft}>
+            <span className={styles.myPollsLeftEmoji}>🌍</span>
+            <span>Публичные опросы</span>
+          </span>
+          <span className={styles.myPollsRight}>
+            <span className={styles.myPollsArrow}>›</span>
+          </span>
+        </button>
+      </div>
 
       {savedPolls.length > 0 && (
         <div className={styles.myPollsWrap}>

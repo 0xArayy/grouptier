@@ -12,12 +12,17 @@ import {
   createSavedPoll,
   updateSavedPoll,
   deleteSavedPoll,
+  publishSavedPoll,
+  unpublishSavedPoll,
+  usePublicPoll,
   type SavedPoll,
+  type PublicPoll,
 } from '../api/client.ts';
 import appStyles from '../App.module.css';
 import { HomeStep } from './create-poll/HomeStep.tsx';
 import { PresetsStep, type Preset } from './create-poll/PresetsStep.tsx';
 import { MyPollsStep } from './create-poll/MyPollsStep.tsx';
+import { PublicPollsStep } from './create-poll/PublicPollsStep.tsx';
 import { OptionsStep } from './create-poll/OptionsStep.tsx';
 import { AiSuggestStep } from './create-poll/AiSuggestStep.tsx';
 import { DEFAULT_SAVE_EMOJI } from '../lib/constants.ts';
@@ -28,7 +33,7 @@ interface Props {
   existingSession?: { id: string; name: string; options: string[]; shareUrl?: string };
 }
 
-type Step = 'home' | 'presets' | 'my-polls' | 'options' | 'starting' | 'ai-suggest';
+type Step = 'home' | 'presets' | 'my-polls' | 'public-polls' | 'options' | 'starting' | 'ai-suggest';
 
 
 export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Props) {
@@ -53,6 +58,7 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [startingTimedOut, setStartingTimedOut] = useState(false);
   const [externalEdit, setExternalEdit] = useState(false);
@@ -250,7 +256,7 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
         setSavedPolls(prev => prev.map(p => p.id === savedId ? { ...p, name: sessionName, options, emoji: saveEmoji, updated_at: new Date().toISOString() } : p));
       } else {
         const { id } = await createSavedPoll(sessionName, options, saveEmoji);
-        const newPoll: SavedPoll = { id, name: sessionName, options, emoji: saveEmoji, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+        const newPoll: SavedPoll = { id, name: sessionName, options, emoji: saveEmoji, is_public: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
         setSavedPolls(prev => [newPoll, ...prev]); setSavedId(id);
       }
       setShowSaveForm(false); setSaveSuccess(true);
@@ -266,6 +272,46 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
     finally { setDeletingId(null); }
   }
 
+  async function handlePublishSavedPoll(id: string, showAuthor: boolean) {
+    setPublishingId(id);
+    try {
+      await publishSavedPoll(id, showAuthor);
+      setSavedPolls(prev => prev.map(p => p.id === id ? { ...p, is_public: true } : p));
+    } catch (err: unknown) { setError(String(err)); }
+    finally { setPublishingId(null); }
+  }
+
+  async function handleUnpublishSavedPoll(id: string) {
+    setPublishingId(id);
+    try {
+      await unpublishSavedPoll(id);
+      setSavedPolls(prev => prev.map(p => p.id === id ? { ...p, is_public: false } : p));
+    } catch (err: unknown) { setError(String(err)); }
+    finally { setPublishingId(null); }
+  }
+
+  async function handleUsePublicPoll(poll: PublicPoll) {
+    if (busy) return;
+    setBusy(true); setError('');
+    try {
+      const result = await usePublicPoll(poll.id);
+      setSessionId(result.id);
+      setSessionName(result.name);
+      setOptions(result.options);
+      setShareUrl(result.share_url);
+      setSavedId(null);
+      setStep('options');
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 409 && typeof err.body.id === 'string') {
+        setSessionId(err.body.id);
+        if (typeof err.body.share_url === 'string') setShareUrl(err.body.share_url);
+        setStep('options');
+      } else {
+        setError(err instanceof ApiError ? err.message : String(err));
+      }
+    } finally { setBusy(false); }
+  }
+
   // ── Router ────────────────────────────────────────────────────────
 
   if (step === 'home') return (
@@ -275,6 +321,7 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
       savedPolls={savedPolls} savedPollsLoading={savedPollsLoading}
       onNavigateMyPolls={() => { setError(''); setStep('my-polls'); }}
       onNavigatePresets={() => { setError(''); setStep('presets'); }}
+      onNavigatePublicPolls={() => { setError(''); setStep('public-polls'); }}
       onCreate={handleCreateCustom}
       onGenerateWithAi={() => { setError(''); setAiExistingOptions([]); setStep('ai-suggest'); }}
     />
@@ -291,11 +338,21 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
   if (step === 'my-polls') return (
     <MyPollsStep
       busy={busy} error={error}
-      savedPolls={savedPolls} deletingId={deletingId}
+      savedPolls={savedPolls} deletingId={deletingId} publishingId={publishingId}
       onBack={() => { setError(''); setStep('home'); }}
       onSelect={handleSavedPoll}
       onDelete={handleDeleteSavedPoll}
+      onPublish={handlePublishSavedPoll}
+      onUnpublish={handleUnpublishSavedPoll}
       onCreateNew={() => setStep('home')}
+    />
+  );
+
+  if (step === 'public-polls') return (
+    <PublicPollsStep
+      busy={busy}
+      onBack={() => { setError(''); setStep('home'); }}
+      onUse={handleUsePublicPoll}
     />
   );
 

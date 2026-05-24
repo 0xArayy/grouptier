@@ -8,6 +8,7 @@ import fastifyStatic from '@fastify/static';
 import { sessionRoutes } from './routes/sessions.js';
 import { savedPollRoutes } from './routes/savedPolls.js';
 import { aiRoutes } from './routes/ai.js';
+import { publicPollRoutes } from './routes/publicPolls.js';
 import { pool } from './db/client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -80,6 +81,7 @@ fastify.get('/health', async () => ({ ok: true }));
 
 await fastify.register(sessionRoutes);
 await fastify.register(savedPollRoutes);
+await fastify.register(publicPollRoutes);
 await fastify.register(aiRoutes);
 
 // Serve React Mini App — only if dist exists

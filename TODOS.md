@@ -101,3 +101,13 @@ REST polling at 3s is acceptable but will not scale. Upgrade path: WebSocket + R
 **Completed:** v1.0.0 (2026-05-16)
 - Startup cleanup: `DELETE FROM sessions WHERE status='collecting' AND created_at < NOW() - INTERVAL '24 hours'`
 - Extended to also cover `status='voting' AND message_sent=false`
+
+### [public-polls-moderation] Модерация публичных опросов
+Telegram-аутентификация даёт барьер от спама, но не защищает от NSFW-контента при росте базы пользователей. Нужен механизм жалоб и возможность скрытия.
+- `POST /api/public-polls/:id/report` — жалоба от пользователя
+- Админ-эндпоинт `DELETE /api/admin/public-polls/:id`
+- Кнопка «Пожаловаться» в PublicPollsStep
+
+### [public-polls-pagination] Пагинация каталога опросов
+V1 ограничен LIMIT 30. При росте каталога пользователь видит только топ-30 шаблонов.
+Cursor-based pagination: `?after=<cursor>` (last `updated_at` + last `id`). Стабильно при добавлении новых записей, не нужен OFFSET.

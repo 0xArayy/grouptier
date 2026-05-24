@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { SavedPoll } from '../../api/client.ts';
 import styles from './MyPollsStep.module.css';
 
@@ -6,13 +7,21 @@ interface Props {
   error: string;
   savedPolls: SavedPoll[];
   deletingId: string | null;
+  publishingId: string | null;
   onBack: () => void;
   onSelect: (poll: SavedPoll) => void;
   onDelete: (id: string) => void;
+  onPublish: (id: string, showAuthor: boolean) => void;
+  onUnpublish: (id: string) => void;
   onCreateNew: () => void;
 }
 
-export function MyPollsStep({ busy, error, savedPolls, deletingId, onBack, onSelect, onDelete, onCreateNew }: Props) {
+export function MyPollsStep({
+  busy, error, savedPolls, deletingId, publishingId,
+  onBack, onSelect, onDelete, onPublish, onUnpublish, onCreateNew,
+}: Props) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   return (
     <div className={styles.container}>
       <div className={styles.stickyHeader}>
@@ -34,7 +43,10 @@ export function MyPollsStep({ busy, error, savedPolls, deletingId, onBack, onSel
               <button onClick={() => onSelect(poll)} disabled={busy} className={styles.pollCard}>
                 <span className={styles.pollEmoji}>{poll.emoji}</span>
                 <div className={styles.pollBody}>
-                  <div className={styles.pollName}>{poll.name}</div>
+                  <div className={styles.pollNameRow}>
+                    <span className={styles.pollName}>{poll.name}</span>
+                    {poll.is_public && <span className={styles.publicBadge}>🌍</span>}
+                  </div>
                   <div className={styles.pollTags}>
                     {poll.options.map(opt => (
                       <span key={opt} className={styles.pollTag}>{opt}</span>
@@ -43,12 +55,51 @@ export function MyPollsStep({ busy, error, savedPolls, deletingId, onBack, onSel
                 </div>
                 <span className={styles.pollArrow}>›</span>
               </button>
-              <button
-                onClick={() => onDelete(poll.id)}
-                disabled={deletingId === poll.id || busy}
-                className={styles.deleteBtn}
-                aria-label={`Удалить ${poll.name}`}
-              >🗑</button>
+
+              <div className={styles.cardActions}>
+                {poll.is_public ? (
+                  <button
+                    onClick={() => onUnpublish(poll.id)}
+                    disabled={publishingId === poll.id || busy}
+                    className={styles.unpublishBtn}
+                    title="Снять с публикации"
+                  >
+                    {publishingId === poll.id ? '…' : '🌍'}
+                  </button>
+                ) : expandedId === poll.id ? (
+                  <div className={styles.publishChoice}>
+                    <button
+                      className={styles.publishChoiceBtn}
+                      disabled={publishingId === poll.id || busy}
+                      onClick={() => { setExpandedId(null); onPublish(poll.id, true); }}
+                    >С именем</button>
+                    <button
+                      className={styles.publishChoiceBtn}
+                      disabled={publishingId === poll.id || busy}
+                      onClick={() => { setExpandedId(null); onPublish(poll.id, false); }}
+                    >Анонимно</button>
+                    <button
+                      className={styles.publishCancelBtn}
+                      onClick={() => setExpandedId(null)}
+                    >✕</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setExpandedId(poll.id)}
+                    disabled={busy}
+                    className={styles.publishBtn}
+                    title="Опубликовать"
+                  >
+                    🌐
+                  </button>
+                )}
+                <button
+                  onClick={() => onDelete(poll.id)}
+                  disabled={deletingId === poll.id || busy}
+                  className={styles.deleteBtn}
+                  aria-label={`Удалить ${poll.name}`}
+                >🗑</button>
+              </div>
             </div>
           ))
         )}

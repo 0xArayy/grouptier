@@ -123,11 +123,11 @@ export async function savedPollRoutes(fastify: FastifyInstance) {
   // POST /api/saved-polls/:id/publish — make a saved poll publicly visible
   fastify.post<{ Params: { id: string }; Body: { show_author?: boolean } }>(
     '/api/saved-polls/:id/publish',
-    { preHandler: initDataMiddleware },
+    { preHandler: initDataMiddleware, config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
     async (request, reply) => {
       const userId = request.telegramUser.id;
       const { id } = request.params;
-      const showAuthor = request.body?.show_author !== false;
+      const showAuthor = request.body?.show_author === true;
       const authorName = showAuthor ? (request.telegramUser.first_name ?? null) : null;
 
       const res = await pool.query(
@@ -148,7 +148,7 @@ export async function savedPollRoutes(fastify: FastifyInstance) {
   // POST /api/saved-polls/:id/unpublish — remove a saved poll from public catalog
   fastify.post<{ Params: { id: string } }>(
     '/api/saved-polls/:id/unpublish',
-    { preHandler: initDataMiddleware },
+    { preHandler: initDataMiddleware, config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
     async (request, reply) => {
       const userId = request.telegramUser.id;
       const { id } = request.params;

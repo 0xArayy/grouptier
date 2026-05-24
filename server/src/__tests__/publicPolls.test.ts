@@ -122,13 +122,11 @@ describe('POST /api/public-polls/:id/use', () => {
     client.query
       .mockResolvedValueOnce(undefined) // BEGIN
       .mockResolvedValueOnce({ rows: [{ name: 'Movies', options: ['A', 'B'] }] }) // SELECT poll FOR UPDATE
+      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID }] }) // createSession INSERT (no chat → no guard)
       .mockResolvedValueOnce(undefined) // INSERT option A
       .mockResolvedValueOnce(undefined) // INSERT option B
       .mockResolvedValueOnce(undefined) // UPDATE uses_count
       .mockResolvedValueOnce(undefined); // COMMIT
-
-    // createSession uses pool.query (no chat → skip 409 check, just INSERT)
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: SESSION_ID }] });
 
     const res = await app.inject({
       method: 'POST',
@@ -174,13 +172,9 @@ describe('POST /api/public-polls/:id/use', () => {
 
     client.query
       .mockResolvedValueOnce(undefined) // BEGIN
-      .mockResolvedValueOnce({ rows: [{ name: 'Movies', options: ['A', 'B'] }] }); // SELECT poll
-
-    // createSession → 409 guard fires (existing session found)
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: SESSION_ID }] }); // existing session SELECT
-
-    // ROLLBACK on 409
-    client.query.mockResolvedValueOnce(undefined);
+      .mockResolvedValueOnce({ rows: [{ name: 'Movies', options: ['A', 'B'] }] }) // SELECT poll
+      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID }] }) // createSession guard SELECT (existing found → 409)
+      .mockResolvedValueOnce(undefined); // ROLLBACK on 409
 
     const res = await app.inject({
       method: 'POST',
@@ -201,13 +195,9 @@ describe('POST /api/public-polls/:id/use', () => {
 
     client.query
       .mockResolvedValueOnce(undefined) // BEGIN
-      .mockResolvedValueOnce({ rows: [{ name: 'Movies', options: ['A', 'B'] }] }); // SELECT poll
-
-    // createSession throws
-    mockQuery.mockRejectedValueOnce(new Error('DB exploded'));
-
-    // ROLLBACK
-    client.query.mockResolvedValueOnce(undefined);
+      .mockResolvedValueOnce({ rows: [{ name: 'Movies', options: ['A', 'B'] }] }) // SELECT poll
+      .mockRejectedValueOnce(new Error('DB exploded')) // createSession INSERT throws
+      .mockResolvedValueOnce(undefined); // ROLLBACK
 
     const res = await app.inject({
       method: 'POST',
@@ -315,5 +305,119 @@ describe('POST /api/saved-polls/:id/unpublish', () => {
     });
 
     expect(res.statusCode).toBe(404);
+  });
+});
+
+// ── GET /api/public-polls — coverage gaps ─────────────────────────────────
+
+describe('GET /api/public-polls (additional coverage)', () => {
+  let app: FastifyInstance;
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    mockChat = null;
+    app = await buildPublicApp();
+  });
+
+  it('respects custom limit parameter (capped at 30)', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    const res = await app.inject({ method: 'GET', url: '/api/public-polls?q=test&limit=100', headers: { 'x-init-data': 'dev' } });
+
+    expect(res.statusCode).toBe(200);
+    const callArgs = mockQuery.mock.calls[0];
+    expect(callArgs[1][1]).toBe(30); // capped at 30
+  });
+});
+
+// ── GET /api/saved-polls — is_public field ────────────────────────────────
+
+describe('GET /api/saved-polls', () => {
+  let app: FastifyInstance;
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    mockChat = null;
+    app = await buildSavedApp();
+  });
+
+  it('includes is_public field in response', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { id: POLL_ID, name: 'Test', options: ['A', 'B'], emoji: '🎬', is_public: true, created_at: '2026-01-01', updated_at: '2026-01-01' },
+      ],
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/saved-polls', headers: { 'x-init-data': 'dev' } });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body[0].is_public).toBe(true);
+  });
+});
+
+// ── POST /api/saved-polls/:id/publish — show_author default ───────────────
+
+describe('POST /api/saved-polls/:id/publish (additional coverage)', () => {
+  let app: FastifyInstance;
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    mockChat = null;
+    app = await buildSavedApp();
+  });
+
+  it('defaults show_author to false (anonymous) when body field is omitted', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: POLL_ID }] });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/saved-polls/${POLL_ID}/publish`,
+      headers: { 'x-init-data': 'dev' },
+      payload: {},
+    });
+
+    expect(res.statusCode).toBe(200);
+    const callArgs = mockQuery.mock.calls[0];
+    expect(callArgs[1][0]).toBe(false); // show_author defaults to false (privacy-safe)
+    expect(callArgs[1][1]).toBeNull(); // author_name is null when anonymous
+  });
+});
+
+// ── lib/sessions.ts — 23505 race-condition TOCTOU fallback ────────────────
+
+describe('createSession — 23505 race-condition fallback', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mockChat = null;
+  });
+
+  it('returns conflict when 23505 INSERT race and fallback SELECT finds session', async () => {
+    const dupError = Object.assign(new Error('unique violation'), { code: '23505' });
+    const { createSession } = await import('../lib/sessions.js');
+    mockQuery
+      .mockResolvedValueOnce({ rows: [] })            // initial SELECT: no existing session
+      .mockRejectedValueOnce(dupError)                // INSERT: 23505 race
+      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID }] }); // fallback SELECT: finds it
+
+    const result = await createSession({ id: -1001 }, 42, 'Test Session');
+    expect(result.conflict).toBe(true);
+    expect(result.id).toBe(SESSION_ID);
+  });
+
+  it('rethrows 23505 when chat is null (no fallback possible)', async () => {
+    const dupError = Object.assign(new Error('unique violation'), { code: '23505' });
+    const { createSession } = await import('../lib/sessions.js');
+    mockQuery.mockRejectedValueOnce(dupError);
+
+    await expect(createSession(null, 42, 'Test')).rejects.toThrow('unique violation');
+  });
+
+  it('rethrows 23505 when fallback SELECT finds nothing (session disappeared)', async () => {
+    const dupError = Object.assign(new Error('unique violation'), { code: '23505' });
+    const { createSession } = await import('../lib/sessions.js');
+    mockQuery
+      .mockResolvedValueOnce({ rows: [] })  // initial SELECT: no existing
+      .mockRejectedValueOnce(dupError)       // INSERT: 23505
+      .mockResolvedValueOnce({ rows: [] });  // fallback SELECT: empty
+
+    await expect(createSession({ id: -1001 }, 42, 'Test')).rejects.toThrow('unique violation');
   });
 });

@@ -10,7 +10,7 @@ export async function publicPollRoutes(fastify: FastifyInstance) {
     { preHandler: initDataMiddleware, config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
     async (request, _reply) => {
       const q = (request.query.q ?? '').trim();
-      const limit = Math.min(parseInt(request.query.limit ?? '30', 10) || 30, 30);
+      const limit = Math.max(1, Math.min(parseInt(request.query.limit ?? '30', 10) || 30, 30));
 
       let res;
       if (q) {
@@ -46,7 +46,7 @@ export async function publicPollRoutes(fastify: FastifyInstance) {
   // POST /api/public-polls/:id/use — clone public template into a new session
   fastify.post<{ Params: { id: string } }>(
     '/api/public-polls/:id/use',
-    { preHandler: initDataMiddleware },
+    { preHandler: initDataMiddleware, config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
     async (request, reply) => {
       const { id } = request.params;
       const chat = request.telegramChat;
@@ -67,8 +67,9 @@ export async function publicPollRoutes(fastify: FastifyInstance) {
 
         const { name, options } = pollRes.rows[0];
 
-        // Create the session (409 guard included)
-        const outcome = await createSession(chat, userId, name);
+        // Create the session (409 guard included); pass client so the INSERT
+        // participates in this transaction and won't orphan on options failure.
+        const outcome = await createSession(chat, userId, name, client);
         if (outcome.conflict) {
           await client.query('ROLLBACK');
           return reply.status(409).send({ error: 'Session already exists', id: outcome.id, share_url: outcome.share_url });

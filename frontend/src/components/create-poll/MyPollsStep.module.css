@@ -88,11 +88,22 @@
   flex: 1;
 }
 
+.pollNameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
 .pollName {
   font-size: 15px;
   font-weight: 700;
   color: var(--text);
-  margin-bottom: 6px;
+}
+
+.publicBadge {
+  font-size: 13px;
+  line-height: 1;
 }
 
 .pollTags {
@@ -119,10 +130,16 @@
   align-self: center;
 }
 
-.deleteBtn {
+.cardActions {
   position: absolute;
   top: 8px;
-  right: 40px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.deleteBtn {
   background: none;
   border: none;
   font-size: 16px;
@@ -137,6 +154,75 @@
 .deleteBtn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+.publishBtn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  opacity: 0.5;
+  padding: 4px;
+  color: var(--text-hint);
+  line-height: 1;
+  font-family: inherit;
+}
+
+.publishBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.unpublishBtn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  opacity: 0.8;
+  padding: 4px;
+  line-height: 1;
+  font-family: inherit;
+}
+
+.unpublishBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.publishChoice {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.publishChoiceBtn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm, 6px);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.publishChoiceBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.publishCancelBtn {
+  background: none;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0.5;
+  padding: 4px;
+  color: var(--text-hint);
+  line-height: 1;
+  font-family: inherit;
 }
 
 .footer {

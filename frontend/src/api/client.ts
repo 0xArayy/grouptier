@@ -120,6 +120,7 @@ export interface SavedPoll {
   name: string;
   options: string[];
   emoji: string;
+  is_public: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -170,6 +171,50 @@ export async function generateAiOptions(
   });
   await throwOnError(res);
   return res.json();
+}
+
+export interface PublicPoll {
+  id: string;
+  name: string;
+  emoji: string;
+  author_name: string | null;
+  uses_count: number;
+  option_count: number;
+}
+
+export async function searchPublicPolls(q?: string): Promise<PublicPoll[]> {
+  const params = q ? `?q=${encodeURIComponent(q)}` : '';
+  const res = await fetch(`${BASE}/public-polls${params}`, {
+    headers: { 'x-init-data': getInitData() },
+  });
+  await throwOnError(res);
+  return res.json();
+}
+
+export async function usePublicPoll(id: string): Promise<{ id: string; share_url: string; name: string; options: string[] }> {
+  const res = await fetch(`${BASE}/public-polls/${id}/use`, {
+    method: 'POST',
+    headers: { 'x-init-data': getInitData() },
+  });
+  await throwOnError(res);
+  return res.json();
+}
+
+export async function publishSavedPoll(id: string, showAuthor = true): Promise<void> {
+  const res = await fetch(`${BASE}/saved-polls/${id}/publish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
+    body: JSON.stringify({ show_author: showAuthor }),
+  });
+  await throwOnError(res);
+}
+
+export async function unpublishSavedPoll(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/saved-polls/${id}/unpublish`, {
+    method: 'POST',
+    headers: { 'x-init-data': getInitData() },
+  });
+  await throwOnError(res);
 }
 
 export async function submitResults(sessionId: string, rankedList: string[]) {

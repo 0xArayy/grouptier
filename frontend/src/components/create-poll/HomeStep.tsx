@@ -10,6 +10,7 @@ interface Props {
   savedPollsLoading: boolean;
   onNavigateMyPolls: () => void;
   onNavigatePresets: () => void;
+  onNavigatePublicPolls: () => void;
   onCreate: () => void;
   onGenerateWithAi: () => void;
 }
@@ -17,7 +18,7 @@ interface Props {
 export function HomeStep({
   customName, setCustomName, error, busy,
   savedPolls, savedPollsLoading,
-  onNavigateMyPolls, onNavigatePresets, onCreate, onGenerateWithAi,
+  onNavigateMyPolls, onNavigatePresets, onNavigatePublicPolls, onCreate, onGenerateWithAi,
 }: Props) {
   return (
     <div className={styles.container}>
@@ -30,6 +31,18 @@ export function HomeStep({
       <button className={styles.primaryBtn} disabled={busy} onClick={onNavigatePresets}>
         Выбрать тему →
       </button>
+
+      <div className={styles.myPollsWrap}>
+        <button className={styles.secondaryBtn} disabled={busy} onClick={onNavigatePublicPolls}>
+          <span className={styles.myPollsLeft}>
+            <span className={styles.myPollsLeftEmoji}>🌍</span>
+            <span>Публичные опросы</span>
+          </span>
+          <span className={styles.myPollsRight}>
+            <span className={styles.myPollsArrow}>›</span>
+          </span>
+        </button>
+      </div>
 
       {savedPolls.length > 0 && (
         <div className={styles.myPollsWrap}>

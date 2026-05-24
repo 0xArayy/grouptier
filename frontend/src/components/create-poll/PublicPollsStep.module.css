@@ -1,0 +1,147 @@
+.container {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.stickyHeader {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  padding: 14px 16px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--surface);
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: var(--text-hint);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  font-family: inherit;
+}
+
+.headerTitle {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.searchWrap {
+  padding: 12px 16px 8px;
+}
+
+.searchInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--surface);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: var(--accent);
+}
+
+.errorText {
+  padding: 10px 16px;
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.list {
+  padding: 8px 16px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.loadingText {
+  text-align: center;
+  color: var(--text-hint);
+  font-size: 14px;
+  padding: 40px 0;
+}
+
+.emptyState {
+  text-align: center;
+  color: var(--text-hint);
+  font-size: 14px;
+  padding: 40px 0;
+}
+
+.emptyHint {
+  font-size: 12px;
+}
+
+.pollCard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 12px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--surface);
+  background: var(--surface);
+}
+
+.pollEmoji {
+  font-size: 32px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.pollBody {
+  min-width: 0;
+  flex: 1;
+}
+
+.pollName {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 5px;
+}
+
+.pollMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.metaChip {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: var(--bg);
+  color: var(--text-hint);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.useBtn {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  min-height: var(--tap-target-min);
+}
+
+.useBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

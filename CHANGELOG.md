@@ -2,6 +2,26 @@
 
 All notable changes to GroupTier are documented here.
 
+## [1.0.5.7] - 2026-05-24
+
+### Added
+- `server/src/routes/publicPolls.ts` — **Public polls catalog**: `GET /api/public-polls` searches public templates by name (ILIKE, up to 30 results, `pg_trgm` GIN index); `POST /api/public-polls/:id/use` clones a template into a new group session in a single atomic transaction (BEGIN → SELECT FOR UPDATE → createSession → INSERT options → uses_count++ → COMMIT).
+- `server/src/routes/savedPolls.ts` — `POST /api/saved-polls/:id/publish` and `POST /api/saved-polls/:id/unpublish` let template owners toggle public visibility. Publish accepts `show_author` boolean; when false, `author_name` is stored as `NULL` and served via `CASE WHEN show_author THEN author_name ELSE NULL END` in the catalog query.
+- `server/src/lib/sessions.ts` — `createSession` extracted into a shared helper; accepts an optional transactional `PoolClient` so the session INSERT participates in an outer transaction rather than committing independently via pool.
+- `frontend/src/components/PublicPollsStep.tsx` — New step: search input (debounced 350 ms), scrollable template list, one-tap "Взять" button to clone and navigate to OptionsStep. Error message suppresses empty state when API call fails.
+- `frontend/src/components/HomeStep.tsx` — "🌍 Публичные опросы" button navigates to PublicPollsStep.
+
+### Security
+- `server/src/routes/savedPolls.ts` — `show_author` now defaults to `false` (anonymous) via strict `=== true`; previously `!== false` would treat non-boolean values (e.g. string `"false"`) as `true`, leaking author names.
+- Per-route rate limits: `GET /api/public-polls` (20/min), `POST /api/public-polls/:id/use` (10/min), `POST /api/saved-polls/:id/publish` (5/min), `POST /api/saved-polls/:id/unpublish` (5/min).
+- `GET /api/public-polls` LIMIT clamped to `[1, 30]` to prevent negative values reaching PostgreSQL.
+
+### Fixed
+- `server/src/routes/publicPolls.ts` — Session INSERT now participates in the outer transaction; previously a DB error during options INSERT would leave an orphaned session with no options, blocking the group from starting new sessions.
+
+### Tests
+- `server/src/__tests__/publicPolls.test.ts` — 22 new tests covering: GET catalog (search, limit cap, `option_count`, author privacy), POST /use (success, 404, 409, DB error), publish/unpublish (show_author variants, 404, default), GET saved-polls `is_public` field, `createSession` 23505 race-condition fallback (3 scenarios).
+
 ## [1.0.5.6] - 2026-05-23
 
 ### Fixed

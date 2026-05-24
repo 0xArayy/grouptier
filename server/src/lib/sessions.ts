@@ -1,0 +1,72 @@
+import type { PoolClient } from 'pg';
+import { pool } from '../db/client.js';
+import { buildVoteUrl } from './urls.js';
+import { MAX_NAME_LENGTH } from './constants.js';
+
+interface TelegramChat { id: number | string }
+
+interface CreateSessionResult {
+  id: string;
+  share_url: string;
+}
+
+interface ConflictResult {
+  conflict: true;
+  id: string;
+  share_url: string;
+}
+
+export type CreateSessionOutcome = { conflict: false } & CreateSessionResult | ConflictResult;
+
+/**
+ * Insert a new collecting session, enforcing one-per-chat 409 guard.
+ * Returns {conflict:false, id, share_url} on success or
+ * {conflict:true, id, share_url} when the chat already has a collecting session.
+ *
+ * Pass a transactional `client` to have the INSERT participate in an existing
+ * transaction (e.g. POST /api/public-polls/:id/use). When omitted, pool
+ * (autocommit) is used and the 23505 race-condition fallback is active.
+ */
+export async function createSession(
+  chat: TelegramChat | null | undefined,
+  userId: number,
+  rawName: string,
+  client?: PoolClient,
+): Promise<CreateSessionOutcome> {
+  const db = client ?? pool;
+  const name = rawName.trim().slice(0, MAX_NAME_LENGTH) || 'Untitled Session';
+
+  if (chat) {
+    const existing = await db.query(
+      "SELECT id FROM sessions WHERE chat_id = $1 AND status = 'collecting' LIMIT 1",
+      [chat.id],
+    );
+    if (existing.rows.length > 0) {
+      const existingId = existing.rows[0].id as string;
+      return { conflict: true, id: existingId, share_url: buildVoteUrl(existingId) };
+    }
+  }
+
+  try {
+    const res = await db.query<{ id: string }>(
+      "INSERT INTO sessions (chat_id, creator_user_id, name, status) VALUES ($1, $2, $3, 'collecting') RETURNING id",
+      [chat?.id ?? null, userId, name],
+    );
+    const newId = res.rows[0].id;
+    return { conflict: false, id: newId, share_url: buildVoteUrl(newId) };
+  } catch (err: unknown) {
+    // 23505 race fallback only works via pool (autocommit); inside a client
+    // transaction the connection is already aborted after an error.
+    if ((err as { code?: string }).code === '23505' && chat && !client) {
+      const fallback = await pool.query(
+        "SELECT id FROM sessions WHERE chat_id = $1 AND status = 'collecting' LIMIT 1",
+        [chat.id],
+      );
+      const fallbackId = fallback.rows[0]?.id as string | undefined;
+      if (fallbackId) {
+        return { conflict: true, id: fallbackId, share_url: buildVoteUrl(fallbackId) };
+      }
+    }
+    throw err;
+  }
+}

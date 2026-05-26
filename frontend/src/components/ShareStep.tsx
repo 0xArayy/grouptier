@@ -42,7 +42,7 @@ export function ShareStep({ shareUrl, sessionId, onDone }: Props) {
           onClick={handleCopy}
           className={`${styles.copyBtn}${copied ? ` ${styles.copyBtnCopied}` : ''}`}
         >
-          {copied ? '✓ Скопировано!' : '📋 Скопировать ссылку'}
+          {copied ? '✓ Скопировано!' : 'Скопировать ссылку'}
         </button>
 
         <button onClick={handleSendToTelegram} className={styles.tgBtn}>

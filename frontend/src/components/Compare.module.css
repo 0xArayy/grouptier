@@ -1,91 +1,135 @@
 .container {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 24px 16px;
-  gap: 24px;
+  padding: 16px 16px 24px;
+  gap: 0;
   flex: 1;
+  max-width: 400px;
+  margin: 0 auto;
+  width: 100%;
 }
 
+/* Progress header */
 .header {
-  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  align-items: center;
+  padding-top: 8px;
+  margin-bottom: 40px;
 }
 
-.roundLabel {
-  font-size: 13px;
-  color: var(--text-hint);
-  font-weight: 500;
+.roundRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  color: rgba(255,255,255,0.45);
+}
+
+.progressText {
+  color: rgba(255,255,255,0.70);
+  font-weight: 600;
 }
 
 .progressBar {
-  width: 100%;
-  height: 4px;
-  background: var(--surface);
+  height: 3px;
   border-radius: 2px;
+  background: rgba(255,255,255,0.06);
   overflow: hidden;
 }
 
 .progressFill {
   height: 100%;
-  background: var(--accent);
   border-radius: 2px;
+  background: linear-gradient(90deg, oklch(0.65 0.22 25), oklch(0.72 0.18 50));
   transition: width 0.3s ease;
 }
 
-.progressText {
-  font-size: 12px;
-  color: var(--text-hint);
-}
-
-.prompt {
-  font-size: 20px;
-  font-weight: 600;
+/* Question */
+.question {
   text-align: center;
+  margin-bottom: 30px;
 }
 
+.questionMono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: rgba(255,255,255,0.35);
+}
+
+.questionMain {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 8px;
+}
+
+/* Cards + ИЛИ badge */
 .cards {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-  max-width: 400px;
-  align-items: center;
+  position: relative;
 }
 
 .card {
   width: 100%;
-  min-height: var(--tap-target-min);
-  padding: 20px 24px;
-  background: var(--surface);
-  color: var(--text);
-  border-radius: var(--radius);
-  font-size: 18px;
-  font-weight: 600;
+  padding: 24px 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  color: var(--text-1);
+  border-radius: 16px;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   text-align: center;
   transition: transform 0.1s ease, opacity 0.2s ease;
   cursor: pointer;
   line-height: 1.3;
-  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06), 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-family: inherit;
+  position: relative;
+  overflow: hidden;
 }
 
-.vs {
-  font-size: 14px;
+.card:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* ИЛИ circular badge — overlaid between cards */
+.orBadge {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #000;
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 0 0 4px #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.55);
+  font-size: 11px;
   font-weight: 700;
-  color: var(--text-hint);
-  letter-spacing: 2px;
+  letter-spacing: 0.15em;
+  z-index: 2;
+  pointer-events: none;
 }
 
 .errorToast {
-  background: var(--accent);
+  background: oklch(0.65 0.22 25 / 0.85);
   color: #fff;
   padding: 12px 20px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-xl);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   text-align: center;
+  margin-top: 16px;
 }

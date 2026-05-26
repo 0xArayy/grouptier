@@ -1,4 +1,5 @@
 import type { SavedPoll } from '../../api/client.ts';
+import logoUrl from '../../assets/grouptier-logo.png';
 import styles from './HomeStep.module.css';
 
 interface Props {
@@ -21,29 +22,27 @@ export function HomeStep({
 }: Props) {
   return (
     <div className={styles.container}>
-      <div className={styles.emoji}>🗳️</div>
-      <div className={styles.title}>Создать опрос</div>
+      <img src={logoUrl} alt="GroupTier" className={styles.logo} />
       <div className={styles.subtitle}>
-        Выбери тему — группа проголосует и выберет лучший вариант.
+        Создай тир-лист — группа проголосует и составит общий тир-лист.
       </div>
 
       <button className={styles.primaryBtn} disabled={busy} onClick={onNavigatePresets}>
-        Выбрать тему →
+        <span>Выбрать тему</span>
+        <span>→</span>
       </button>
 
       {savedPolls.length > 0 && (
         <div className={styles.myPollsWrap}>
           <button className={styles.secondaryBtn} disabled={busy} onClick={onNavigateMyPolls}>
             <span className={styles.myPollsLeft}>
-              <span className={styles.myPollsLeftEmoji}>⭐</span>
+              <span className={styles.myPollsIcon}>⭐</span>
               <span>Мои опросы</span>
             </span>
             <span className={styles.myPollsRight}>
-              {savedPollsLoading ? (
-                <span className={styles.myPollsCount}>…</span>
-              ) : (
-                <span className={styles.myPollsCount}>{savedPolls.length}</span>
-              )}
+              <span className={styles.myPollsCount}>
+                {savedPollsLoading ? '…' : savedPolls.length}
+              </span>
               <span className={styles.myPollsArrow}>›</span>
             </span>
           </button>
@@ -52,11 +51,11 @@ export function HomeStep({
 
       <div className={styles.divider}>
         <div className={styles.dividerLine} />
-        <span className={styles.dividerLabel}>или</span>
+        <span>ИЛИ</span>
         <div className={styles.dividerLine} />
       </div>
 
-      <div className={styles.sectionLabel}>Свой вариант</div>
+      <div className={styles.sectionLabel}>СВОЙ ВАРИАНТ</div>
       <input
         className={styles.input}
         placeholder="Название опроса…"
@@ -66,22 +65,26 @@ export function HomeStep({
         autoFocus
       />
       {error && <div className={styles.errorText}>{error}</div>}
+
       <div className={styles.bottomActions}>
         <button
           className={styles.aiBtn}
           disabled={busy || !customName.trim()}
           onClick={onGenerateWithAi}
         >
-          Сгенерировать с ИИ ✨
+          <span>Сгенерировать с ИИ</span>
+          <span className={styles.aiSpark}>✦</span>
         </button>
         <button
           className={styles.ghostBtn}
           disabled={busy}
           onClick={onCreate}
         >
-          {busy ? 'Создаём…' : 'Создать пустой опрос'}
+          {busy ? 'Создаём…' : 'Создать пустой тир-лист'}
         </button>
       </div>
+
+      <div className={styles.spacer} />
     </div>
   );
 }

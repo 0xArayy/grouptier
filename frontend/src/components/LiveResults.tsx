@@ -22,10 +22,10 @@ interface Props {
 }
 
 const TIER_META = [
-  { tier: 'S', bg: 'var(--tier-s)', text: 'var(--tier-s-text)', shadow: '0 2px 0 rgba(0,0,0,0.22)' },
-  { tier: 'A', bg: 'var(--tier-a)', text: 'var(--tier-a-text)', shadow: '0 2px 0 rgba(0,0,0,0.22)' },
-  { tier: 'B', bg: 'var(--tier-b)', text: 'var(--tier-b-text)', shadow: '0 2px 0 rgba(255,255,255,0.4)' },
-  { tier: 'C', bg: 'var(--tier-c)', text: 'var(--tier-c-text)', shadow: '0 2px 0 rgba(0,0,0,0.22)' },
+  { tier: 'S', bg: 'oklch(0.65 0.22 25)' },
+  { tier: 'A', bg: 'oklch(0.72 0.18 50)' },
+  { tier: 'B', bg: 'oklch(0.85 0.16 90)' },
+  { tier: 'C', bg: 'oklch(0.70 0.18 140)' },
 ];
 
 function assignTiers(ranking: BordaEntry[]) {
@@ -33,7 +33,8 @@ function assignTiers(ranking: BordaEntry[]) {
   if (n === 0) return [];
   const size = Math.ceil(n / 4);
   return TIER_META.map((meta, i) => ({
-    ...meta,
+    tier: meta.tier,
+    bg: meta.bg,
     items: ranking.slice(i * size, (i + 1) * size),
   })).filter(t => t.items.length > 0);
 }
@@ -124,14 +125,14 @@ export function LiveResults({
       )}
 
       {bordaRanking.length === 0 ? (
-        <div className={styles.empty}>No votes yet. Be the first!</div>
+        <div className={styles.empty}>Пока нет голосов. Будь первым!</div>
       ) : (
         <div className={styles.tierRows}>
-          {tiers.map(({ tier, bg, text, shadow, items }) => (
+          {tiers.map(({ tier, bg, items }) => (
             <div key={tier} className={styles.tierRow}>
               <div
                 className={styles.tierBlock}
-                style={{ background: bg, color: text, textShadow: shadow }}
+                style={{ background: bg }}
               >
                 {tier}
               </div>
@@ -219,7 +220,7 @@ export function LiveResults({
             onClick={onClose}
             disabled={closing}
           >
-            {closing ? 'Closing…' : '🔒 Close & announce'}
+            {closing ? 'Закрываем…' : '🔒 Закрыть и объявить'}
           </button>
         )}
       </div>

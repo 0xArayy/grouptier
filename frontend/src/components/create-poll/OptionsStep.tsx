@@ -110,7 +110,8 @@ export function OptionsStep({
           <div className={styles.optionsList}>
             {options.map((opt, i) => (
               <div key={opt} className={styles.optionRow}>
-                <span className={styles.optionText}>{i + 1}. {opt}</span>
+                <span className={styles.optionNum}>{String(i + 1).padStart(2, '0')}</span>
+                <span className={styles.optionText}>{opt}</span>
                 <button
                   onClick={() => onRemoveOption(opt)}
                   disabled={removingOption === opt || busy}

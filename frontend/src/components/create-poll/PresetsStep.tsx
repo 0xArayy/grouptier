@@ -43,7 +43,7 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
             <div className={styles.pollBody}>
               <div className={styles.pollName}>{p.name}</div>
               <div className={styles.pollTags}>
-                {p.options.map(opt => (
+                {p.options.slice(0, 6).map(opt => (
                   <span key={opt} className={styles.pollTag}>{opt}</span>
                 ))}
               </div>

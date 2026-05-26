@@ -22,9 +22,11 @@ export function HomeStep({
 }: Props) {
   return (
     <div className={styles.container}>
-      <img src={logoUrl} alt="GroupTier" className={styles.logo} />
-      <div className={styles.subtitle}>
-        Создай тир-лист — группа проголосует и составит общий тир-лист.
+      <div className={styles.hero}>
+        <img src={logoUrl} alt="GroupTier" className={styles.logo} />
+        <div className={styles.subtitle}>
+          Создай тир-лист — группа проголосует и определит лучший вариант.
+        </div>
       </div>
 
       <button className={styles.primaryBtn} disabled={busy} onClick={onNavigatePresets}>
@@ -37,7 +39,7 @@ export function HomeStep({
           <button className={styles.secondaryBtn} disabled={busy} onClick={onNavigateMyPolls}>
             <span className={styles.myPollsLeft}>
               <span className={styles.myPollsIcon}>⭐</span>
-              <span>Мои опросы</span>
+              <span>Мои тир-листы</span>
             </span>
             <span className={styles.myPollsRight}>
               <span className={styles.myPollsCount}>
@@ -58,7 +60,7 @@ export function HomeStep({
       <div className={styles.sectionLabel}>СВОЙ ВАРИАНТ</div>
       <input
         className={styles.input}
-        placeholder="Название опроса…"
+        placeholder="Название тир-листа…"
         value={customName}
         onChange={e => setCustomName(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onCreate(); } }}

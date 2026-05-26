@@ -22,31 +22,35 @@ export function Compare({ matchup, currentRound, totalRounds, completedMatchups,
     try {
       await onPick(winner, loser);
     } catch {
-      setError('Failed to save — tap to retry');
+      setError('Не удалось сохранить — нажми ещё раз');
       setPicking(null);
     }
   }
 
+  const progress = totalMatchups > 0 ? (completedMatchups / totalMatchups) * 100 : 0;
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <span className={styles.roundLabel}>Round {currentRound + 1} of {totalRounds}</span>
-        <div className={styles.progressBar}>
-          <div
-            className={styles.progressFill}
-            style={{ width: `${(completedMatchups / totalMatchups) * 100}%` }}
-          />
+        <div className={styles.roundRow}>
+          <span className={styles.roundLabel}>РАУНД {currentRound + 1}/{totalRounds}</span>
+          <span className={styles.progressText}>{completedMatchups} / {totalMatchups}</span>
         </div>
-        <span className={styles.progressText}>{completedMatchups}/{totalMatchups}</span>
+        <div className={styles.progressBar}>
+          <div className={styles.progressFill} style={{ width: `${progress}%` }} />
+        </div>
       </div>
 
-      <div className={styles.prompt}>Which do you prefer?</div>
+      <div className={styles.question}>
+        <div className={styles.questionMono}>ЧТО ПРЕДПОЧИТАЕШЬ?</div>
+        <div className={styles.questionMain}>Выбери одно</div>
+      </div>
 
       <div className={styles.cards}>
         <button
           className={styles.card}
           style={{
-            opacity: picking && picking !== matchup.optionA ? 0.5 : 1,
+            opacity: picking && picking !== matchup.optionA ? 0.4 : 1,
             transform: picking === matchup.optionA ? 'scale(0.96)' : 'scale(1)',
           }}
           onClick={() => handlePick(matchup.optionA, matchup.optionB)}
@@ -55,12 +59,12 @@ export function Compare({ matchup, currentRound, totalRounds, completedMatchups,
           {matchup.optionA}
         </button>
 
-        <div className={styles.vs}>VS</div>
+        <div className={styles.orBadge}>ИЛИ</div>
 
         <button
           className={styles.card}
           style={{
-            opacity: picking && picking !== matchup.optionB ? 0.5 : 1,
+            opacity: picking && picking !== matchup.optionB ? 0.4 : 1,
             transform: picking === matchup.optionB ? 'scale(0.96)' : 'scale(1)',
           }}
           onClick={() => handlePick(matchup.optionB, matchup.optionA)}

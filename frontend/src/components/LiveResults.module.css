@@ -5,12 +5,16 @@
   padding: 0 0 16px;
   flex: 1;
   overflow-y: auto;
+  max-width: 400px;
+  margin: 0 auto;
+  width: 100%;
 }
 
+/* Header */
 .headerRow {
-  padding: 10px 16px 4px;
+  padding: 14px 16px 6px;
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 8px;
 }
 
@@ -19,101 +23,119 @@
 }
 
 .eyebrow {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1.5px;
-  color: var(--text-hint);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: rgba(255,255,255,0.40);
 }
 
 .title {
-  font-size: 18px;
-  font-weight: 900;
-  color: var(--text);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--text-1);
+  margin-top: 2px;
 }
 
+/* LIVE badge */
 .liveBadge {
-  font-size: 10px;
-  padding: 4px 8px 4px 6px;
-  border-radius: 10px;
-  background: var(--progress);
-  color: #fff;
-  font-weight: 800;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  letter-spacing: 0.5px;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: oklch(0.55 0.18 145 / 0.18);
+  border: 1px solid oklch(0.7 0.18 140 / 0.4);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: oklch(0.78 0.18 140);
   flex-shrink: 0;
+  margin-top: 4px;
 }
 
 .liveDot {
   width: 6px;
   height: 6px;
-  border-radius: 3px;
-  background: #fff;
+  border-radius: 999px;
+  background: oklch(0.7 0.18 140);
   animation: gtPulse 1.2s infinite;
 }
 
 .closedBadge {
+  font-family: var(--font-mono);
   font-size: 11px;
-  padding: 4px 8px;
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--text-hint);
-  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-weight: 600;
   flex-shrink: 0;
+  margin-top: 4px;
 }
 
+/* Voter progress bar */
 .voterRow {
-  padding: 0 16px 8px;
+  padding: 0 16px 10px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .voterTrack {
   flex: 1;
-  height: 5px;
-  border-radius: 3px;
-  background: var(--surface);
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.06);
   overflow: hidden;
 }
 
 .voterFill {
   height: 100%;
-  background: var(--progress);
-  border-radius: 3px;
+  background: linear-gradient(90deg,
+    oklch(0.65 0.22 25),
+    oklch(0.72 0.18 50),
+    oklch(0.85 0.16 90),
+    oklch(0.70 0.18 140));
+  border-radius: 2px;
   transition: width 0.4s ease;
 }
 
 .voterCount {
+  font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 700;
-  color: var(--text);
+  font-weight: 600;
+  color: rgba(255,255,255,0.60);
   font-variant-numeric: tabular-nums;
 }
 
 .empty {
   text-align: center;
-  color: var(--text-hint);
+  color: var(--text-2);
   margin-top: 32px;
   font-size: 15px;
   padding: 0 16px;
 }
 
+/* Tier rows */
 .tierRows {
-  padding: 4px 14px;
+  padding: 4px 16px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .tierRow {
   display: flex;
   align-items: stretch;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-xl);
+  background: rgba(255,255,255,0.022);
+  border: 1px solid rgba(255,255,255,0.05);
+  padding: 8px;
+  gap: 0;
   overflow: hidden;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06);
 }
 
 .tierBlock {
@@ -122,34 +144,36 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 10px;
   font-family: var(--font-display);
   font-weight: 900;
-  font-size: 32px;
+  font-size: 24px;
   line-height: 1;
-  letter-spacing: -1px;
   flex-shrink: 0;
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(0,0,0,0.22);
 }
 
 .bordaItems {
   flex: 1;
-  padding: 6px 8px;
+  padding: 4px 8px 4px 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   justify-content: center;
 }
 
 .bordaItem {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .itemName {
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
-  color: var(--text);
-  width: 72px;
+  color: rgba(255,255,255,0.88);
+  width: 86px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -158,9 +182,9 @@
 
 .barTrack {
   flex: 1;
-  height: 5px;
+  height: 6px;
   border-radius: 3px;
-  background: var(--bg);
+  background: rgba(255,255,255,0.05);
   overflow: hidden;
 }
 
@@ -171,10 +195,11 @@
 }
 
 .itemScore {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text);
-  width: 20px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.70);
+  width: 14px;
   text-align: right;
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
@@ -182,10 +207,11 @@
 
 /* Save template form */
 .saveForm {
-  margin: 8px 14px 0;
+  margin: 8px 16px 0;
   padding: 12px 14px;
-  background: var(--surface);
-  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -194,14 +220,15 @@
 .saveNameInput {
   width: 100%;
   padding: 10px 12px;
-  background: var(--bg);
-  border: 1px solid transparent;
-  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-1);
   box-sizing: border-box;
   font-family: inherit;
+  outline: none;
 }
 
 .emojiGrid {
@@ -219,19 +246,17 @@
   font-size: 20px;
   border-radius: 6px;
   cursor: pointer;
-  outline-offset: 1px;
   background: transparent;
-  outline: 2px solid transparent;
+  border: none;
 }
 
 .emojiCellActive {
-  background: var(--bg);
-  outline: 2px solid var(--accent);
+  background: var(--surface-2);
 }
 
 .saveError {
   font-size: 12px;
-  color: var(--tier-s);
+  color: oklch(0.65 0.22 25);
   text-align: center;
 }
 
@@ -243,32 +268,35 @@
 .saveConfirmBtn {
   flex: 1;
   padding: 12px;
-  background: var(--accent);
+  background: var(--cta-bg);
   color: #fff;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   min-height: var(--tap-target-min);
   cursor: pointer;
-  box-shadow: 0 2px 8px var(--accent-shadow);
   transition: opacity 0.15s;
+  font-family: inherit;
+  border: none;
 }
 
 .saveCancelBtn {
   flex: 1;
   padding: 12px;
-  background: var(--bg);
-  color: var(--text-hint);
-  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  color: var(--text-2);
+  border-radius: var(--radius-md);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   min-height: var(--tap-target-min);
   cursor: pointer;
+  border: 1px solid var(--border);
+  font-family: inherit;
 }
 
 /* Footer */
 .footer {
-  padding: 8px 14px 0;
+  padding: 10px 16px 0;
   display: flex;
   gap: 8px;
 }
@@ -276,53 +304,65 @@
 .shareBtn {
   flex: 1;
   padding: 12px;
-  background: var(--surface);
-  color: var(--accent);
-  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  color: var(--accent-warm);
+  border-radius: var(--radius-xl);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   min-height: var(--tap-target-min);
   cursor: pointer;
+  font-family: inherit;
 }
 
 .saveBtn {
   flex: 1;
   padding: 12px;
-  background: var(--surface);
-  color: var(--accent);
-  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  color: var(--accent-warm);
+  border-radius: var(--radius-xl);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   min-height: var(--tap-target-min);
   transition: opacity 0.15s;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .closeBtn {
   flex: 1.4;
   padding: 12px;
-  background: var(--accent);
+  background: var(--cta-bg);
   color: #fff;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-xl);
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   min-height: var(--tap-target-min);
   cursor: pointer;
-  box-shadow: 0 2px 8px var(--accent-shadow);
+  border: none;
+  font-family: inherit;
+  transition: transform 120ms ease;
+}
+
+.closeBtn:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .newPollWrap {
-  padding: 6px 14px 0;
+  padding: 6px 16px 0;
 }
 
 .newPollBtn {
   width: 100%;
   padding: 10px;
   background: transparent;
-  color: var(--text-hint);
-  border-radius: var(--radius-md);
+  color: var(--text-2);
+  border-radius: var(--radius-xl);
   font-size: 13px;
   font-weight: 600;
   min-height: var(--tap-target-min);
   cursor: pointer;
-  border: 1px solid var(--surface);
+  border: 1px solid var(--border);
+  font-family: inherit;
 }

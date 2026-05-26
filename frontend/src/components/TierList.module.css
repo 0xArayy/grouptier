@@ -2,40 +2,71 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 0 0 16px;
+  padding: 16px 0 80px;
   flex: 1;
+  max-width: 400px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .closedBanner {
-  background: var(--surface);
-  color: var(--text-hint);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  color: var(--text-2);
   padding: 10px 16px;
-  margin: 0 14px;
-  border-radius: var(--radius-md);
+  margin: 0 16px;
+  border-radius: var(--radius-xl);
   text-align: center;
   font-size: 14px;
   font-weight: 500;
 }
 
+/* Header */
+.screenMono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: rgba(255,255,255,0.40);
+  padding: 0 16px;
+  margin-bottom: 4px;
+}
+
+.screenTitle {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  padding: 0 16px;
+}
+
+.screenSub {
+  font-size: 13px;
+  color: var(--text-2);
+  padding: 0 16px;
+  margin-top: 4px;
+  margin-bottom: 14px;
+}
+
+/* Tier grid */
 .grid {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 4px 14px;
+  gap: 10px;
+  padding: 0 16px;
 }
 
 .row {
   display: flex;
   align-items: stretch;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06);
-  transition: outline-color 0.1s, background 0.1s;
+  border-radius: var(--radius-xl);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  padding: 8px;
+  gap: 10px;
+  transition: border-color 0.1s;
 }
 
 .rowTargeted {
-  outline: 2px solid var(--accent);
+  border-color: rgba(255,255,255,0.18);
 }
 
 .tierLabel {
@@ -44,12 +75,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 12px;
   font-family: var(--font-display);
-  font-size: 35px;
+  font-size: 28px;
   font-weight: 900;
   line-height: 1;
-  letter-spacing: -1.5px;
   flex-shrink: 0;
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(0,0,0,0.22);
 }
 
 .chips {
@@ -57,18 +90,18 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 8px 10px;
   align-items: center;
   min-height: 56px;
 }
 
 .chip {
-  background: var(--bg);
-  border-radius: var(--radius-sm);
-  padding: 3px 8px;
-  font-size: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-1);
   touch-action: none;
   user-select: none;
   transition: opacity 0.15s;
@@ -85,78 +118,89 @@
 
 .emptyHint {
   font-size: 11px;
-  color: var(--text-hint);
+  color: var(--text-3);
   font-style: italic;
-  opacity: 0.6;
 }
 
+/* Drag hint */
 .dragHint {
   text-align: center;
-  font-size: 11px;
-  color: var(--text-hint);
-  opacity: 0.6;
-  padding: 0 14px;
-  margin-top: -4px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
+/* Floating ghost during drag */
 .floatingChip {
   position: fixed;
   z-index: 1000;
   pointer-events: none;
-  background: var(--bg);
-  border-radius: var(--radius-sm);
-  padding: 3px 8px;
-  font-size: 12px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  color: var(--text-1);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
   transform: scale(1.1) rotate(-2deg);
 }
 
 .submitError {
-  color: var(--tier-s);
+  color: oklch(0.65 0.22 25);
   font-size: 13px;
   text-align: center;
   padding: 4px 0;
 }
 
+/* Footer */
 .footer {
-  padding: 4px 14px 0;
+  padding: 4px 16px 0;
   display: flex;
   gap: 8px;
 }
 
 .submitBtn {
   flex: 1;
-  padding: 14px;
-  background: var(--accent);
+  padding: 16px;
+  background: var(--cta-bg);
   color: #fff;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-xl);
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   min-height: var(--tap-target-min);
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, transform 120ms ease;
   cursor: pointer;
-  box-shadow: 0 2px 8px var(--accent-shadow);
+  font-family: inherit;
+}
+
+.submitBtn:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .groupBtn {
   flex: 1;
-  padding: 14px;
-  background: var(--surface);
-  color: var(--accent);
-  border-radius: var(--radius-md);
+  padding: 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  color: var(--accent-warm);
+  border-radius: var(--radius-xl);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   min-height: var(--tap-target-min);
   cursor: pointer;
+  font-family: inherit;
 }
 
 .dropIndicator {
   display: inline-block;
   width: 2px;
   height: 20px;
-  background: var(--accent);
+  background: rgba(255,255,255,0.4);
   border-radius: 1px;
   flex-shrink: 0;
   align-self: center;

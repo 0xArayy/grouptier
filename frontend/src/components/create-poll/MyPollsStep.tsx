@@ -26,7 +26,7 @@ export function MyPollsStep({
     <div className={styles.container}>
       <div className={styles.stickyHeader}>
         <button onClick={onBack} className={styles.backBtn}>←</button>
-        <div className={styles.headerTitle}>Мои опросы</div>
+        <div className={styles.headerTitle}>Мои тир-листы</div>
       </div>
 
       {error && <div className={styles.errorText}>{error}</div>}
@@ -34,8 +34,8 @@ export function MyPollsStep({
       <div className={styles.list}>
         {savedPolls.length === 0 ? (
           <div className={styles.emptyState}>
-            Сохранённых опросов нет.<br />
-            <span className={styles.emptyHint}>Создай опрос и нажми «Сохранить шаблон».</span>
+            Сохранённых тир-листов нет.<br />
+            <span className={styles.emptyHint}>Создай тир-лист и нажми «Сохранить шаблон».</span>
           </div>
         ) : (
           savedPolls.map(poll => (
@@ -107,7 +107,7 @@ export function MyPollsStep({
 
       <div className={styles.footer}>
         <button className={styles.createBtn} disabled={busy} onClick={onCreateNew}>
-          + Создать новый опрос
+          + Создать новый тир-лист
         </button>
       </div>
 

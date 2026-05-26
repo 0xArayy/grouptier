@@ -227,7 +227,7 @@ export function LiveResults({
       {sessionClosed && onNewPoll && (
         <div className={styles.newPollWrap}>
           <button className={styles.newPollBtn} onClick={onNewPoll}>
-            + Новый опрос
+            + Новый тир-лист
           </button>
         </div>
       )}

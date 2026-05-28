@@ -8,6 +8,14 @@
 
 ### ~~[public-polls-catalog]~~ ✅ Done — Public polls catalog: publish/unpublish saved templates, `GET /api/public-polls` search with ILIKE + `pg_trgm` GIN index, `POST /api/public-polls/:id/use` atomically clones template into group session; author-privacy `show_author` flag; PublicPollsStep frontend with debounced search
 
+### ~~[public-templates-browser]~~ ✅ Done — Curated `public_templates` table with HOT metric (top-3 by 7-day uses); PresetsStep live browser with HOT/OFFICIAL/category filter chips; MyPollsStep redesign (kebab, publish CTA with С именем/Анонимно); `template_uses` event log; composite covering index on `(used_at DESC, template_id)`
+
+### [templates-cache-control] Add `Cache-Control` to GET /api/templates
+`GET /api/templates` is a public read-only endpoint called on every PresetsStep mount. No HTTP caching headers means every app open hits the DB. Add `s-maxage=60, stale-while-revalidate=30` or a simple 30 s in-process cache. Low risk, notable perf gain at scale.
+
+### [templates-pagination] Cursor-based pagination for public templates
+GET /api/templates returns all templates without pagination. Fine at 9 seeds, will grow. Add cursor-based pagination (`?after=<id>`) matching the pattern from [public-polls-pagination].
+
 ### [canvas-worker] Offload PNG card generation to worker_threads
 `generateVotingCard`, `generateSetupCard`, and `generateWinnerCard` in `imageCard.ts` call `canvas.toBuffer('image/png')` synchronously, blocking Node's event loop for ~5–30ms per card. Acceptable for single-group scale but will cause request queuing under multi-group load. Fix: use `piscina` or a manual `worker_threads` pool to keep the main thread free.
 

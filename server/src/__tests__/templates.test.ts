@@ -80,6 +80,49 @@ describe('GET /api/templates', () => {
     expect(body.items).toEqual([]);
     expect(body.nextOffset).toBeNull();
   });
+
+  it('serves second request from cache — DB called only once', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ id: TEMPLATE_ID, name: 'Poll', options: [] }] });
+
+    await app.inject({ method: 'GET', url: '/api/templates' });
+    await app.inject({ method: 'GET', url: '/api/templates' });
+
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it('supports ?limit and ?offset pagination', async () => {
+    const rows = Array.from({ length: 5 }, (_, i) => ({ id: `id-${i}`, name: `T${i}` }));
+    mockQuery.mockResolvedValueOnce({ rows });
+
+    // page 1: limit=2, offset=0
+    const res1 = await app.inject({ method: 'GET', url: '/api/templates?limit=2&offset=0' });
+    const body1 = JSON.parse(res1.body);
+    expect(body1.items).toHaveLength(2);
+    expect(body1.nextOffset).toBe(2);
+
+    // page 2: limit=2, offset=2 — served from cache, no second DB call
+    const res2 = await app.inject({ method: 'GET', url: '/api/templates?limit=2&offset=2' });
+    const body2 = JSON.parse(res2.body);
+    expect(body2.items).toHaveLength(2);
+    expect(body2.nextOffset).toBe(4);
+
+    // page 3: last item, nextOffset null
+    const res3 = await app.inject({ method: 'GET', url: '/api/templates?limit=2&offset=4' });
+    const body3 = JSON.parse(res3.body);
+    expect(body3.items).toHaveLength(1);
+    expect(body3.nextOffset).toBeNull();
+
+    // DB hit exactly once despite 3 requests
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it('clamps limit to max 100', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: TEMPLATE_ID, name: 'Poll' }] });
+    const res = await app.inject({ method: 'GET', url: '/api/templates?limit=999' });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.items).toHaveLength(1); // only 1 row in mock
+  });
 });
 
 // ── POST /api/templates/:id/use ────────────────────────────────────────────

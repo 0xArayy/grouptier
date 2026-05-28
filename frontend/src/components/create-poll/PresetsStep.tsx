@@ -1,37 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { fetchTemplates, recordTemplateUse, type PublicTemplate } from '../../api/client.ts';
 import styles from './PresetsStep.module.css';
 
-interface Template {
-  id: string;
-  emoji: string;
-  name: string;
-  options: string[];
-  author: string;
-  official: boolean;
-  hot: boolean;
-  uses: number;
-  category: 'games' | 'food' | 'movies' | 'series' | 'music' | 'sport' | 'other';
-}
-
 // Keep Preset compatible with CreatePoll's handlePreset(preset.name, preset.options)
-export type Preset = Pick<Template, 'emoji' | 'name' | 'options'>;
+export type Preset = Pick<PublicTemplate, 'emoji' | 'name' | 'options'>;
 
-const TEMPLATES: Template[] = [
-  { id: '1', emoji: '🍕', name: 'Что будем есть?', options: ['Пицца', 'Суши', 'Бургеры', 'Тако', 'Рамен', 'Паста', 'Тайская', 'Салат'], author: 'GroupTier', official: true, hot: true, uses: 4800, category: 'food' },
-  { id: '2', emoji: '🎮', name: 'Во что сыграем?', options: ['Minecraft', 'Valorant', 'CS2', 'Among Us', 'Stardew Valley', 'Rocket League', 'Fortnite', 'League of Legends'], author: 'GroupTier', official: true, hot: true, uses: 3200, category: 'games' },
-  { id: '3', emoji: '🎬', name: 'Какой жанр сегодня?', options: ['Боевик', 'Комедия', 'Ужасы', 'Романтика', 'Фантастика', 'Триллер', 'Анимация', 'Документалка'], author: 'GroupTier', official: true, hot: false, uses: 2100, category: 'movies' },
-  { id: '4', emoji: '📺', name: 'Какой сериал смотрим?', options: ['Breaking Bad', 'Game of Thrones', 'The Bear', 'Severance', 'Succession', 'The Wire', 'Chernobyl', 'Dark'], author: '@alex', official: false, hot: true, uses: 1200, category: 'series' },
-  { id: '5', emoji: '🎵', name: 'Какую музыку ставим?', options: ['Хип-хоп', 'Поп', 'Рок', 'Электронная', 'Джаз', 'R&B', 'Классика', 'Инди'], author: 'GroupTier', official: true, hot: false, uses: 890, category: 'music' },
-  { id: '6', emoji: '🏖️', name: 'Куда едем?', options: ['Море', 'Горы', 'Город', 'Дача', 'Кемпинг', 'Экскурсии', 'Спа', 'Остаёмся дома'], author: '@marina', official: false, hot: false, uses: 540, category: 'other' },
-  { id: '7', emoji: '🎯', name: 'Чем займёмся?', options: ['Боулинг', 'Кино', 'Бар', 'Парк', 'Квест', 'Настолки', 'Каток', 'Кафе'], author: '@dmitry', official: false, hot: false, uses: 310, category: 'other' },
-  { id: '8', emoji: '🍺', name: 'Что пьём?', options: ['Пиво', 'Вино', 'Коктейли', 'Виски', 'Текила', 'Просекко', 'Безалкогольное', 'Чай'], author: '@sasha', official: false, hot: false, uses: 220, category: 'other' },
-  { id: '9', emoji: '⚽', name: 'Лучшие матчи сезона', options: ['Финал ЛЧ', 'Класико', 'Дерби Мерсисайда', 'Манчестерское дерби', 'Дерби делла Мадонина'], author: '@sport_fan', official: false, hot: true, uses: 760, category: 'sport' },
-];
+type Category = 'all' | 'hot' | 'official' | PublicTemplate['category'];
 
-type Category = 'all' | Template['category'];
-
-const CATEGORIES: { id: Category; label: string }[] = [
+const CATEGORIES: { id: Category; label: string; variant?: 'hot' | 'official' }[] = [
   { id: 'all', label: '🔥 Все' },
+  { id: 'hot', label: 'HOT', variant: 'hot' },
+  { id: 'official', label: 'OFFICIAL', variant: 'official' },
   { id: 'games', label: '🎮 Игры' },
   { id: 'food', label: '🍕 Еда' },
   { id: 'movies', label: '🎬 Кино' },
@@ -55,16 +34,32 @@ interface Props {
 export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<Category>('all');
+  const [templates, setTemplates] = useState<PublicTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
+
+  useEffect(() => {
+    fetchTemplates()
+      .then(data => { setTemplates(data); setFetchError(''); })
+      .catch(() => setFetchError('Не удалось загрузить шаблоны.'))
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return TEMPLATES.filter(t => {
-      const matchCat = category === 'all' || t.category === category;
-      if (!matchCat) return false;
+    return templates.filter(t => {
+      if (category === 'hot' && !t.hot) return false;
+      if (category === 'official' && !t.official) return false;
+      if (category !== 'all' && category !== 'hot' && category !== 'official' && t.category !== category) return false;
       if (!q) return true;
       return t.name.toLowerCase().includes(q) || t.options.some(o => o.toLowerCase().includes(q));
     });
-  }, [query, category]);
+  }, [query, category, templates]);
+
+  function handleSelect(t: PublicTemplate) {
+    recordTemplateUse(t.id); // fire-and-forget, never blocks
+    onSelect({ emoji: t.emoji, name: t.name, options: t.options });
+  }
 
   return (
     <div className={styles.container}>
@@ -102,7 +97,12 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
           {CATEGORIES.map(c => (
             <button
               key={c.id}
-              className={`${styles.catChip}${category === c.id ? ` ${styles.catChipActive}` : ''}`}
+              className={[
+                styles.catChip,
+                category === c.id ? styles.catChipActive : '',
+                c.variant === 'hot' ? styles.catChipHot : '',
+                c.variant === 'official' ? styles.catChipOfficial : '',
+              ].filter(Boolean).join(' ')}
               onClick={() => setCategory(c.id)}
             >
               {c.label}
@@ -110,13 +110,37 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
           ))}
         </div>
 
-        {error && <div className={styles.errorText}>{error}</div>}
+        {(error || fetchError) && (
+          <div className={styles.errorText}>
+            {error || fetchError}
+            {fetchError && (
+              <button className={styles.retryBtn} onClick={() => {
+                setLoading(true); setFetchError('');
+                fetchTemplates()
+                  .then(data => { setTemplates(data); })
+                  .catch(() => setFetchError('Не удалось загрузить шаблоны.'))
+                  .finally(() => setLoading(false));
+              }}>Повторить →</button>
+            )}
+          </div>
+        )}
+
+        {/* Loading skeletons */}
+        {loading && (
+          <div className={styles.list}>
+            {[0, 1, 2].map(i => (
+              <div key={i} className={styles.skeleton} />
+            ))}
+          </div>
+        )}
 
         {/* Template list */}
-        {filtered.length === 0 ? (
+        {!loading && filtered.length === 0 && !fetchError && (
           <div className={styles.emptyState}>
             <div className={styles.emptyIcon}>🔍</div>
-            <div className={styles.emptyText}>Нет шаблонов по запросу «{query}»</div>
+            <div className={styles.emptyText}>
+              {query ? `Нет шаблонов по запросу «${query}»` : 'Нет шаблонов в этой категории'}
+            </div>
             <button
               className={styles.dashedBtn}
               onClick={() => onSelect({ emoji: '🎯', name: query || 'Свой шаблон', options: [] })}
@@ -124,7 +148,9 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
               <span>+</span> Создать пустой шаблон
             </button>
           </div>
-        ) : (
+        )}
+
+        {!loading && filtered.length > 0 && (
           <div className={styles.list}>
             {filtered.map(t => {
               const visibleOptions = t.options.slice(0, 6);
@@ -132,27 +158,23 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
               return (
                 <button
                   key={t.id}
-                  onClick={() => onSelect({ emoji: t.emoji, name: t.name, options: t.options })}
+                  onClick={() => handleSelect(t)}
                   disabled={busy}
                   className={styles.card}
                 >
-                  {/* Emoji avatar */}
                   <div className={styles.cardEmoji}>{t.emoji}</div>
 
                   <div className={styles.cardBody}>
-                    {/* Title + badges */}
                     <div className={styles.cardTitleRow}>
                       <span className={styles.cardTitle}>{t.name}</span>
                       {t.hot && <span className={styles.badgeHot}>HOT</span>}
                       {t.official && <span className={styles.badgeOfficial}>OFFICIAL</span>}
                     </div>
 
-                    {/* Author + uses */}
                     <div className={styles.cardMeta}>
-                      {t.official ? 'GroupTier' : t.author} · {formatUses(t.uses)} использовали
+                      {t.official ? 'GroupTier' : t.author} · {formatUses(t.uses_7d)} использовали
                     </div>
 
-                    {/* Item chips */}
                     <div className={styles.cardChips}>
                       {visibleOptions.map(opt => (
                         <span key={opt} className={styles.chip}>{opt}</span>
@@ -168,7 +190,6 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
               );
             })}
 
-            {/* Fallback dashed button */}
             <button
               className={styles.dashedBtn}
               onClick={() => onSelect({ emoji: '🎯', name: 'Свой шаблон', options: [] })}

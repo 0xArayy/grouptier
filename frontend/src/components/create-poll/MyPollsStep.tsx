@@ -52,7 +52,7 @@ export function MyPollsStep({
             const isDeleting = deletingId === poll.id;
             const isPublishing = publishingId === poll.id;
             const isPublishExpanded = expandedPublish === poll.id;
-            const isPublic = (poll as SavedPoll & { is_public?: boolean }).is_public;
+            const isPublic = poll.is_public;
 
             return (
               <div key={poll.id} className={styles.card}>

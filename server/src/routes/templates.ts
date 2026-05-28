@@ -43,6 +43,10 @@ export async function templateRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const { id } = request.params;
 
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+        return reply.status(400).send({ error: 'Invalid template id' });
+      }
+
       const check = await pool.query(
         'SELECT id FROM public_templates WHERE id = $1',
         [id],

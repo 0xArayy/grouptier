@@ -39,10 +39,12 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
   const [fetchError, setFetchError] = useState('');
 
   useEffect(() => {
-    fetchTemplates()
+    const controller = new AbortController();
+    fetchTemplates(controller.signal)
       .then(data => { setTemplates(data); setFetchError(''); })
-      .catch(() => setFetchError('Не удалось загрузить шаблоны.'))
+      .catch(err => { if (err.name !== 'AbortError') setFetchError('Не удалось загрузить шаблоны.'); })
       .finally(() => setLoading(false));
+    return () => controller.abort();
   }, []);
 
   const filtered = useMemo(() => {

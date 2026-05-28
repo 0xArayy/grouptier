@@ -84,6 +84,18 @@ describe('POST /api/templates/:id/use', () => {
     app = await buildApp();
   });
 
+  it('returns 400 when id is not a valid UUID', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/templates/not-a-uuid/use',
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body)).toMatchObject({ error: 'Invalid template id' });
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
   it('returns 404 when template does not exist', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] }); // SELECT → not found
 

@@ -172,8 +172,8 @@ export interface PublicTemplate {
   category: 'games' | 'food' | 'movies' | 'series' | 'music' | 'sport' | 'other';
 }
 
-export async function fetchTemplates(): Promise<PublicTemplate[]> {
-  const res = await fetch(`${BASE}/templates`);
+export async function fetchTemplates(signal?: AbortSignal): Promise<PublicTemplate[]> {
+  const res = await fetch(`${BASE}/templates`, { signal });
   await throwOnError(res);
   return res.json();
 }

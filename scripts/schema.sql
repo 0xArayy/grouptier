@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS template_uses (
   used_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS template_uses_template_id_idx ON template_uses(template_id);
-CREATE INDEX IF NOT EXISTS template_uses_used_at_idx ON template_uses(used_at);
+CREATE INDEX IF NOT EXISTS template_uses_used_at_template_id_idx ON template_uses(used_at DESC, template_id);
 
 -- Seed official templates (idempotent)
 INSERT INTO public_templates (emoji, name, options, author, official, category) VALUES

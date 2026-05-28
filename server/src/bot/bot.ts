@@ -33,7 +33,7 @@ bot.command('newpoll', async (ctx) => {
   }
 
   const manageUrl = buildVoteUrl(sessionId);
-  const card = buildSetupCard(manageUrl);
+  const card = await buildSetupCard(manageUrl);
   await ctx.replyWithPhoto(new InputFile(card.image, 'card.png'), {
     reply_markup: card.reply_markup,
   });

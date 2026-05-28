@@ -136,7 +136,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       }
 
       const borda = computeBorda(resultsRes.rows.map((r: { ranked_list: string[] }) => r.ranked_list));
-      const card = buildWinnerCard(sessionRes.rows[0].name ?? 'Untitled Session', borda);
+      const card = await buildWinnerCard(sessionRes.rows[0].name ?? 'Untitled Session', borda);
 
       reply.header('Content-Type', 'image/png');
       reply.header('Cache-Control', 'public, max-age=3600');
@@ -165,7 +165,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       const options: string[] = optionsRes.rows.map((r: { text: string }) => r.text);
 
       const voteUrl = buildVoteUrl(id);
-      const card = buildVotingCard(sessionRes.rows[0].name ?? 'Untitled Session', options, 0, 0, voteUrl);
+      const card = await buildVotingCard(sessionRes.rows[0].name ?? 'Untitled Session', options, 0, 0, voteUrl);
 
       reply.header('Content-Type', 'image/png');
       reply.header('Cache-Control', 'public, max-age=60');
@@ -575,7 +575,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       const options: string[] = optRes.rows.map((r: { text: string }) => r.text);
 
       try {
-        const card = buildVotingCard(name, options, 0, 0, miniAppUrl);
+        const card = await buildVotingCard(name, options, 0, 0, miniAppUrl);
         const sent = await bot.api.sendPhoto(
           session.chat_id,
           new InputFile(card.image, 'card.png'),
@@ -633,7 +633,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
 
       const borda = computeBorda(resultsRes.rows.map((r: { ranked_list: string[] }) => r.ranked_list));
       const sessionName = session.name ?? 'Untitled Session';
-      const card = buildWinnerCard(sessionName, borda);
+      const card = await buildWinnerCard(sessionName, borda);
 
       if (session.chat_id) {
         bot.api

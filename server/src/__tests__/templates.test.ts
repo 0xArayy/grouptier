@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
+import { clearTemplateCache } from '../routes/templates.js';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
-const mockQuery = vi.fn();
+// vi.hoisted ensures mockQuery is initialized before the vi.mock factory runs
+// (necessary because clearTemplateCache is a static import that triggers early module resolution)
+const { mockQuery } = vi.hoisted(() => ({ mockQuery: vi.fn() }));
 vi.mock('../db/client.js', () => ({ pool: { query: mockQuery } }));
 
 vi.mock('../middleware/initData.js', () => ({
@@ -31,6 +34,7 @@ describe('GET /api/templates', () => {
   let app: FastifyInstance;
   beforeEach(async () => {
     vi.resetAllMocks();
+    clearTemplateCache();
     app = await buildApp();
   });
 
@@ -55,8 +59,9 @@ describe('GET /api/templates', () => {
 
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
-    expect(body).toHaveLength(1);
-    expect(body[0]).toMatchObject({
+    expect(body.items).toHaveLength(1);
+    expect(body.nextOffset).toBeNull();
+    expect(body.items[0]).toMatchObject({
       id: TEMPLATE_ID,
       name: 'Во что сыграем?',
       official: true,
@@ -71,7 +76,9 @@ describe('GET /api/templates', () => {
     const res = await app.inject({ method: 'GET', url: '/api/templates' });
 
     expect(res.statusCode).toBe(200);
-    expect(JSON.parse(res.body)).toEqual([]);
+    const body = JSON.parse(res.body);
+    expect(body.items).toEqual([]);
+    expect(body.nextOffset).toBeNull();
   });
 });
 

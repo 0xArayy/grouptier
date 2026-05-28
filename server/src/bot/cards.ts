@@ -1,4 +1,4 @@
-import { generateVotingCard, generateSetupCard, generateWinnerCard } from './imageCard.js';
+import { generateVotingCardAsync, generateSetupCardAsync, generateWinnerCardAsync } from './imageCard.js';
 import type { BordaResult } from '../db/borda.js';
 
 export type { BordaResult };
@@ -75,19 +75,19 @@ export function buildVotingCaption(voted: number, total: number): string {
 
 // ── Full card builders ────────────────────────────────────────────────────────
 
-export function buildVotingCard(
+export async function buildVotingCard(
   name: string,
   options: string[],
   voted: number,
   total: number,
   voteUrl: string,
-): {
+): Promise<{
   image: Buffer;
   caption: string;
   parse_mode: 'HTML';
   reply_markup: { inline_keyboard: UrlBtn[][] };
-} {
-  const image   = generateVotingCard(name, options.length);
+}> {
+  const image   = await generateVotingCardAsync(name, options.length);
   const voteBtn: UrlBtn = { text: '▶  ПРОГОЛОСОВАТЬ', url: voteUrl };
   return {
     image,
@@ -97,30 +97,30 @@ export function buildVotingCard(
   };
 }
 
-export function buildSetupCard(voteUrl: string): {
+export async function buildSetupCard(voteUrl: string): Promise<{
   image: Buffer;
   reply_markup: { inline_keyboard: UrlBtn[][] };
-} {
+}> {
   return {
-    image: generateSetupCard(),
+    image: await generateSetupCardAsync(),
     reply_markup: {
       inline_keyboard: [[{ text: '⚙️  НАСТРОИТЬ ОПРОС', url: voteUrl }]],
     },
   };
 }
 
-export function buildWinnerCard(name: string, borda: BordaResult[]): {
+export async function buildWinnerCard(name: string, borda: BordaResult[]): Promise<{
   image: Buffer;
   caption: string;
   parse_mode: 'HTML';
-} {
+}> {
   if (borda.length === 0) throw new Error('buildWinnerCard: empty borda results');
   const medals = ['🥇', '🥈', '🥉'];
   const lines = borda.slice(0, 3).map((r, i) =>
     `${medals[i]} <b>${escapeHtml(r.option)}</b>`,
   );
   return {
-    image:   generateWinnerCard(name, borda[0].option),
+    image:   await generateWinnerCardAsync(name, borda[0].option),
     caption: lines.join('\n'),
     parse_mode: 'HTML',
   };

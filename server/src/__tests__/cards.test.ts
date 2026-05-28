@@ -56,54 +56,54 @@ describe('buildWinnerCard', () => {
     { option: 'Zeta', score: 1 },
   ];
 
-  it('throws on empty borda array', () => {
-    expect(() => buildWinnerCard('Test Poll', [])).toThrow();
+  it('throws on empty borda array', async () => {
+    await expect(buildWinnerCard('Test Poll', [])).rejects.toThrow();
   });
 
-  it('returns image Buffer, caption string, HTML parse_mode', () => {
-    const card = buildWinnerCard('Test Poll', fakeBorda);
+  it('returns image Buffer, caption string, HTML parse_mode', async () => {
+    const card = await buildWinnerCard('Test Poll', fakeBorda);
     expect(card.image).toBeInstanceOf(Buffer);
     expect(card.image.length).toBeGreaterThan(0);
     expect(typeof card.caption).toBe('string');
     expect(card.parse_mode).toBe('HTML');
   });
 
-  it('first place gets gold medal', () => {
-    const { caption } = buildWinnerCard('Poll', fakeBorda);
+  it('first place gets gold medal', async () => {
+    const { caption } = await buildWinnerCard('Poll', fakeBorda);
     expect(caption).toContain('🥇');
     expect(caption).toContain('Alpha');
   });
 
-  it('shows top-3 with medals only', () => {
-    const { caption } = buildWinnerCard('Poll', fakeBorda);
+  it('shows top-3 with medals only', async () => {
+    const { caption } = await buildWinnerCard('Poll', fakeBorda);
     expect(caption).toContain('🥈');
     expect(caption).toContain('🥉');
     expect(caption).not.toContain('Delta');
     expect(caption).not.toContain('Epsilon');
   });
 
-  it('caps output at top 3 entries', () => {
-    const { caption } = buildWinnerCard('Poll', fakeBorda);
+  it('caps output at top 3 entries', async () => {
+    const { caption } = await buildWinnerCard('Poll', fakeBorda);
     expect(caption).not.toContain('Delta');
     expect(caption).not.toContain('Zeta');
   });
 
-  it('HTML-escapes special chars in option names', () => {
+  it('HTML-escapes special chars in option names', async () => {
     const borda = [{ option: '<script>alert(1)</script>', score: 5 }];
-    const { caption } = buildWinnerCard('Poll', borda);
+    const { caption } = await buildWinnerCard('Poll', borda);
     expect(caption).not.toContain('<script>');
     expect(caption).toContain('&lt;script&gt;');
   });
 
-  it('handles single-option borda (only 🥇)', () => {
+  it('handles single-option borda (only 🥇)', async () => {
     const single = [{ option: 'Solo', score: 5 }];
-    const { caption } = buildWinnerCard('Poll', single);
+    const { caption } = await buildWinnerCard('Poll', single);
     expect(caption).toContain('🥇');
     expect(caption).not.toContain('🥈');
   });
 
-  it('wraps winner option in <b> HTML', () => {
-    const { caption } = buildWinnerCard('Poll', fakeBorda);
+  it('wraps winner option in <b> HTML', async () => {
+    const { caption } = await buildWinnerCard('Poll', fakeBorda);
     expect(caption).toContain('<b>Alpha</b>');
   });
 });
@@ -111,8 +111,8 @@ describe('buildWinnerCard', () => {
 // ── buildSetupCard ────────────────────────────────────────────────────────
 
 describe('buildSetupCard', () => {
-  it('returns image Buffer and reply_markup with the given URL', () => {
-    const card = buildSetupCard('https://t.me/grouptier_bot/vote');
+  it('returns image Buffer and reply_markup with the given URL', async () => {
+    const card = await buildSetupCard('https://t.me/grouptier_bot/vote');
     expect(card.image).toBeInstanceOf(Buffer);
     expect(card.image.length).toBeGreaterThan(0);
     expect(card.reply_markup.inline_keyboard[0][0].url).toBe('https://t.me/grouptier_bot/vote');
@@ -124,27 +124,27 @@ describe('buildSetupCard', () => {
 describe('buildVotingCard', () => {
   const options = ['Pizza', 'Sushi', 'Burger'];
 
-  it('returns image, caption, HTML parse_mode, and reply_markup', () => {
-    const card = buildVotingCard('Lunch', options, 0, 0, 'https://t.me/test');
+  it('returns image, caption, HTML parse_mode, and reply_markup', async () => {
+    const card = await buildVotingCard('Lunch', options, 0, 0, 'https://t.me/test');
     expect(card.image).toBeInstanceOf(Buffer);
     expect(card.image.length).toBeGreaterThan(0);
     expect(card.parse_mode).toBe('HTML');
     expect(typeof card.caption).toBe('string');
   });
 
-  it('has exactly one keyboard row with the vote URL button', () => {
-    const card = buildVotingCard('Lunch', options, 0, 0, 'https://t.me/test');
+  it('has exactly one keyboard row with the vote URL button', async () => {
+    const card = await buildVotingCard('Lunch', options, 0, 0, 'https://t.me/test');
     expect(card.reply_markup.inline_keyboard).toHaveLength(1);
     expect(card.reply_markup.inline_keyboard[0][0]).toMatchObject({ url: 'https://t.me/test' });
   });
 
-  it('caption reflects waiting state when total=0', () => {
-    const card = buildVotingCard('Test', options, 0, 0, 'https://t.me/test');
+  it('caption reflects waiting state when total=0', async () => {
+    const card = await buildVotingCard('Test', options, 0, 0, 'https://t.me/test');
     expect(card.caption).toContain('Ожидаем');
   });
 
-  it('caption shows vote progress when total>0', () => {
-    const card = buildVotingCard('Test', options, 2, 5, 'https://t.me/test');
+  it('caption shows vote progress when total>0', async () => {
+    const card = await buildVotingCard('Test', options, 2, 5, 'https://t.me/test');
     expect(card.caption).toContain('2');
     expect(card.caption).toContain('5');
   });

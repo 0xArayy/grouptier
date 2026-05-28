@@ -15,6 +15,9 @@
 
 import { createCanvas, GlobalFonts, type Canvas } from '@napi-rs/canvas';
 import { createRequire } from 'module';
+import Piscina from 'piscina';
+import os from 'os';
+import { fileURLToPath } from 'url';
 
 const _require = createRequire(import.meta.url);
 
@@ -425,4 +428,50 @@ export function generateWinnerCard(name: string, winner: string): Buffer {
   ctx.letterSpacing = '0px';
 
   return exportBuffer(canvas);
+}
+
+// ── Piscina async pool ────────────────────────────────────────────────────────
+
+let _pool: Piscina | null = null;
+
+function getPool(): Piscina {
+  if (_pool) return _pool;
+  const isProd = process.env.NODE_ENV === 'production';
+  const filename = fileURLToPath(
+    isProd
+      ? new URL('./imageCard.worker.js', import.meta.url)
+      : new URL('./imageCard.worker.ts', import.meta.url),
+  );
+  _pool = new Piscina({
+    filename,
+    execArgv: isProd ? [] : ['--import', 'tsx/esm'],
+    maxThreads: Math.max(1, os.cpus().length - 1),
+    maxQueue: 20,
+  });
+  return _pool;
+}
+
+// In non-production environments (dev, test) skip piscina and call sync functions directly.
+// Piscina worker threads require compiled .js output that isn't available in dev/test.
+const USE_POOL = process.env.NODE_ENV === 'production';
+
+const TASK_TIMEOUT_MS = 5_000;
+
+export async function generateSetupCardAsync(): Promise<Buffer> {
+  if (!USE_POOL) return Promise.resolve(generateSetupCard());
+  return getPool().run({ task: 'setup', args: [] }, { signal: AbortSignal.timeout(TASK_TIMEOUT_MS) });
+}
+
+export async function generateVotingCardAsync(name: string, optionCount: number): Promise<Buffer> {
+  if (!USE_POOL) return Promise.resolve(generateVotingCard(name, optionCount));
+  return getPool().run({ task: 'voting', args: [name, optionCount] }, { signal: AbortSignal.timeout(TASK_TIMEOUT_MS) });
+}
+
+export async function generateWinnerCardAsync(name: string, winner: string): Promise<Buffer> {
+  if (!USE_POOL) return Promise.resolve(generateWinnerCard(name, winner));
+  return getPool().run({ task: 'winner', args: [name, winner] }, { signal: AbortSignal.timeout(TASK_TIMEOUT_MS) });
+}
+
+export function closeCardPool(): Promise<void> | undefined {
+  return _pool?.destroy();
 }

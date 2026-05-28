@@ -24,7 +24,7 @@ export function PublicPollsStep({ busy, onBack, onUse }: Props) {
     setLoading(true);
     setError('');
     searchPublicPolls(query || undefined)
-      .then(setPolls)
+      .then(({ items }) => setPolls(items))
       .catch(() => setError('Ошибка загрузки. Попробуй ещё раз.'))
       .finally(() => setLoading(false));
   }

@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchTemplates, recordTemplateUse, type PublicTemplate } from '../../api/client.ts';
+import {
+  fetchTemplates, searchPublicPolls, recordTemplateUse,
+  type PublicTemplate, type PublicPoll,
+} from '../../api/client.ts';
 import styles from './PresetsStep.module.css';
 
-// Keep Preset compatible with CreatePoll's handlePreset(preset.name, preset.options)
 export type Preset = Pick<PublicTemplate, 'emoji' | 'name' | 'options'>;
+
+export type SelectResult =
+  | { kind: 'template'; preset: Preset }
+  | { kind: 'poll'; id: string };
 
 type Category = 'all' | 'hot' | 'official' | PublicTemplate['category'];
 
@@ -19,6 +25,10 @@ const CATEGORIES: { id: Category; label: string; variant?: 'hot' | 'official' }[
   { id: 'sport', label: '🏆 Спорт' },
 ];
 
+type ListItem =
+  | { kind: 'template'; data: PublicTemplate }
+  | { kind: 'poll'; data: PublicPoll };
+
 function formatUses(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1).replace('.0', '')}k`;
   return String(n);
@@ -28,44 +38,63 @@ interface Props {
   busy: boolean;
   error: string;
   onBack: () => void;
-  onSelect: (preset: Preset) => void;
+  onSelect: (result: SelectResult) => void;
 }
 
 export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<Category>('all');
   const [templates, setTemplates] = useState<PublicTemplate[]>([]);
+  const [polls, setPolls] = useState<PublicPoll[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
 
+  function load(signal?: AbortSignal) {
+    setLoading(true); setFetchError('');
+    Promise.all([fetchTemplates(signal), searchPublicPolls()])
+      .then(([tmpl, pols]) => { setTemplates(tmpl); setPolls(pols); })
+      .catch(err => { if ((err as Error).name !== 'AbortError') setFetchError('Не удалось загрузить шаблоны.'); })
+      .finally(() => setLoading(false));
+  }
+
   useEffect(() => {
     const controller = new AbortController();
-    fetchTemplates(controller.signal)
-      .then(data => { setTemplates(data); setFetchError(''); })
-      .catch(err => { if (err.name !== 'AbortError') setFetchError('Не удалось загрузить шаблоны.'); })
-      .finally(() => setLoading(false));
+    load(controller.signal);
     return () => controller.abort();
   }, []);
 
-  const filtered = useMemo(() => {
+  const filtered = useMemo((): ListItem[] => {
     const q = query.trim().toLowerCase();
-    return templates.filter(t => {
+
+    const tmpl = templates.filter(t => {
       if (category === 'hot' && !t.hot) return false;
       if (category === 'official' && !t.official) return false;
       if (category !== 'all' && category !== 'hot' && category !== 'official' && t.category !== category) return false;
       if (!q) return true;
       return t.name.toLowerCase().includes(q) || t.options.some(o => o.toLowerCase().includes(q));
     });
-  }, [query, category, templates]);
 
-  function handleSelect(t: PublicTemplate) {
-    recordTemplateUse(t.id); // fire-and-forget, never blocks
-    onSelect({ emoji: t.emoji, name: t.name, options: t.options });
+    // user-published polls: not shown for hot/official filters
+    const userPolls = (category === 'hot' || category === 'official') ? [] : polls.filter(p => {
+      const catMatch = category === 'all' || p.categories.includes(category as string);
+      if (!catMatch) return false;
+      if (!q) return true;
+      return p.name.toLowerCase().includes(q);
+    });
+
+    return [
+      ...tmpl.map(t => ({ kind: 'template' as const, data: t })),
+      ...userPolls.map(p => ({ kind: 'poll' as const, data: p })),
+    ];
+  }, [query, category, templates, polls]);
+
+  function handleSelectTemplate(t: PublicTemplate) {
+    recordTemplateUse(t.id);
+    onSelect({ kind: 'template', preset: { emoji: t.emoji, name: t.name, options: t.options } });
   }
 
   return (
     <div className={styles.container}>
-      {/* Sticky header */}
       <div className={styles.stickyHeader}>
         <button onClick={onBack} className={styles.backBtn}>←</button>
         <div>
@@ -75,7 +104,6 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
       </div>
 
       <div className={styles.body}>
-        {/* Search */}
         <div className={styles.searchBox}>
           {query ? (
             <button className={styles.searchClear} onClick={() => setQuery('')}>✕</button>
@@ -94,7 +122,6 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
           <span className={styles.searchHint}>↵</span>
         </div>
 
-        {/* Category chips */}
         <div className={styles.categories}>
           {CATEGORIES.map(c => (
             <button
@@ -116,27 +143,17 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
           <div className={styles.errorText}>
             {error || fetchError}
             {fetchError && (
-              <button className={styles.retryBtn} onClick={() => {
-                setLoading(true); setFetchError('');
-                fetchTemplates()
-                  .then(data => { setTemplates(data); })
-                  .catch(() => setFetchError('Не удалось загрузить шаблоны.'))
-                  .finally(() => setLoading(false));
-              }}>Повторить →</button>
+              <button className={styles.retryBtn} onClick={() => load()}>Повторить →</button>
             )}
           </div>
         )}
 
-        {/* Loading skeletons */}
         {loading && (
           <div className={styles.list}>
-            {[0, 1, 2].map(i => (
-              <div key={i} className={styles.skeleton} />
-            ))}
+            {[0, 1, 2].map(i => <div key={i} className={styles.skeleton} />)}
           </div>
         )}
 
-        {/* Template list */}
         {!loading && filtered.length === 0 && !fetchError && (
           <div className={styles.emptyState}>
             <div className={styles.emptyIcon}>🔍</div>
@@ -145,7 +162,7 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
             </div>
             <button
               className={styles.dashedBtn}
-              onClick={() => onSelect({ emoji: '🎯', name: query || 'Свой шаблон', options: [] })}
+              onClick={() => onSelect({ kind: 'template', preset: { emoji: '🎯', name: query || 'Свой шаблон', options: [] } })}
             >
               <span>+</span> Создать пустой шаблон
             </button>
@@ -154,39 +171,69 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
 
         {!loading && filtered.length > 0 && (
           <div className={styles.list}>
-            {filtered.map(t => {
-              const visibleOptions = t.options.slice(0, 6);
-              const overflow = t.options.length - 6;
+            {filtered.map(item => {
+              if (item.kind === 'template') {
+                const t = item.data;
+                const visibleOptions = t.options.slice(0, 6);
+                const overflow = t.options.length - 6;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => handleSelectTemplate(t)}
+                    disabled={busy}
+                    className={styles.card}
+                  >
+                    <div className={styles.cardEmoji}>{t.emoji}</div>
+                    <div className={styles.cardBody}>
+                      <div className={styles.cardTitleRow}>
+                        <span className={styles.cardTitle}>{t.name}</span>
+                        {t.hot && <span className={styles.badgeHot}>HOT</span>}
+                        {t.official && <span className={styles.badgeOfficial}>OFFICIAL</span>}
+                      </div>
+                      <div className={styles.cardMeta}>
+                        GroupTier · {formatUses(t.uses_7d)} использовали
+                      </div>
+                      <div className={styles.cardChips}>
+                        {visibleOptions.map(opt => (
+                          <span key={opt} className={styles.chip}>{opt}</span>
+                        ))}
+                        {overflow > 0 && (
+                          <span className={`${styles.chip} ${styles.chipOverflow}`}>+{overflow}</span>
+                        )}
+                      </div>
+                    </div>
+                    <span className={styles.cardArrow}>›</span>
+                  </button>
+                );
+              }
+
+              // user-published poll
+              const p = item.data;
               return (
                 <button
-                  key={t.id}
-                  onClick={() => handleSelect(t)}
+                  key={p.id}
+                  onClick={() => onSelect({ kind: 'poll', id: p.id })}
                   disabled={busy}
                   className={styles.card}
                 >
-                  <div className={styles.cardEmoji}>{t.emoji}</div>
-
+                  <div className={styles.cardEmoji}>{p.emoji}</div>
                   <div className={styles.cardBody}>
                     <div className={styles.cardTitleRow}>
-                      <span className={styles.cardTitle}>{t.name}</span>
-                      {t.hot && <span className={styles.badgeHot}>HOT</span>}
-                      {t.official && <span className={styles.badgeOfficial}>OFFICIAL</span>}
+                      <span className={styles.cardTitle}>{p.name}</span>
                     </div>
-
                     <div className={styles.cardMeta}>
-                      {t.official ? 'GroupTier' : t.author} · {formatUses(t.uses_7d)} использовали
+                      {p.author_name ? `${p.author_name} · ` : ''}{p.option_count} вариантов
+                      {p.uses_count > 0 && ` · ${formatUses(p.uses_count)} использовали`}
                     </div>
-
-                    <div className={styles.cardChips}>
-                      {visibleOptions.map(opt => (
-                        <span key={opt} className={styles.chip}>{opt}</span>
-                      ))}
-                      {overflow > 0 && (
-                        <span className={`${styles.chip} ${styles.chipOverflow}`}>+{overflow}</span>
-                      )}
-                    </div>
+                    {p.categories.length > 0 && (
+                      <div className={styles.cardChips}>
+                        {p.categories.map(cat => {
+                          const label = CATEGORIES.find(c => c.id === cat)?.label ?? cat;
+                          return <span key={cat} className={styles.chip}>{label}</span>;
+                        })}
+                      </div>
+                    )}
                   </div>
-
                   <span className={styles.cardArrow}>›</span>
                 </button>
               );
@@ -194,7 +241,7 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
 
             <button
               className={styles.dashedBtn}
-              onClick={() => onSelect({ emoji: '🎯', name: 'Свой шаблон', options: [] })}
+              onClick={() => onSelect({ kind: 'template', preset: { emoji: '🎯', name: 'Свой шаблон', options: [] } })}
               disabled={busy}
             >
               <span>+</span> Создать пустой шаблон

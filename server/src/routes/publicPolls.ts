@@ -18,7 +18,8 @@ export async function publicPollRoutes(fastify: FastifyInstance) {
           `SELECT id, name, emoji,
                   CASE WHEN show_author THEN author_name ELSE NULL END AS author_name,
                   uses_count,
-                  jsonb_array_length(options) AS option_count
+                  jsonb_array_length(options) AS option_count,
+                  categories
            FROM saved_polls
            WHERE is_public = true AND name ILIKE $1
            ORDER BY uses_count DESC, updated_at DESC
@@ -30,7 +31,8 @@ export async function publicPollRoutes(fastify: FastifyInstance) {
           `SELECT id, name, emoji,
                   CASE WHEN show_author THEN author_name ELSE NULL END AS author_name,
                   uses_count,
-                  jsonb_array_length(options) AS option_count
+                  jsonb_array_length(options) AS option_count,
+                  categories
            FROM saved_polls
            WHERE is_public = true
            ORDER BY uses_count DESC, updated_at DESC

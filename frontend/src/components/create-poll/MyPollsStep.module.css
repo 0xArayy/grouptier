@@ -334,6 +334,75 @@
   color: oklch(0.72 0.20 145);
 }
 
+/* Expanded footer for category selection */
+.cardFooterExpanded {
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.publishCatLabel {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  font-weight: 500;
+}
+
+.publishCatChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.publishCatChip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 9px;
+  border-radius: 7px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.65);
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 100ms ease, border-color 100ms ease;
+}
+
+.publishCatChip:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.publishCatChipActive {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.30);
+  color: #fff;
+}
+
+.publishCatActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.publishNextBtn {
+  padding: 6px 13px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255,255,255,0.10);
+  color: rgba(255,255,255,0.90);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 100ms ease;
+}
+
+.publishNextBtn:hover {
+  background: rgba(255,255,255,0.15);
+}
+
 /* Publish choice row */
 .publishChoice {
   display: flex;

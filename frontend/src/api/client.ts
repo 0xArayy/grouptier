@@ -176,7 +176,8 @@ export interface PublicTemplate {
 export async function fetchTemplates(signal?: AbortSignal): Promise<PublicTemplate[]> {
   const res = await fetch(`${BASE}/templates`, { signal });
   await throwOnError(res);
-  return res.json();
+  const data: { items: PublicTemplate[] } = await res.json();
+  return data.items;
 }
 
 export async function recordTemplateUse(id: string): Promise<void> {

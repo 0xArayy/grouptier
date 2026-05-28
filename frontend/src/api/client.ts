@@ -121,6 +121,7 @@ export interface SavedPoll {
   options: string[];
   emoji: string;
   is_public: boolean;
+  categories: string[];
   created_at: string;
   updated_at: string;
 }
@@ -209,6 +210,7 @@ export interface PublicPoll {
   author_name: string | null;
   uses_count: number;
   option_count: number;
+  categories: string[];
 }
 
 export async function searchPublicPolls(q?: string): Promise<PublicPoll[]> {
@@ -229,11 +231,11 @@ export async function usePublicPoll(id: string): Promise<{ id: string; share_url
   return res.json();
 }
 
-export async function publishSavedPoll(id: string, showAuthor = true): Promise<void> {
+export async function publishSavedPoll(id: string, showAuthor: boolean, categories: string[]): Promise<void> {
   const res = await fetch(`${BASE}/saved-polls/${id}/publish`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
-    body: JSON.stringify({ show_author: showAuthor }),
+    body: JSON.stringify({ show_author: showAuthor, categories }),
   });
   await throwOnError(res);
 }

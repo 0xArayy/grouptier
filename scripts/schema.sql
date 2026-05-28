@@ -60,6 +60,7 @@ ALTER TABLE saved_polls ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFA
 ALTER TABLE saved_polls ADD COLUMN IF NOT EXISTS show_author BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE saved_polls ADD COLUMN IF NOT EXISTS author_name TEXT;
 ALTER TABLE saved_polls ADD COLUMN IF NOT EXISTS uses_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE saved_polls ADD COLUMN IF NOT EXISTS categories TEXT[] NOT NULL DEFAULT '{}';
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
@@ -93,15 +94,15 @@ CREATE TABLE IF NOT EXISTS template_uses (
 CREATE INDEX IF NOT EXISTS template_uses_template_id_idx ON template_uses(template_id);
 CREATE INDEX IF NOT EXISTS template_uses_used_at_template_id_idx ON template_uses(used_at DESC, template_id);
 
--- Seed official templates (idempotent)
+-- Seed official templates (idempotent — upsert to fix author/official on existing rows)
 INSERT INTO public_templates (emoji, name, options, author, official, category) VALUES
-  ('🍕', 'Что будем есть?',      '["Пицца","Суши","Бургеры","Тако","Рамен","Паста","Тайская","Салат"]',                                            'GroupTier',  true,  'food'),
-  ('🎮', 'Во что сыграем?',      '["Minecraft","Valorant","CS2","Among Us","Stardew Valley","Rocket League","Fortnite","League of Legends"]',        'GroupTier',  true,  'games'),
-  ('🎬', 'Какой жанр сегодня?',  '["Боевик","Комедия","Ужасы","Романтика","Фантастика","Триллер","Анимация","Документалка"]',                       'GroupTier',  true,  'movies'),
-  ('📺', 'Какой сериал смотрим?','["Breaking Bad","Game of Thrones","The Bear","Severance","Succession","The Wire","Chernobyl","Dark"]',              '@alex',      false, 'series'),
-  ('🎵', 'Какую музыку ставим?', '["Хип-хоп","Поп","Рок","Электронная","Джаз","R&B","Классика","Инди"]',                                           'GroupTier',  true,  'music'),
-  ('🏖️','Куда едем?',            '["Море","Горы","Город","Дача","Кемпинг","Экскурсии","Спа","Остаёмся дома"]',                                      '@marina',    false, 'other'),
-  ('🎯', 'Чем займёмся?',        '["Боулинг","Кино","Бар","Парк","Квест","Настолки","Каток","Кафе"]',                                               '@dmitry',    false, 'other'),
-  ('🍺', 'Что пьём?',            '["Пиво","Вино","Коктейли","Виски","Текила","Просекко","Безалкогольное","Чай"]',                                    '@sasha',     false, 'other'),
-  ('⚽', 'Лучшие матчи сезона',  '["Финал ЛЧ","Класико","Дерби Мерсисайда","Манчестерское дерби","Дерби делла Мадонина"]',                         '@sport_fan', false, 'sport')
-ON CONFLICT (name) DO NOTHING;
+  ('🍕', 'Что будем есть?',      '["Пицца","Суши","Бургеры","Тако","Рамен","Паста","Тайская","Салат"]',                                            'GroupTier', true, 'food'),
+  ('🎮', 'Во что сыграем?',      '["Minecraft","Valorant","CS2","Among Us","Stardew Valley","Rocket League","Fortnite","League of Legends"]',        'GroupTier', true, 'games'),
+  ('🎬', 'Какой жанр сегодня?',  '["Боевик","Комедия","Ужасы","Романтика","Фантастика","Триллер","Анимация","Документалка"]',                       'GroupTier', true, 'movies'),
+  ('📺', 'Какой сериал смотрим?','["Breaking Bad","Game of Thrones","The Bear","Severance","Succession","The Wire","Chernobyl","Dark"]',              'GroupTier', true, 'series'),
+  ('🎵', 'Какую музыку ставим?', '["Хип-хоп","Поп","Рок","Электронная","Джаз","R&B","Классика","Инди"]',                                           'GroupTier', true, 'music'),
+  ('🏖️','Куда едем?',            '["Море","Горы","Город","Дача","Кемпинг","Экскурсии","Спа","Остаёмся дома"]',                                      'GroupTier', true, 'other'),
+  ('🎯', 'Чем займёмся?',        '["Боулинг","Кино","Бар","Парк","Квест","Настолки","Каток","Кафе"]',                                               'GroupTier', true, 'other'),
+  ('🍺', 'Что пьём?',            '["Пиво","Вино","Коктейли","Виски","Текила","Просекко","Безалкогольное","Чай"]',                                    'GroupTier', true, 'other'),
+  ('⚽', 'Лучшие матчи сезона',  '["Финал ЛЧ","Класико","Дерби Мерсисайда","Манчестерское дерби","Дерби делла Мадонина"]',                         'GroupTier', true, 'sport')
+ON CONFLICT (name) DO UPDATE SET author = EXCLUDED.author, official = EXCLUDED.official;

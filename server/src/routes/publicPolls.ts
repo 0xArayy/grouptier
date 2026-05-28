@@ -4,44 +4,48 @@ import { initDataMiddleware } from '../middleware/initData.js';
 import { createSession } from '../lib/sessions.js';
 
 export async function publicPollRoutes(fastify: FastifyInstance) {
-  // GET /api/public-polls?q=<search>&limit=30 — search public poll templates
-  fastify.get<{ Querystring: { q?: string; limit?: string } }>(
+  // GET /api/public-polls?q=<search>&limit=20&offset=0 — paginated public poll catalog
+  // Response: { items: PublicPoll[], nextOffset: number | null }
+  fastify.get<{ Querystring: { q?: string; limit?: string; offset?: string } }>(
     '/api/public-polls',
     { preHandler: initDataMiddleware, config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
     async (request, _reply) => {
       const q = (request.query.q ?? '').trim();
-      const limit = Math.max(1, Math.min(parseInt(request.query.limit ?? '30', 10) || 30, 30));
+      const limit = Math.max(1, Math.min(Number(request.query.limit) || 20, 50));
+      const off   = Math.max(0, Number(request.query.offset) || 0);
+      // Fetch limit+1 to detect whether a next page exists (no COUNT query needed).
+      const fetch  = limit + 1;
+
+      const SELECT = `
+        SELECT id, name, emoji,
+               CASE WHEN show_author THEN author_name ELSE NULL END AS author_name,
+               uses_count,
+               jsonb_array_length(options) AS option_count,
+               categories
+        FROM saved_polls
+        WHERE is_public = true`;
 
       let res;
       if (q) {
         res = await pool.query(
-          `SELECT id, name, emoji,
-                  CASE WHEN show_author THEN author_name ELSE NULL END AS author_name,
-                  uses_count,
-                  jsonb_array_length(options) AS option_count,
-                  categories
-           FROM saved_polls
-           WHERE is_public = true AND name ILIKE $1
+          `${SELECT} AND name ILIKE $1
            ORDER BY uses_count DESC, updated_at DESC
-           LIMIT $2`,
-          [`%${q}%`, limit],
+           LIMIT $2 OFFSET $3`,
+          [`%${q}%`, fetch, off],
         );
       } else {
         res = await pool.query(
-          `SELECT id, name, emoji,
-                  CASE WHEN show_author THEN author_name ELSE NULL END AS author_name,
-                  uses_count,
-                  jsonb_array_length(options) AS option_count,
-                  categories
-           FROM saved_polls
-           WHERE is_public = true
+          `${SELECT}
            ORDER BY uses_count DESC, updated_at DESC
-           LIMIT $1`,
-          [limit],
+           LIMIT $1 OFFSET $2`,
+          [fetch, off],
         );
       }
 
-      return res.rows;
+      const hasMore = res.rows.length > limit;
+      const items   = hasMore ? res.rows.slice(0, limit) : res.rows;
+      const nextOffset = hasMore ? off + limit : null;
+      return { items, nextOffset };
     },
   );
 

@@ -214,9 +214,15 @@ export interface PublicPoll {
   categories: string[];
 }
 
-export async function searchPublicPolls(q?: string): Promise<PublicPoll[]> {
-  const params = q ? `?q=${encodeURIComponent(q)}` : '';
-  const res = await fetch(`${BASE}/public-polls${params}`, {
+export async function searchPublicPolls(
+  q?: string,
+  offset = 0,
+): Promise<{ items: PublicPoll[]; nextOffset: number | null }> {
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (offset > 0) params.set('offset', String(offset));
+  const qs = params.size ? `?${params.toString()}` : '';
+  const res = await fetch(`${BASE}/public-polls${qs}`, {
     headers: { 'x-init-data': getInitData() },
   });
   await throwOnError(res);

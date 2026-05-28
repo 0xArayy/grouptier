@@ -46,15 +46,33 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
   const [category, setCategory] = useState<Category>('all');
   const [templates, setTemplates] = useState<PublicTemplate[]>([]);
   const [polls, setPolls] = useState<PublicPoll[]>([]);
+  const [pollsNextOffset, setPollsNextOffset] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [fetchError, setFetchError] = useState('');
 
   function load(signal?: AbortSignal) {
     setLoading(true); setFetchError('');
     Promise.all([fetchTemplates(signal), searchPublicPolls()])
-      .then(([tmpl, pols]) => { setTemplates(tmpl); setPolls(pols); })
+      .then(([tmpl, { items, nextOffset }]) => {
+        setTemplates(tmpl);
+        setPolls(items);
+        setPollsNextOffset(nextOffset);
+      })
       .catch(err => { if ((err as Error).name !== 'AbortError') setFetchError('Не удалось загрузить шаблоны.'); })
       .finally(() => setLoading(false));
+  }
+
+  function loadMore() {
+    if (pollsNextOffset === null || loadingMore) return;
+    setLoadingMore(true);
+    searchPublicPolls(undefined, pollsNextOffset)
+      .then(({ items, nextOffset }) => {
+        setPolls(prev => [...prev, ...items]);
+        setPollsNextOffset(nextOffset);
+      })
+      .catch(() => { /* silent — user can retry by scrolling */ })
+      .finally(() => setLoadingMore(false));
   }
 
   useEffect(() => {
@@ -238,6 +256,16 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
                 </button>
               );
             })}
+
+            {pollsNextOffset !== null && (
+              <button
+                className={styles.loadMoreBtn}
+                onClick={loadMore}
+                disabled={loadingMore || busy}
+              >
+                {loadingMore ? 'Загрузка…' : 'Загрузить ещё'}
+              </button>
+            )}
 
             <button
               className={styles.dashedBtn}

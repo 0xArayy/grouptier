@@ -336,6 +336,31 @@
   flex-shrink: 0;
 }
 
+/* Load more */
+.loadMoreBtn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 13px 16px;
+  border-radius: 13px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.75);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 120ms ease;
+}
+
+.loadMoreBtn:not(:disabled):active {
+  background: rgba(255,255,255,0.10);
+}
+
+.loadMoreBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Dashed fallback */
 .dashedBtn {
   width: 100%;

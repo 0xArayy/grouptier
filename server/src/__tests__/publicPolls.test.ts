@@ -56,10 +56,10 @@ describe('GET /api/public-polls', () => {
     app = await buildPublicApp();
   });
 
-  it('returns public polls list without query', async () => {
+  it('returns paginated list with items and nextOffset', async () => {
     mockQuery.mockResolvedValueOnce({
       rows: [
-        { id: POLL_ID, name: 'Movies', emoji: '🎬', author_name: 'Alice', uses_count: 5, option_count: 3 },
+        { id: POLL_ID, name: 'Movies', emoji: '🎬', author_name: 'Alice', uses_count: 5, option_count: 3, categories: [] },
       ],
     });
 
@@ -67,11 +67,12 @@ describe('GET /api/public-polls', () => {
 
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
-    expect(body).toHaveLength(1);
-    expect(body[0]).toMatchObject({ id: POLL_ID, name: 'Movies', emoji: '🎬', option_count: 3, uses_count: 5 });
+    expect(body.items).toHaveLength(1);
+    expect(body.nextOffset).toBeNull();
+    expect(body.items[0]).toMatchObject({ id: POLL_ID, name: 'Movies', emoji: '🎬', option_count: 3, uses_count: 5 });
   });
 
-  it('returns filtered list when q is provided', async () => {
+  it('returns filtered list when q is provided — passes %q% as first param', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] });
 
     const res = await app.inject({ method: 'GET', url: '/api/public-polls?q=games', headers: { 'x-init-data': 'dev' } });
@@ -83,25 +84,65 @@ describe('GET /api/public-polls', () => {
 
   it('returns author_name as null when show_author=false (SQL CASE WHEN)', async () => {
     mockQuery.mockResolvedValueOnce({
-      rows: [{ id: POLL_ID, name: 'Anon Poll', emoji: '🎮', author_name: null, uses_count: 0, option_count: 2 }],
+      rows: [{ id: POLL_ID, name: 'Anon Poll', emoji: '🎮', author_name: null, uses_count: 0, option_count: 2, categories: [] }],
     });
 
     const res = await app.inject({ method: 'GET', url: '/api/public-polls', headers: { 'x-init-data': 'dev' } });
 
     const body = JSON.parse(res.body);
-    expect(body[0].author_name).toBeNull();
+    expect(body.items[0].author_name).toBeNull();
   });
 
   it('returns option_count not full options array', async () => {
     mockQuery.mockResolvedValueOnce({
-      rows: [{ id: POLL_ID, name: 'Test', emoji: '✅', author_name: 'Bob', uses_count: 1, option_count: 10 }],
+      rows: [{ id: POLL_ID, name: 'Test', emoji: '✅', author_name: 'Bob', uses_count: 1, option_count: 10, categories: [] }],
     });
 
     const res = await app.inject({ method: 'GET', url: '/api/public-polls', headers: { 'x-init-data': 'dev' } });
 
     const body = JSON.parse(res.body);
-    expect(body[0].option_count).toBe(10);
-    expect(body[0].options).toBeUndefined();
+    expect(body.items[0].option_count).toBe(10);
+    expect(body.items[0].options).toBeUndefined();
+  });
+
+  it('sets nextOffset when more results exist (limit+1 trick)', async () => {
+    // Mock returns limit+1 = 21 rows → hasMore=true
+    const rows = Array.from({ length: 21 }, (_, i) => ({
+      id: `id-${i}`, name: `Poll ${i}`, emoji: '🎮',
+      author_name: null, uses_count: 0, option_count: 2, categories: [],
+    }));
+    mockQuery.mockResolvedValueOnce({ rows });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/public-polls?limit=20&offset=0',
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    const body = JSON.parse(res.body);
+    expect(body.items).toHaveLength(20);      // trimmed to limit
+    expect(body.nextOffset).toBe(20);         // off + limit
+  });
+
+  it('passes offset to SQL and returns null nextOffset on last page', async () => {
+    const rows = Array.from({ length: 3 }, (_, i) => ({
+      id: `id-${i}`, name: `Poll ${i}`, emoji: '🎮',
+      author_name: null, uses_count: 0, option_count: 2, categories: [],
+    }));
+    mockQuery.mockResolvedValueOnce({ rows });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/public-polls?limit=20&offset=40',
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    const body = JSON.parse(res.body);
+    expect(body.items).toHaveLength(3);
+    expect(body.nextOffset).toBeNull();
+    // offset passed to SQL as second (non-q) param
+    const callArgs = mockQuery.mock.calls[0];
+    expect(callArgs[1][1]).toBe(40); // offset=$2
   });
 });
 
@@ -318,14 +359,14 @@ describe('GET /api/public-polls (additional coverage)', () => {
     app = await buildPublicApp();
   });
 
-  it('respects custom limit parameter (capped at 30)', async () => {
+  it('respects custom limit parameter (capped at 50, uses limit+1 fetch)', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] });
 
     const res = await app.inject({ method: 'GET', url: '/api/public-polls?q=test&limit=100', headers: { 'x-init-data': 'dev' } });
 
     expect(res.statusCode).toBe(200);
     const callArgs = mockQuery.mock.calls[0];
-    expect(callArgs[1][1]).toBe(30); // capped at 30
+    expect(callArgs[1][1]).toBe(51); // clamped to 50, then +1 for hasMore detection
   });
 });
 

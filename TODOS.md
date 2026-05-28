@@ -14,6 +14,8 @@
 
 ### ~~[templates-pagination]~~ ✅ Done — `?limit` / `?offset` pagination added to `GET /api/templates`; response shape `{ items, nextOffset }`; pagination applied in-memory from cached full set (no extra DB hits per page); limit clamped to `[1, 100]`. Implemented as offset-based (not cursor-based) — stable enough for the current template count.
 
+### ~~[public-polls-pagination]~~ ✅ Done — `GET /api/public-polls` accepts `?limit` (default 20, max 50) + `?offset`; returns `{ items, nextOffset }` using limit+1 trick (no COUNT query). Frontend: `searchPublicPolls` updated; PresetsStep shows «Загрузить ещё» button that appends next page of user polls.
+
 ### ~~[canvas-worker]~~ ✅ Done — `piscina` v5 worker pool added; `generateVotingCard`, `generateSetupCard`, `generateWinnerCard` wrapped as `*Async` variants; pool used in production only (dev/test calls sync functions directly via `Promise.resolve`); each task protected by 5 s `AbortSignal.timeout`.
 
 ### ~~[rate-limiting]~~ ✅ Done — `@fastify/rate-limit` added (100 req/min global, 3 req/min AI endpoint), key by IP
@@ -115,6 +117,6 @@ Telegram-аутентификация даёт барьер от спама, н�
 - Админ-эндпоинт `DELETE /api/admin/public-polls/:id`
 - Кнопка «Пожаловаться» в PublicPollsStep
 
-### [public-polls-pagination] Пагинация каталога опросов
+### ~~[public-polls-pagination]~~ ✅ Done — см. выше
 V1 ограничен LIMIT 30. При росте каталога пользователь видит только топ-30 шаблонов.
 Cursor-based pagination: `?after=<cursor>` (last `updated_at` + last `id`). Стабильно при добавлении новых записей, не нужен OFFSET.

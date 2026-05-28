@@ -2,6 +2,17 @@
 
 All notable changes to GroupTier are documented here.
 
+## [1.0.8.0] - 2026-05-28
+
+### Added
+- `server/src/routes/publicPolls.ts` — `GET /api/public-polls` accepts `?limit` (default 20, max 50) and `?offset` (default 0). Returns `{ items: PublicPoll[], nextOffset: number | null }` instead of a raw array. Uses the limit+1 trick: fetches `limit+1` rows to detect whether a next page exists — no `COUNT(*)` query.
+- `frontend/src/api/client.ts` — `searchPublicPolls(q?, offset)` accepts optional `offset` parameter and returns `{ items, nextOffset }`.
+- `frontend/src/components/create-poll/PresetsStep.tsx` — «Загрузить ещё» button appears when `pollsNextOffset !== null`; appends next page of user polls to the existing list without resetting client-side category/search filter.
+- `frontend/src/api/client.ts` — `fetchTemplates` now extracts `.items` from the paginated `{ items, nextOffset }` response (hotfix for Sprint 2 breaking change).
+
+### Tests
+- `server/src/__tests__/publicPolls.test.ts` — 4 existing `GET /api/public-polls` tests updated for `{ items, nextOffset }` shape. 2 new pagination tests: `nextOffset` set when DB returns `limit+1` rows; `nextOffset` null on last page with correct `offset` forwarded to SQL.
+
 ## [1.0.7.0] - 2026-05-28
 
 ### Added

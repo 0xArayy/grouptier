@@ -71,3 +71,37 @@ CREATE INDEX IF NOT EXISTS saved_polls_name_trgm_idx ON saved_polls USING GIN (n
 
 CREATE INDEX IF NOT EXISTS options_session_id_idx ON options(session_id);
 CREATE INDEX IF NOT EXISTS user_results_session_id_idx ON user_results(session_id);
+
+-- Public preset templates (community + official)
+CREATE TABLE IF NOT EXISTS public_templates (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  emoji      TEXT NOT NULL DEFAULT '📝',
+  name       TEXT NOT NULL,
+  options    JSONB NOT NULL DEFAULT '[]',
+  author     TEXT NOT NULL DEFAULT 'GroupTier',
+  official   BOOLEAN NOT NULL DEFAULT false,
+  category   TEXT NOT NULL DEFAULT 'other',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT public_templates_name_key UNIQUE (name)
+);
+
+-- Event log for HOT metric: top-3 by uses in last 7 days
+CREATE TABLE IF NOT EXISTS template_uses (
+  template_id UUID NOT NULL REFERENCES public_templates(id) ON DELETE CASCADE,
+  used_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS template_uses_template_id_idx ON template_uses(template_id);
+CREATE INDEX IF NOT EXISTS template_uses_used_at_template_id_idx ON template_uses(used_at DESC, template_id);
+
+-- Seed official templates (idempotent)
+INSERT INTO public_templates (emoji, name, options, author, official, category) VALUES
+  ('🍕', 'Что будем есть?',      '["Пицца","Суши","Бургеры","Тако","Рамен","Паста","Тайская","Салат"]',                                            'GroupTier',  true,  'food'),
+  ('🎮', 'Во что сыграем?',      '["Minecraft","Valorant","CS2","Among Us","Stardew Valley","Rocket League","Fortnite","League of Legends"]',        'GroupTier',  true,  'games'),
+  ('🎬', 'Какой жанр сегодня?',  '["Боевик","Комедия","Ужасы","Романтика","Фантастика","Триллер","Анимация","Документалка"]',                       'GroupTier',  true,  'movies'),
+  ('📺', 'Какой сериал смотрим?','["Breaking Bad","Game of Thrones","The Bear","Severance","Succession","The Wire","Chernobyl","Dark"]',              '@alex',      false, 'series'),
+  ('🎵', 'Какую музыку ставим?', '["Хип-хоп","Поп","Рок","Электронная","Джаз","R&B","Классика","Инди"]',                                           'GroupTier',  true,  'music'),
+  ('🏖️','Куда едем?',            '["Море","Горы","Город","Дача","Кемпинг","Экскурсии","Спа","Остаёмся дома"]',                                      '@marina',    false, 'other'),
+  ('🎯', 'Чем займёмся?',        '["Боулинг","Кино","Бар","Парк","Квест","Настолки","Каток","Кафе"]',                                               '@dmitry',    false, 'other'),
+  ('🍺', 'Что пьём?',            '["Пиво","Вино","Коктейли","Виски","Текила","Просекко","Безалкогольное","Чай"]',                                    '@sasha',     false, 'other'),
+  ('⚽', 'Лучшие матчи сезона',  '["Финал ЛЧ","Класико","Дерби Мерсисайда","Манчестерское дерби","Дерби делла Мадонина"]',                         '@sport_fan', false, 'sport')
+ON CONFLICT (name) DO NOTHING;

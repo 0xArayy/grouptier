@@ -31,7 +31,7 @@ export function HomeStep({
       </div>
 
       <button className={styles.primaryBtn} disabled={busy} onClick={onNavigatePresets}>
-        <span>Выбрать тему</span>
+        <span>Выбрать шаблон</span>
         <span>→</span>
       </button>
 
@@ -52,7 +52,7 @@ export function HomeStep({
           <button className={styles.secondaryBtn} disabled={busy} onClick={onNavigateMyPolls}>
             <span className={styles.myPollsLeft}>
               <span className={styles.myPollsIcon}>⭐</span>
-              <span>Мои тир-листы</span>
+              <span>Мои шаблоны</span>
             </span>
             <span className={styles.myPollsRight}>
               <span className={styles.myPollsCount}>

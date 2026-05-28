@@ -1,104 +1,224 @@
 .container {
   max-width: 400px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
 }
 
+/* Sticky header */
 .stickyHeader {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--bg);
-  padding: 14px 16px 12px;
+  background: var(--bg, #000);
+  padding: 14px 16px 10px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
-  border-bottom: 1px solid var(--surface);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 
 .backBtn {
   background: none;
   border: none;
-  color: var(--text-hint);
+  color: rgba(255,255,255,0.50);
   font-size: 20px;
   cursor: pointer;
   padding: 0 4px;
   line-height: 1;
   font-family: inherit;
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .headerTitle {
   font-size: 16px;
   font-weight: 700;
+  color: var(--text-1, #fff);
+  line-height: 1.2;
+}
+
+.headerSub {
+  font-size: 12.5px;
+  color: rgba(255,255,255,0.45);
+  margin-top: 2px;
+  line-height: 1.4;
 }
 
 .errorText {
   padding: 10px 16px;
-  color: var(--accent);
+  color: oklch(0.65 0.22 25);
   font-size: 13px;
 }
 
+/* List */
 .list {
-  padding: 12px 16px 32px;
+  padding: 14px 16px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
+/* Empty state */
 .emptyState {
-  text-align: center;
-  color: var(--text-hint);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 16px 16px;
+  gap: 10px;
+}
+
+.emptyIcon {
+  font-size: 32px;
+  opacity: 0.45;
+}
+
+.emptyText {
   font-size: 14px;
-  padding: 40px 0;
+  color: rgba(255,255,255,0.45);
+  text-align: center;
+  line-height: 1.5;
 }
 
 .emptyHint {
   font-size: 12px;
 }
 
-.pollWrap {
+/* Card */
+.card {
   position: relative;
-  margin-bottom: 10px;
+  border-radius: 13px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.06);
 }
 
-.pollCard {
+/* Kebab ⋯ button */
+.kebab {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.35);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-family: inherit;
+  transition: background 100ms ease;
+}
+
+.kebab:hover {
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.6);
+}
+
+/* Kebab overlay (closes menu on outside click) */
+.kebabOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+}
+
+/* Kebab dropdown */
+.kebabMenu {
+  position: absolute;
+  top: 34px;
+  right: 10px;
+  z-index: 10;
+  background: #1a1a1a;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 10px;
+  padding: 4px;
+  min-width: 140px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.kebabItem {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 7px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 500;
+  text-align: left;
+  color: rgba(255,255,255,0.75);
+  transition: background 100ms ease;
+}
+
+.kebabItem:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.kebabItem:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.kebabItemDelete {
+  color: oklch(0.72 0.20 25);
+}
+
+/* Main tap area (emoji + body) */
+.cardMain {
   width: 100%;
   display: flex;
+  gap: 12px;
   align-items: flex-start;
-  gap: 14px;
-  padding: 14px 12px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--surface);
-  background: var(--surface);
+  padding: 12px 40px 12px 12px; /* right pad leaves room for kebab */
+  background: none;
+  border: none;
   cursor: pointer;
   text-align: left;
   font-family: inherit;
+  border-radius: 13px 13px 0 0;
+  transition: background 120ms ease;
 }
 
-.pollCard:disabled {
+.cardMain:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.pollEmoji {
-  font-size: 36px;
-  line-height: 1;
+.cardMain:not(:disabled):active {
+  background: rgba(255,255,255,0.03);
+}
+
+/* Emoji avatar 44×44 */
+.cardEmoji {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
   flex-shrink: 0;
-  margin-top: 2px;
 }
 
-.pollBody {
-  min-width: 0;
+.cardBody {
   flex: 1;
+  min-width: 0;
 }
 
-.pollNameRow {
+.cardTitle {
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-1, #fff);
+  line-height: 1.2;
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 6px;
-}
-
-.pollName {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text);
 }
 
 .publicBadge {
@@ -106,82 +226,101 @@
   line-height: 1;
 }
 
-.pollTags {
+/* Status dot */
+.cardStatus {
+  font-size: 11.5px;
+  color: rgba(255,255,255,0.40);
+  margin-top: 3px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
+  align-items: center;
+  gap: 4px;
 }
 
-.pollTag {
-  font-size: 12px;
-  padding: 3px 8px;
-  border-radius: 9999px;
-  background: var(--bg);
-  color: var(--text-hint);
+.dotPrivate {
+  font-size: 8px;
+  color: rgba(255,255,255,0.25);
+}
+
+/* Option chips */
+.cardChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.chip {
+  font-size: 11.5px;
   font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.65);
   white-space: nowrap;
 }
 
-.pollArrow {
-  font-size: 18px;
-  color: var(--text-hint);
-  flex-shrink: 0;
-  margin-left: auto;
-  align-self: center;
+.chipOverflow {
+  color: rgba(255,255,255,0.35);
 }
 
-.cardActions {
-  position: absolute;
-  top: 8px;
-  right: 8px;
+/* Hairline divider */
+.hairline {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin: 0;
+}
+
+/* Card footer row */
+.cardFooter {
   display: flex;
   align-items: center;
-  gap: 2px;
+  justify-content: space-between;
+  padding: 10px 12px;
+  gap: 8px;
 }
 
-.deleteBtn {
-  background: none;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
-  opacity: 0.5;
-  padding: 4px;
-  color: var(--text-hint);
-  line-height: 1;
-  font-family: inherit;
+.footerLabel {
+  font-size: 11.5px;
+  color: rgba(255,255,255,0.35);
 }
 
-.deleteBtn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
+/* Publish button — S→A gradient per handoff */
 .publishBtn {
-  background: none;
+  padding: 7px 13px;
+  border-radius: 8px;
   border: none;
-  font-size: 16px;
+  background: linear-gradient(90deg, #FF4D4D 0%, #FF9F40 100%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
-  opacity: 0.5;
-  padding: 4px;
-  color: var(--text-hint);
-  line-height: 1;
   font-family: inherit;
+  white-space: nowrap;
+  transition: opacity 120ms ease;
 }
 
 .publishBtn:disabled {
-  opacity: 0.3;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-.unpublishBtn {
-  background: none;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
+.publishBtn:not(:disabled):active {
   opacity: 0.8;
-  padding: 4px;
-  line-height: 1;
+}
+
+/* Unpublish button */
+.unpublishBtn {
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
   font-family: inherit;
+  color: rgba(255,255,255,0.60);
+  transition: opacity 120ms ease;
 }
 
 .unpublishBtn:disabled {
@@ -189,6 +328,13 @@
   cursor: not-allowed;
 }
 
+/* Status dot — public */
+.dotPublic {
+  font-size: 8px;
+  color: oklch(0.72 0.20 145);
+}
+
+/* Publish choice row */
 .publishChoice {
   display: flex;
   align-items: center;
@@ -198,14 +344,15 @@
 .publishChoiceBtn {
   font-size: 11px;
   font-weight: 600;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm, 6px);
+  padding: 5px 9px;
+  border-radius: 7px;
   border: none;
-  background: var(--accent);
-  color: #fff;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.90);
   cursor: pointer;
   font-family: inherit;
   white-space: nowrap;
+  transition: background 100ms ease;
 }
 
 .publishChoiceBtn:disabled {
@@ -216,56 +363,40 @@
 .publishCancelBtn {
   background: none;
   border: none;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
   opacity: 0.5;
-  padding: 4px;
-  color: var(--text-hint);
+  padding: 4px 6px;
+  color: rgba(255,255,255,0.60);
   line-height: 1;
   font-family: inherit;
 }
 
-.footer {
-  padding: 0 16px 32px;
-}
-
-.createBtn {
+/* Dashed fallback "Create new template" */
+.dashedBtn {
   width: 100%;
-  padding: 13px 16px;
-  border-radius: var(--radius-md);
-  border: none;
-  background: var(--accent);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 700;
+  margin-top: 4px;
+  padding: 14px 16px;
+  border-radius: 13px;
+  border: 1px dashed rgba(255,255,255,0.12);
+  background: transparent;
+  color: rgba(255,255,255,0.55);
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 2px 8px var(--accent-shadow);
-  min-height: var(--tap-target-min);
   font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: border-color 120ms ease;
 }
 
-.createBtn:disabled {
-  opacity: 0.5;
+.dashedBtn:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-.loadingOverlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.35);
-  gap: 12px;
-}
-
-.loadingEmoji {
-  font-size: 36px;
-}
-
-.loadingText {
-  font-size: 15px;
-  font-weight: 600;
-  color: #fff;
+.dashedBtn:not(:disabled):active {
+  border-color: rgba(255,255,255,0.20);
 }

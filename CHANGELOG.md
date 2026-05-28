@@ -2,6 +2,22 @@
 
 All notable changes to GroupTier are documented here.
 
+## [1.0.6.0] - 2026-05-28
+
+### Added
+- `scripts/schema.sql` — `public_templates` table (emoji, name, options, author, official, category, created_at) and `template_uses` event-log table for the HOT metric. Seeded with 9 official GroupTier templates across food, games, movies, music, sport, and other categories. Composite covering index `(used_at DESC, template_id)` for the 7-day CTE.
+- `server/src/routes/templates.ts` — `GET /api/templates` returns all templates with `uses_7d` count and `hot` flag (top-3 by 7-day use events). `POST /api/templates/:id/use` (authenticated) records a use event; validates UUID format before hitting the DB (returns 400 on bad input, 404 when not found).
+- `server/src/index.ts` — `templateRoutes` registered alongside existing `publicPollRoutes`.
+- `frontend/src/api/client.ts` — `PublicTemplate` interface; `fetchTemplates(signal?)` with AbortSignal support; `recordTemplateUse(id)` fire-and-forget (never blocks user flow).
+- `frontend/src/components/create-poll/PresetsStep.tsx` — Live template browser replacing hardcoded presets array. HOT / OFFICIAL / category filter chips. Inline search across name and options. Skeleton loading state with shimmer animation, error/retry state. AbortController cancels in-flight requests on unmount.
+- `frontend/src/components/create-poll/MyPollsStep.tsx` — Screen 08 redesign: 44×44 emoji avatar card, kebab ⋯ menu (delete), footer publish CTA with С именем / Анонимно choice flow, green dot / 🌍 badge for public templates, Снять (unpublish) button when already public.
+
+### Fixed
+- `frontend/src/components/create-poll/HomeStep.tsx` — Terminology updated: "Выбрать шаблон" (not "Выбрать тему"), "Мои шаблоны" (not "Мои тир-листы"), consistent with templates concept throughout.
+
+### Tests
+- `server/src/__tests__/templates.test.ts` — 5 tests: GET /api/templates (list with HOT/uses_7d, empty array), POST /api/templates/:id/use (400 invalid UUID, 404 not found, 200 ok + INSERT verified).
+
 ## [1.0.5.7] - 2026-05-24
 
 ### Added

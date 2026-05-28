@@ -160,6 +160,35 @@ export async function deleteSavedPoll(id: string): Promise<void> {
   await throwOnError(res);
 }
 
+export interface PublicTemplate {
+  id: string;
+  emoji: string;
+  name: string;
+  options: string[];
+  author: string;
+  official: boolean;
+  hot: boolean;
+  uses_7d: number;
+  category: 'games' | 'food' | 'movies' | 'series' | 'music' | 'sport' | 'other';
+}
+
+export async function fetchTemplates(signal?: AbortSignal): Promise<PublicTemplate[]> {
+  const res = await fetch(`${BASE}/templates`, { signal });
+  await throwOnError(res);
+  return res.json();
+}
+
+export async function recordTemplateUse(id: string): Promise<void> {
+  try {
+    await fetch(`${BASE}/templates/${id}/use`, {
+      method: 'POST',
+      headers: { 'x-init-data': getInitData() },
+    });
+  } catch {
+    // best-effort — never block the user flow
+  }
+}
+
 export async function generateAiOptions(
   name: string,
   existingOptions?: string[],

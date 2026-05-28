@@ -1,106 +1,190 @@
 .container {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 32px 16px 24px;
-  gap: 24px;
+  padding: 32px 16px 80px;
   min-height: 100dvh;
+  max-width: 400px;
+  margin: 0 auto;
 }
 
+/* Hero */
 .hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
+  margin-bottom: 28px;
 }
 
-.heroEmoji {
-  font-size: 40px;
-  margin-bottom: 12px;
+.heroLogo {
+  width: 120px;
+  height: auto;
+  display: block;
+  margin-bottom: 16px;
 }
 
 .heroTitle {
-  font-size: 20px;
+  font-size: 26px;
   font-weight: 700;
-  margin-bottom: 8px;
+  letter-spacing: -0.025em;
 }
 
 .heroSubtitle {
-  font-size: 14px;
-  color: var(--text-hint);
+  font-size: 13.5px;
+  color: var(--text-2);
+  margin-top: 10px;
   line-height: 1.5;
+  max-width: 280px;
 }
 
+/* Link box */
 .linkBox {
   width: 100%;
-  max-width: 400px;
 }
 
 .linkLabel {
-  font-size: 12px;
-  color: var(--text-hint);
-  margin-bottom: 6px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(255,255,255,0.40);
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
 }
 
 .linkValue {
-  background: var(--surface);
-  border-radius: 10px;
-  padding: 12px 14px;
-  font-size: 13px;
-  color: var(--text);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 14px 16px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: rgba(255,255,255,0.80);
   word-break: break-all;
   line-height: 1.5;
-  font-family: monospace;
   user-select: text;
 }
 
+/* Actions */
 .actions {
-  width: 100%;
-  max-width: 400px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .copyBtn {
   width: 100%;
-  height: 44px;
-  border-radius: 10px;
-  background: var(--accent);
+  padding: 16px 18px;
+  border-radius: var(--radius-xl);
+  border: none;
+  background: var(--cta-bg);
   color: #fff;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s ease;
-  box-shadow: 0 2px 8px var(--accent-shadow);
+  min-height: var(--tap-target-min);
+  font-family: inherit;
+  transition: transform 120ms ease, opacity 200ms ease;
+}
+
+.copyBtn:active {
+  transform: scale(0.98);
 }
 
 .copyBtnCopied {
-  background: #7ED957;
-  box-shadow: 0 2px 8px rgba(126, 217, 87, 0.3);
+  background: oklch(0.55 0.18 145 / 0.7);
 }
 
 .tgBtn {
   width: 100%;
-  height: 44px;
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--accent);
+  padding: 15px 16px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--accent-warm);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
+  min-height: var(--tap-target-min);
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 120ms ease;
+}
+
+.tgBtn:active {
+  transform: scale(0.98);
 }
 
 .spacer {
   flex: 1;
 }
 
-.doneBtn {
+/* Continue card — "Поделился? → Дальше" */
+.continueCard {
   width: 100%;
-  max-width: 400px;
-  height: 44px;
+  padding: 12px;
+  border-radius: var(--radius-xl);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.continueCheck {
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
-  background: transparent;
-  color: var(--text-hint);
-  font-size: 14px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: oklch(0.55 0.18 145 / 0.18);
+  border: 1px solid oklch(0.7 0.18 140 / 0.4);
+  color: oklch(0.82 0.18 140);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.continueText {
+  flex: 1;
+  min-width: 0;
+}
+
+.continueTitle {
+  font-size: 13px;
   font-weight: 600;
+  color: var(--text-1);
+}
+
+.continueSub {
+  font-size: 11.5px;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+
+.continueBtn {
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: none;
   cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--cta-bg);
+  box-shadow: 0 0 0 1px oklch(0.7 0.2 35 / 0.35);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 120ms ease;
+}
+
+.continueBtn:active {
+  transform: scale(0.97);
 }

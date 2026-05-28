@@ -7,14 +7,21 @@ interface Props {
   error: string;
   savedPolls: SavedPoll[];
   deletingId: string | null;
+  publishingId: string | null;
   onBack: () => void;
   onSelect: (poll: SavedPoll) => void;
   onDelete: (id: string) => void;
+  onPublish: (id: string, showAuthor: boolean) => void;
+  onUnpublish: (id: string) => void;
   onCreateNew: () => void;
 }
 
-export function MyPollsStep({ busy, error, savedPolls, deletingId, onBack, onSelect, onDelete, onCreateNew }: Props) {
+export function MyPollsStep({
+  busy, error, savedPolls, deletingId, publishingId,
+  onBack, onSelect, onDelete, onPublish, onUnpublish, onCreateNew,
+}: Props) {
   const [openKebab, setOpenKebab] = useState<string | null>(null);
+  const [expandedPublish, setExpandedPublish] = useState<string | null>(null);
 
   return (
     <div className={styles.container}>
@@ -43,6 +50,9 @@ export function MyPollsStep({ busy, error, savedPolls, deletingId, onBack, onSel
             const overflow = poll.options.length - 4;
             const isMenuOpen = openKebab === poll.id;
             const isDeleting = deletingId === poll.id;
+            const isPublishing = publishingId === poll.id;
+            const isPublishExpanded = expandedPublish === poll.id;
+            const isPublic = (poll as SavedPoll & { is_public?: boolean }).is_public;
 
             return (
               <div key={poll.id} className={styles.card}>
@@ -77,9 +87,13 @@ export function MyPollsStep({ busy, error, savedPolls, deletingId, onBack, onSel
                 >
                   <div className={styles.cardEmoji}>{poll.emoji}</div>
                   <div className={styles.cardBody}>
-                    <div className={styles.cardTitle}>{poll.name}</div>
+                    <div className={styles.cardTitle}>
+                      {poll.name}
+                      {isPublic && <span className={styles.publicBadge}>🌍</span>}
+                    </div>
                     <div className={styles.cardStatus}>
-                      <span className={styles.dotPrivate}>●</span> Приватный
+                      <span className={isPublic ? styles.dotPublic : styles.dotPrivate}>●</span>
+                      {isPublic ? 'Публичный' : 'Приватный'}
                     </div>
                     <div className={styles.cardChips}>
                       {visibleOptions.map(opt => (
@@ -95,14 +109,49 @@ export function MyPollsStep({ busy, error, savedPolls, deletingId, onBack, onSel
                 {/* Hairline + footer */}
                 <div className={styles.hairline} />
                 <div className={styles.cardFooter}>
-                  <span className={styles.footerLabel}>Видно только тебе</span>
-                  <button
-                    className={styles.publishBtn}
-                    disabled={busy}
-                    onClick={() => {/* TODO: open publish sheet (Screen 10) */}}
-                  >
-                    🌐 Опубликовать
-                  </button>
+                  {isPublic ? (
+                    <>
+                      <span className={styles.footerLabel}>Виден всем</span>
+                      <button
+                        className={styles.unpublishBtn}
+                        disabled={isPublishing || busy}
+                        onClick={() => onUnpublish(poll.id)}
+                      >
+                        {isPublishing ? '…' : '🌍 Снять'}
+                      </button>
+                    </>
+                  ) : isPublishExpanded ? (
+                    <>
+                      <span className={styles.footerLabel}>Опубликовать как:</span>
+                      <div className={styles.publishChoice}>
+                        <button
+                          className={styles.publishChoiceBtn}
+                          disabled={isPublishing || busy}
+                          onClick={() => { setExpandedPublish(null); onPublish(poll.id, true); }}
+                        >С именем</button>
+                        <button
+                          className={styles.publishChoiceBtn}
+                          disabled={isPublishing || busy}
+                          onClick={() => { setExpandedPublish(null); onPublish(poll.id, false); }}
+                        >Анонимно</button>
+                        <button
+                          className={styles.publishCancelBtn}
+                          onClick={() => setExpandedPublish(null)}
+                        >✕</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span className={styles.footerLabel}>Видно только тебе</span>
+                      <button
+                        className={styles.publishBtn}
+                        disabled={busy}
+                        onClick={() => setExpandedPublish(poll.id)}
+                      >
+                        {isPublishing ? '…' : '🌐 Опубликовать'}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );

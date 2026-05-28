@@ -7,6 +7,7 @@ import { bot } from '../bot/bot.js';
 import { buildVoteUrl } from '../lib/urls.js';
 import { buildVotingCard, buildVotingCaption, buildWinnerCard } from '../bot/cards.js';
 import { MAX_NAME_LENGTH, MAX_OPTION_TEXT_LENGTH, MAX_OPTIONS } from '../lib/constants.js';
+import { createSession } from '../lib/sessions.js';
 
 export async function sessionRoutes(fastify: FastifyInstance) {
   // POST /api/sessions — create session from Mini App (chat_id from validated initData)
@@ -17,42 +18,16 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       const chat = request.telegramChat;
       const userId = request.telegramUser.id;
 
-      // 409 race guard: one collecting session per chat at a time (group sessions only)
-      if (chat) {
-        const existing = await pool.query(
-          "SELECT id FROM sessions WHERE chat_id = $1 AND status = 'collecting' LIMIT 1",
-          [chat.id],
-        );
-        if (existing.rows.length > 0) {
-          const existingId = existing.rows[0].id;
-          return reply.status(409).send({ error: 'Session already exists', id: existingId, share_url: buildVoteUrl(existingId) });
-        }
-      }
-
       const rawName = (request.body?.name ?? '').trim();
       if (rawName.length > MAX_NAME_LENGTH) {
         return reply.status(400).send({ error: 'Name must be 100 characters or fewer' });
       }
-      const name = rawName || 'Untitled Session';
-      try {
-        const res = await pool.query(
-          "INSERT INTO sessions (chat_id, creator_user_id, name, status) VALUES ($1, $2, $3, 'collecting') RETURNING id",
-          [chat?.id ?? null, userId, name],
-        );
-        const newId = res.rows[0].id;
-        return reply.status(201).send({ id: newId, share_url: buildVoteUrl(newId) });
-      } catch (err: unknown) {
-        if ((err as { code?: string }).code === '23505') {
-          // Concurrent INSERT raced past the SELECT — unique index caught it (group only)
-          const fallback = await pool.query(
-            "SELECT id FROM sessions WHERE chat_id = $1 AND status = 'collecting' LIMIT 1",
-            [chat?.id],
-          );
-          const fallbackId = fallback.rows[0]?.id;
-          return reply.status(409).send({ error: 'Session already exists', id: fallbackId, share_url: fallbackId ? buildVoteUrl(fallbackId) : undefined });
-        }
-        throw err;
+
+      const outcome = await createSession(chat, userId, rawName);
+      if (outcome.conflict) {
+        return reply.status(409).send({ error: 'Session already exists', id: outcome.id, share_url: outcome.share_url });
       }
+      return reply.status(201).send({ id: outcome.id, share_url: outcome.share_url });
     },
   );
 

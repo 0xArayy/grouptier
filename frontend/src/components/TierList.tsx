@@ -17,11 +17,11 @@ interface Props {
   submitError?: string;
 }
 
-const TIER_META: Record<Tier, { bg: string; text: string; shadow: string }> = {
-  S: { bg: 'var(--tier-s)', text: 'var(--tier-s-text)', shadow: '0 2px 0 rgba(0,0,0,0.22), 0 4px 0 rgba(0,0,0,0.10)' },
-  A: { bg: 'var(--tier-a)', text: 'var(--tier-a-text)', shadow: '0 2px 0 rgba(0,0,0,0.22), 0 4px 0 rgba(0,0,0,0.10)' },
-  B: { bg: 'var(--tier-b)', text: 'var(--tier-b-text)', shadow: '0 2px 0 rgba(255,255,255,0.4)' },
-  C: { bg: 'var(--tier-c)', text: 'var(--tier-c-text)', shadow: '0 2px 0 rgba(0,0,0,0.22), 0 4px 0 rgba(0,0,0,0.10)' },
+const TIER_META: Record<Tier, { bg: string }> = {
+  S: { bg: 'oklch(0.65 0.22 25)' },
+  A: { bg: 'oklch(0.72 0.18 50)' },
+  B: { bg: 'oklch(0.85 0.16 90)' },
+  C: { bg: 'oklch(0.70 0.18 140)' },
 };
 
 function buildRows(rankedList: string[]): TierRow[] {
@@ -47,7 +47,6 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
   const overIndexRef = useRef<number | null>(null);
   const dragRef = useRef<{ option: string; fromTier: Tier; fromIndex: number } | null>(null);
   const rowRefs = useRef<Map<Tier, HTMLDivElement>>(new Map());
-  // chipKey = `${tier}-${option}`
   const chipRefs = useRef<Map<string, HTMLSpanElement>>(new Map());
   const cleanupRef = useRef<(() => void) | null>(null);
 
@@ -69,7 +68,6 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
     setHoverPos(null, null);
   }
 
-  // Returns tier + insertion index within that tier's options array.
   function hitTestPosition(x: number, y: number): { tier: Tier; index: number } | null {
     for (const [tier, el] of rowRefs.current) {
       const rect = el.getBoundingClientRect();
@@ -122,15 +120,9 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
             const src = next.find(r => r.tier === drag.fromTier);
             const dst = next.find(r => r.tier === target);
             if (!src || !dst) return prev;
-
-            // Remove from source (when same tier, src === dst, so this mutates dst too)
             src.options = src.options.filter(o => o !== drag.option);
-
-            // Calculate insertion point in the now-filtered dst array
             let insertAt: number;
             if (drag.fromTier === target) {
-              // Same tier: overIndex was relative to the original array (including ghost),
-              // adjust by -1 if the ghost was before the drop point.
               const raw = dropIndex ?? dst.options.length;
               insertAt = raw > drag.fromIndex ? raw - 1 : raw;
             } else {
@@ -174,8 +166,12 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
   return (
     <div className={styles.container}>
       {sessionClosed && (
-        <div className={styles.closedBanner}>🔒 Voting closed</div>
+        <div className={styles.closedBanner}>🔒 Голосование закрыто</div>
       )}
+
+      <div className={styles.screenMono}>РАССТАНОВКА ТИРОВ</div>
+      <div className={styles.screenTitle}>Расставь по местам</div>
+      <div className={styles.screenSub}>Удерживай чип и перетаскивай между тирами.</div>
 
       <div className={styles.grid}>
         {rows.map(({ tier, options }) => {
@@ -192,7 +188,7 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
             >
               <div
                 className={styles.tierLabel}
-                style={{ background: meta.bg, color: meta.text, textShadow: meta.shadow }}
+                style={{ background: meta.bg }}
               >
                 {tier}
               </div>
@@ -202,7 +198,6 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
                   const showIndicator = isTargeted && overIndex === i && !isDragging;
                   return (
                     <span key={opt} style={{ display: 'contents' }}>
-                      {/* Drop indicator line before this chip */}
                       {showIndicator && <DropIndicator />}
                       <span
                         ref={el => {
@@ -218,10 +213,9 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
                     </span>
                   );
                 })}
-                {/* Indicator after the last chip */}
                 {isTargeted && overIndex === options.length && <DropIndicator />}
                 {options.length === 0 && (
-                  <span className={styles.emptyHint}>drop here</span>
+                  <span className={styles.emptyHint}>перетащи сюда</span>
                 )}
               </div>
             </div>
@@ -230,10 +224,11 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
       </div>
 
       {canDrag && rows.length > 1 && (
-        <div className={styles.dragHint}>Hold &amp; drag chips to rearrange</div>
+        <div className={styles.dragHint}>
+          <span>⊕</span> Удерживай и перетаскивай
+        </div>
       )}
 
-      {/* Floating ghost chip during drag */}
       {floatPos && activeOption && (
         <div
           className={styles.floatingChip}
@@ -255,12 +250,12 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
             onClick={handleSubmit}
             disabled={submitting}
           >
-            {submitting ? 'Saving…' : 'Submit my picks'}
+            {submitting ? 'Сохраняем…' : 'Подтвердить выбор'}
           </button>
         )}
         {onViewGroup && (
           <button className={styles.groupBtn} onClick={onViewGroup}>
-            See group →
+            Смотреть итоги →
           </button>
         )}
       </div>

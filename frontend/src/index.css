@@ -1,41 +1,52 @@
 :root {
-  /* Tier colors — TierMaker Classic (Variation A) */
-  --tier-s: #FF4D4D;
+  /* ─── Палитра — Restrained ─────────────────────────────────────── */
+  --bg:          #000;
+  --surface-1:   rgba(255,255,255, 0.025);
+  --surface-2:   rgba(255,255,255, 0.05);
+  --border:      rgba(255,255,255, 0.06);
+  --border-soft: rgba(255,255,255, 0.04);
+
+  --text-1:   rgba(255,255,255, 0.95);
+  --text-2:   rgba(255,255,255, 0.55);
+  --text-3:   rgba(255,255,255, 0.30);
+  --accent-warm: oklch(0.78 0.16 35);
+
+  /* Legacy aliases (keep for components using old names) */
+  --surface:    rgba(255,255,255, 0.025);
+  --text:       rgba(255,255,255, 0.95);
+  --text-hint:  rgba(255,255,255, 0.55);
+
+  /* ─── CTA gradient ─────────────────────────────────────────────── */
+  --cta-bg: linear-gradient(135deg, oklch(0.65 0.22 25), oklch(0.72 0.18 50));
+
+  /* ─── Тир-цвета (только экраны 06 и 07) ───────────────────────── */
+  --tier-s:      oklch(0.65 0.22 25);
   --tier-s-text: #fff;
-  --tier-a: #FF9F40;
+  --tier-a:      oklch(0.72 0.18 50);
   --tier-a-text: #fff;
-  --tier-b: #FFD43A;
-  --tier-b-text: #5a4400;
-  --tier-c: #7ED957;
+  --tier-b:      oklch(0.85 0.16 90);
+  --tier-b-text: #fff;
+  --tier-c:      oklch(0.70 0.18 140);
   --tier-c-text: #fff;
 
-  /* Typography */
-  --font-primary: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --font-display: Impact, "Arial Black", "Helvetica Neue Condensed", system-ui, sans-serif;
+  /* ─── Типографика ──────────────────────────────────────────────── */
+  --font-primary: 'Inter', -apple-system, system-ui, sans-serif;
+  --font-display: 'Archivo Black', 'Inter', system-ui, sans-serif;
+  --font-mono:    ui-monospace, 'SF Mono', Menlo, monospace;
 
-  /* Tap targets */
+  /* ─── Радиусы ──────────────────────────────────────────────────── */
+  --radius-sm:   4px;
+  --radius-md:   10px;
+  --radius-lg:   12px;
+  --radius-xl:   14px;
+  --radius:      var(--radius-lg);
+  --radius-chip: 999px;
+
+  /* ─── Tap targets ──────────────────────────────────────────────── */
   --tap-target-min: 48px;
 
-  /* Telegram-adaptive surfaces */
-  --bg: var(--tg-theme-bg-color, #1a1a2e);
-  --surface: var(--tg-theme-secondary-bg-color, #16213e);
-  --text: var(--tg-theme-text-color, #eee);
-  --text-hint: var(--tg-theme-hint-color, #888);
-
-  /* Accent: TierMaker red — replaces old #5c7cfa blue */
-  --accent: #FF4D4D;
-  --accent-text: #fff;
-  --accent-shadow: rgba(255, 77, 77, 0.3);
-
-  /* Progress / voting social signal */
-  --progress: #7ED957;
-
-  /* Border radius scale */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 14px;
-  --radius: var(--radius-lg);
+  /* ─── Progress (LIVE bar) ──────────────────────────────────────── */
+  --progress: oklch(0.70 0.18 140);
 }
 
 * {
@@ -45,10 +56,14 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html {
+  color-scheme: dark;
+}
+
 body {
   font-family: var(--font-primary);
   background: var(--bg);
-  color: var(--text);
+  color: var(--text-1);
   min-height: 100dvh;
   overscroll-behavior: none;
 }
@@ -86,7 +101,10 @@ button {
 }
 
 .skeleton {
-  background: linear-gradient(90deg, var(--surface) 25%, color-mix(in srgb, var(--surface) 60%, var(--text)) 50%, var(--surface) 75%);
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.04) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.4s ease infinite;
   border-radius: var(--radius);

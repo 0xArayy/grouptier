@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import logoUrl from '../assets/grouptier-logo.png';
 import styles from './ShareStep.module.css';
 
 interface Props {
@@ -14,9 +15,7 @@ export function ShareStep({ shareUrl, sessionId, onDone }: Props) {
     navigator.clipboard.writeText(shareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
-    }).catch(() => {
-      // Fallback: select the text in the link box
-    });
+    }).catch(() => {});
   }
 
   function handleSendToTelegram() {
@@ -26,15 +25,15 @@ export function ShareStep({ shareUrl, sessionId, onDone }: Props) {
   return (
     <div className={styles.container}>
       <div className={styles.hero}>
-        <div className={styles.heroEmoji}>🎉</div>
-        <div className={styles.heroTitle}>Опрос готов!</div>
+        <img src={logoUrl} alt="GroupTier" className={styles.heroLogo} />
+        <div className={styles.heroTitle}>Тир-лист готов</div>
         <div className={styles.heroSubtitle}>
-          Поделись ссылкой — проголосовать можно без бота в группе
+          Поделись ссылкой — голосовать можно без бота в группе.
         </div>
       </div>
 
       <div className={styles.linkBox}>
-        <div className={styles.linkLabel}>Ссылка на голосование</div>
+        <div className={styles.linkLabel}>ССЫЛКА НА ГОЛОСОВАНИЕ</div>
         <div className={styles.linkValue}>{shareUrl}</div>
       </div>
 
@@ -47,15 +46,25 @@ export function ShareStep({ shareUrl, sessionId, onDone }: Props) {
         </button>
 
         <button onClick={handleSendToTelegram} className={styles.tgBtn}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path d="M21.5 3.5 2.5 11l6 2.2 9-7-7 8 1 6.3 3-3 4.5 3.5 3.5-17z" fill="currentColor" />
+          </svg>
           Отправить в Telegram
         </button>
       </div>
 
       <div className={styles.spacer} />
 
-      <button onClick={onDone} className={styles.doneBtn}>
-        Поделился, продолжить →
-      </button>
+      <div className={styles.continueCard}>
+        <div className={styles.continueCheck}>✓</div>
+        <div className={styles.continueText}>
+          <div className={styles.continueTitle}>Поделился?</div>
+          <div className={styles.continueSub}>Пройди тир-лист и следи за результатом</div>
+        </div>
+        <button onClick={onDone} className={styles.continueBtn}>
+          Дальше <span>→</span>
+        </button>
+      </div>
     </div>
   );
 }

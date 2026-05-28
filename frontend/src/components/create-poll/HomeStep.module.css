@@ -1,56 +1,76 @@
 .container {
-  padding: 24px 16px;
+  padding: 20px 16px 24px;
   max-width: 400px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
 }
 
-.emoji {
-  font-size: 28px;
-  margin-bottom: 8px;
+.hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
 }
 
-.title {
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 4px;
+.logo {
+  display: block;
+  width: 120px;
+  height: auto;
+  flex-shrink: 0;
+  margin-left: -8px;
 }
 
 .subtitle {
   font-size: 14px;
-  color: var(--text-hint);
-  margin-bottom: 24px;
+  color: var(--text-2);
+  line-height: 1.5;
 }
 
-/* Shared button base */
+/* Primary CTA — gradient */
 .primaryBtn {
   width: 100%;
-  padding: 13px 16px;
-  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  border-radius: var(--radius-xl);
   border: none;
-  background: var(--accent);
+  background: var(--cta-bg);
   color: #fff;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 2px 8px var(--accent-shadow);
   min-height: var(--tap-target-min);
   font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 120ms ease, opacity 200ms ease;
 }
 
 .primaryBtn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+}
+
+.primaryBtn:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+/* My polls button — surface card */
+.myPollsWrap {
+  margin-top: 10px;
 }
 
 .secondaryBtn {
   width: 100%;
-  padding: 13px 16px;
-  border-radius: var(--radius-md);
-  border: none;
-  background: var(--surface);
-  color: var(--text);
+  padding: 14px 16px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+  color: var(--text-1);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   min-height: var(--tap-target-min);
   font-family: inherit;
@@ -58,90 +78,110 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  transition: transform 120ms ease;
 }
 
 .secondaryBtn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.myPollsWrap {
-  margin-top: 12px;
+.secondaryBtn:not(:disabled):active {
+  transform: scale(0.98);
 }
 
 .myPollsLeft {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
-.myPollsLeftEmoji {
-  font-size: 18px;
+.myPollsIcon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  font-size: 14px;
 }
 
 .myPollsRight {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .myPollsCount {
   font-size: 12px;
-  color: var(--text-hint);
-  font-weight: 500;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.05);
+  color: var(--text-2);
 }
 
 .myPollsArrow {
-  font-size: 18px;
-  color: var(--text-hint);
+  font-size: 16px;
+  color: var(--text-3);
 }
 
+/* OR divider */
 .divider {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 20px 0;
+  gap: 12px;
+  margin: 26px 0 16px;
+  color: var(--text-3);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  font-family: var(--font-mono);
 }
 
 .dividerLine {
   flex: 1;
   height: 1px;
-  background: var(--surface);
+  background: var(--border);
 }
 
-.dividerLabel {
-  font-size: 12px;
-  color: var(--text-hint);
-  font-weight: 500;
-}
-
+/* Own variant section */
 .sectionLabel {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-hint);
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(255,255,255,0.40);
   margin-bottom: 8px;
 }
 
 .input {
   width: 100%;
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--surface);
-  background: var(--bg);
-  color: var(--text);
-  font-size: 15px;
+  padding: 13px 14px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+  color: var(--text-1);
+  font-size: 14px;
   box-sizing: border-box;
   font-family: inherit;
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--text-3);
+}
+
+.input:focus {
+  border-color: rgba(255,255,255,0.12);
 }
 
 .errorText {
-  color: var(--accent);
+  color: oklch(0.65 0.22 25);
   font-size: 13px;
   margin-top: 8px;
 }
 
+/* Bottom actions */
 .bottomActions {
   margin-top: 10px;
   display: flex;
@@ -151,37 +191,63 @@
 
 .aiBtn {
   width: 100%;
-  padding: 13px 16px;
-  border-radius: var(--radius-md);
-  border: none;
-  background: var(--surface);
-  color: var(--text);
+  padding: 15px 16px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-1);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   min-height: var(--tap-target-min);
   font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: transform 120ms ease;
 }
 
 .aiBtn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+}
+
+.aiBtn:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.aiSpark {
+  background: linear-gradient(135deg, oklch(0.72 0.18 50), oklch(0.85 0.16 90));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-size: 14px;
 }
 
 .ghostBtn {
   width: 100%;
-  padding: 13px 16px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--surface);
+  padding: 15px 16px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-soft);
   background: transparent;
-  color: var(--text-hint);
+  color: var(--text-2);
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   min-height: var(--tap-target-min);
   font-family: inherit;
+  transition: transform 120ms ease;
 }
 
 .ghostBtn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+}
+
+.ghostBtn:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.spacer {
+  flex: 1;
 }

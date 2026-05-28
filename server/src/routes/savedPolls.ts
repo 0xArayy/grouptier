@@ -8,6 +8,7 @@ interface SavedPoll {
   name: string;
   options: string[];
   emoji: string;
+  is_public: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -21,7 +22,7 @@ export async function savedPollRoutes(fastify: FastifyInstance) {
       const userId = request.telegramUser.id;
 
       const res = await pool.query<SavedPoll>(
-        'SELECT id, name, options, emoji, created_at, updated_at FROM saved_polls WHERE user_id = $1 ORDER BY updated_at DESC',
+        'SELECT id, name, options, emoji, is_public, created_at, updated_at FROM saved_polls WHERE user_id = $1 ORDER BY updated_at DESC',
         [userId],
       );
 
@@ -110,6 +111,53 @@ export async function savedPollRoutes(fastify: FastifyInstance) {
       const res = await pool.query(
         `UPDATE saved_polls SET ${setParts.join(', ')} WHERE id = $${paramIdx++} AND user_id = $${paramIdx} RETURNING id`,
         values,
+      );
+
+      if (res.rows.length === 0) {
+        return reply.status(404).send({ error: 'Saved poll not found' });
+      }
+      return { ok: true };
+    },
+  );
+
+  // POST /api/saved-polls/:id/publish — make a saved poll publicly visible
+  fastify.post<{ Params: { id: string }; Body: { show_author?: boolean } }>(
+    '/api/saved-polls/:id/publish',
+    { preHandler: initDataMiddleware, config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
+    async (request, reply) => {
+      const userId = request.telegramUser.id;
+      const { id } = request.params;
+      const showAuthor = request.body?.show_author === true;
+      const authorName = showAuthor ? (request.telegramUser.first_name ?? null) : null;
+
+      const res = await pool.query(
+        `UPDATE saved_polls
+         SET is_public = true, show_author = $1, author_name = $2, updated_at = NOW()
+         WHERE id = $3 AND user_id = $4
+         RETURNING id`,
+        [showAuthor, authorName, id, userId],
+      );
+
+      if (res.rows.length === 0) {
+        return reply.status(404).send({ error: 'Saved poll not found' });
+      }
+      return { ok: true };
+    },
+  );
+
+  // POST /api/saved-polls/:id/unpublish — remove a saved poll from public catalog
+  fastify.post<{ Params: { id: string } }>(
+    '/api/saved-polls/:id/unpublish',
+    { preHandler: initDataMiddleware, config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
+    async (request, reply) => {
+      const userId = request.telegramUser.id;
+      const { id } = request.params;
+
+      const res = await pool.query(
+        `UPDATE saved_polls SET is_public = false, updated_at = NOW()
+         WHERE id = $1 AND user_id = $2
+         RETURNING id`,
+        [id, userId],
       );
 
       if (res.rows.length === 0) {

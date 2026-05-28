@@ -3,7 +3,7 @@
   margin: 0 auto;
 }
 
-/* Loading overlay when busy and no options yet */
+/* Loading overlay */
 .loadingOverlay {
   position: fixed;
   inset: 0;
@@ -11,7 +11,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.6);
   gap: 12px;
   z-index: 100;
 }
@@ -20,15 +20,15 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.25);
-  border-top-color: #fff;
+  border: 3px solid rgba(255,255,255,0.10);
+  border-top-color: rgba(255,255,255,0.7);
   animation: spin 0.9s linear infinite;
 }
 
 .loadingText {
   font-size: 15px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-2);
 }
 
 /* Nav row */
@@ -40,21 +40,27 @@
 }
 
 .backBtn {
-  background: none;
-  border: none;
-  color: var(--text-hint);
-  font-size: 20px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 18px;
+  font-weight: 300;
   cursor: pointer;
-  padding: 0 4px;
-  line-height: 1;
   font-family: inherit;
+  flex-shrink: 0;
 }
 
 .shareBtn {
   margin-left: auto;
   background: none;
   border: none;
-  color: var(--accent);
+  color: var(--accent-warm);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -65,7 +71,7 @@
 }
 
 .shareBtnCopied {
-  color: #7ED957;
+  color: var(--progress);
 }
 
 /* Content area */
@@ -73,15 +79,16 @@
   padding: 12px 16px 24px;
 }
 
-/* Poll name — editable */
+/* Poll name */
 .nameInput {
-  font-size: 16px;
+  font-size: 22px;
   font-weight: 700;
+  letter-spacing: -0.02em;
   width: 100%;
   border: none;
-  border-bottom: 2px solid var(--accent);
+  border-bottom: 1px solid var(--border);
   background: transparent;
-  color: var(--text);
+  color: var(--text-1);
   padding: 2px 0;
   margin-bottom: 2px;
   outline: none;
@@ -90,30 +97,32 @@
 }
 
 .nameDisplay {
-  font-size: 16px;
+  font-size: 22px;
   font-weight: 700;
+  letter-spacing: -0.02em;
   margin-bottom: 2px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .nameEditIcon {
-  font-size: 12px;
-  color: var(--text-hint);
-  font-weight: 400;
+  font-size: 18px;
+  opacity: 0.6;
 }
 
 .hint {
   font-size: 13px;
-  color: var(--text-hint);
+  color: var(--text-2);
+  margin-top: 6px;
   margin-bottom: 20px;
 }
 
 .hintCompact {
   font-size: 13px;
-  color: var(--text-hint);
+  color: var(--text-2);
+  margin-top: 6px;
   margin-bottom: 10px;
 }
 
@@ -123,10 +132,11 @@
   align-items: center;
   gap: 6px;
   padding: 7px 12px;
-  border-radius: var(--radius-md);
-  background: var(--surface);
+  border-radius: var(--radius-xl);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
   font-size: 13px;
-  color: var(--text-hint);
+  color: var(--text-2);
   font-weight: 500;
   margin-bottom: 14px;
 }
@@ -136,7 +146,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--progress);
   flex-shrink: 0;
   animation: gtPulse 1.2s infinite;
 }
@@ -144,35 +154,52 @@
 /* Options list */
 .optionsList {
   margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .optionRow {
-  padding: 9px 12px;
+  padding: 11px 14px;
   border-radius: var(--radius-md);
-  background: var(--surface);
-  margin-bottom: 6px;
-  font-size: 14px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  font-size: 14.5px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
+}
+
+.optionNum {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-3);
+  width: 18px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .optionText {
-  color: var(--text);
+  color: var(--text-1);
+  font-weight: 500;
+  flex: 1;
 }
 
 .optionRemoveBtn {
   background: none;
   border: none;
-  color: var(--text-hint);
+  color: var(--text-3);
   cursor: pointer;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1;
   padding: 2px 4px;
-  opacity: 0.5;
   flex-shrink: 0;
   font-family: inherit;
+  transition: color 0.15s;
+}
+
+.optionRemoveBtn:hover {
+  color: var(--text-2);
 }
 
 .optionRemoveBtn:disabled {
@@ -185,7 +212,7 @@
   background: none;
   border: none;
   padding: 0 0 12px 0;
-  color: var(--accent);
+  color: var(--accent-warm);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -198,7 +225,7 @@
   cursor: not-allowed;
 }
 
-/* Add option input row */
+/* Add option row */
 .addRow {
   margin-bottom: 12px;
 }
@@ -211,29 +238,41 @@
 .addInput {
   flex: 1;
   padding: 12px 14px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--surface);
-  background: var(--bg);
-  color: var(--text);
-  font-size: 15px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+  color: var(--text-1);
+  font-size: 14px;
   box-sizing: border-box;
   font-family: inherit;
+  outline: none;
+}
+
+.addInput::placeholder {
+  color: var(--text-3);
+}
+
+.addInput:focus {
+  border-color: rgba(255,255,255,0.12);
 }
 
 .addBtn {
-  padding: 12px 16px;
-  border-radius: var(--radius-md);
-  border: none;
-  background: var(--accent);
-  color: #fff;
+  width: 48px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-1);
   font-weight: 700;
-  font-size: 15px;
+  font-size: 20px;
   cursor: pointer;
   font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .addBtn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -241,16 +280,16 @@
   font-size: 12px;
   text-align: right;
   margin-top: 4px;
-  color: var(--text-hint);
+  color: var(--text-3);
 }
 
 .charCountWarn {
-  color: var(--accent);
+  color: oklch(0.65 0.22 25);
 }
 
 /* Error */
 .errorText {
-  color: var(--accent);
+  color: oklch(0.65 0.22 25);
   font-size: 13px;
   margin-bottom: 10px;
 }
@@ -258,22 +297,21 @@
 /* Start voting button */
 .startBtn {
   width: 100%;
-  padding: 13px 16px;
-  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  border-radius: var(--radius-xl);
   border: none;
-  background: var(--accent);
+  background: var(--cta-bg);
   color: #fff;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 2px 8px var(--accent-shadow);
   min-height: var(--tap-target-min);
   font-family: inherit;
+  transition: transform 120ms ease, opacity 200ms ease;
 }
 
-.startBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.startBtn:active {
+  transform: scale(0.98);
 }
 
 /* Save template section */
@@ -283,22 +321,23 @@
 
 .saveSuccess {
   font-size: 13px;
-  color: #7ED957;
+  color: var(--progress);
   text-align: center;
   margin-bottom: 8px;
   font-weight: 600;
 }
 
 .saveForm {
-  background: var(--surface);
-  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
   padding: 12px 14px;
 }
 
 .saveFormTitle {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-hint);
+  color: var(--text-2);
   margin-bottom: 10px;
 }
 
@@ -315,8 +354,8 @@
   font-size: 26px;
   line-height: 1;
   border-radius: var(--radius-md);
-  border: 1px solid var(--surface);
-  background: var(--bg);
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -325,13 +364,13 @@
 }
 
 .emojiPickerToggleOpen {
-  border: 2px solid var(--accent);
+  border-color: rgba(255,255,255,0.20);
 }
 
 .saveFormInfo {
   flex: 1;
   font-size: 13px;
-  color: var(--text-hint);
+  color: var(--text-2);
   display: flex;
   align-items: center;
 }
@@ -342,7 +381,7 @@
   gap: 4px;
   margin-bottom: 10px;
   padding: 8px;
-  background: var(--bg);
+  background: rgba(255,255,255,0.02);
   border-radius: var(--radius-md);
 }
 
@@ -358,7 +397,7 @@
 }
 
 .emojiCellActive {
-  background: var(--surface);
+  background: var(--surface-2);
 }
 
 .saveFormBtns {
@@ -371,8 +410,8 @@
   padding: 10px;
   border-radius: var(--radius-md);
   border: none;
-  background: var(--bg);
-  color: var(--text-hint);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-2);
   font-size: 14px;
   cursor: pointer;
   font-family: inherit;
@@ -383,7 +422,7 @@
   padding: 10px;
   border-radius: var(--radius-md);
   border: none;
-  background: var(--accent);
+  background: var(--cta-bg);
   color: #fff;
   font-size: 14px;
   font-weight: 700;
@@ -399,10 +438,10 @@
 .saveTemplateBtn {
   width: 100%;
   padding: 11px 16px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--surface);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
   background: transparent;
-  color: var(--text-hint);
+  color: var(--text-2);
   font-size: 14px;
   cursor: pointer;
   display: flex;

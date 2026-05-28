@@ -8,6 +8,7 @@ import fastifyStatic from '@fastify/static';
 import { sessionRoutes } from './routes/sessions.js';
 import { savedPollRoutes } from './routes/savedPolls.js';
 import { aiRoutes } from './routes/ai.js';
+import { publicPollRoutes } from './routes/publicPolls.js';
 import { templateRoutes } from './routes/templates.js';
 import { pool } from './db/client.js';
 
@@ -81,6 +82,7 @@ fastify.get('/health', async () => ({ ok: true }));
 
 await fastify.register(sessionRoutes);
 await fastify.register(savedPollRoutes);
+await fastify.register(publicPollRoutes);
 await fastify.register(aiRoutes);
 await fastify.register(templateRoutes);
 

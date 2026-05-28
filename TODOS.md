@@ -10,14 +10,11 @@
 
 ### ~~[public-templates-browser]~~ ✅ Done — Curated `public_templates` table with HOT metric (top-3 by 7-day uses); PresetsStep live browser with HOT/OFFICIAL/category filter chips; MyPollsStep redesign (kebab, publish CTA with С именем/Анонимно); `template_uses` event log; composite covering index on `(used_at DESC, template_id)`
 
-### [templates-cache-control] Add `Cache-Control` to GET /api/templates
-`GET /api/templates` is a public read-only endpoint called on every PresetsStep mount. No HTTP caching headers means every app open hits the DB. Add `s-maxage=60, stale-while-revalidate=30` or a simple 30 s in-process cache. Low risk, notable perf gain at scale.
+### ~~[templates-cache-control]~~ ✅ Done — 30 s in-process Map cache added to `GET /api/templates`; empty result sets not cached; cache exported as `clearTemplateCache()` for test isolation.
 
-### [templates-pagination] Cursor-based pagination for public templates
-GET /api/templates returns all templates without pagination. Fine at 9 seeds, will grow. Add cursor-based pagination (`?after=<id>`) matching the pattern from [public-polls-pagination].
+### ~~[templates-pagination]~~ ✅ Done — `?limit` / `?offset` pagination added to `GET /api/templates`; response shape `{ items, nextOffset }`; pagination applied in-memory from cached full set (no extra DB hits per page); limit clamped to `[1, 100]`. Implemented as offset-based (not cursor-based) — stable enough for the current template count.
 
-### [canvas-worker] Offload PNG card generation to worker_threads
-`generateVotingCard`, `generateSetupCard`, and `generateWinnerCard` in `imageCard.ts` call `canvas.toBuffer('image/png')` synchronously, blocking Node's event loop for ~5–30ms per card. Acceptable for single-group scale but will cause request queuing under multi-group load. Fix: use `piscina` or a manual `worker_threads` pool to keep the main thread free.
+### ~~[canvas-worker]~~ ✅ Done — `piscina` v5 worker pool added; `generateVotingCard`, `generateSetupCard`, `generateWinnerCard` wrapped as `*Async` variants; pool used in production only (dev/test calls sync functions directly via `Promise.resolve`); each task protected by 5 s `AbortSignal.timeout`.
 
 ### ~~[rate-limiting]~~ ✅ Done — `@fastify/rate-limit` added (100 req/min global, 3 req/min AI endpoint), key by IP
 

@@ -2,6 +2,23 @@
 
 All notable changes to GroupTier are documented here.
 
+## [1.0.7.0] - 2026-05-28
+
+### Added
+- `server/src/routes/templates.ts` — 30 s in-process Map cache for `GET /api/templates`. Every app open no longer hits the DB; cache auto-refreshes after 30 s. Empty result sets are not cached (safe for a fresh deploy before seeds run).
+- `server/src/routes/templates.ts` — `?limit` / `?offset` query params for `GET /api/templates`. Response shape changed from a raw array to `{ items: T[], nextOffset: number | null }`. Pagination is applied in-process from the cached full result set — no extra DB queries per page. `limit` clamped to `[1, 100]`, default 30.
+- `server/src/bot/imageCard.ts` — `generateSetupCardAsync`, `generateVotingCardAsync`, `generateWinnerCardAsync` — async wrappers backed by a `piscina` worker pool in production, falling back to direct synchronous calls in dev/test (where compiled worker `.js` files are not present).
+- `server/src/bot/imageCard.worker.ts` — New piscina worker entry-point. Dispatches `setup | voting | winner` tasks to the existing sync generators. Each task call protected by a 5 s `AbortSignal.timeout`.
+- `server/src/bot/cards.ts` — `buildVotingCard`, `buildSetupCard`, `buildWinnerCard` promoted to `async` functions returning `Promise<...>`.
+- `server/package.json` — `piscina ^5.1.4` dependency.
+
+### Changed
+- `server/src/bot/bot.ts`, `server/src/routes/sessions.ts` — All four card-builder call sites updated to `await`.
+
+### Tests
+- `server/src/__tests__/templates.test.ts` — 3 new tests: cache deduplication (DB called once for two back-to-back requests), `?limit` / `?offset` pagination across 3 pages with a single DB hit, `limit=999` clamped to 100. Existing tests updated for new `{ items, nextOffset }` response shape. `clearTemplateCache()` called in `beforeEach` to prevent cache bleed between tests; `vi.hoisted()` used to avoid TDZ error with static import of `clearTemplateCache`.
+- `server/src/__tests__/cards.test.ts` — All card-builder tests updated to `async / await`.
+
 ## [1.0.6.0] - 2026-05-28
 
 ### Added

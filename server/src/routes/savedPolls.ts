@@ -121,7 +121,7 @@ export async function savedPollRoutes(fastify: FastifyInstance) {
   );
 
   // POST /api/saved-polls/:id/publish — make a saved poll publicly visible
-  fastify.post<{ Params: { id: string }; Body: { show_author?: boolean } }>(
+  fastify.post<{ Params: { id: string }; Body: { show_author?: boolean; categories?: string[] } }>(
     '/api/saved-polls/:id/publish',
     { preHandler: initDataMiddleware, config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
     async (request, reply) => {
@@ -130,12 +130,18 @@ export async function savedPollRoutes(fastify: FastifyInstance) {
       const showAuthor = request.body?.show_author === true;
       const authorName = showAuthor ? (request.telegramUser.first_name ?? null) : null;
 
+      const VALID_CATEGORIES = new Set(['games', 'food', 'movies', 'series', 'music', 'sport', 'other']);
+      const rawCats = Array.isArray(request.body?.categories) ? request.body.categories : [];
+      const categories = rawCats
+        .filter((c): c is string => typeof c === 'string' && VALID_CATEGORIES.has(c))
+        .slice(0, 3);
+
       const res = await pool.query(
         `UPDATE saved_polls
-         SET is_public = true, show_author = $1, author_name = $2, updated_at = NOW()
-         WHERE id = $3 AND user_id = $4
+         SET is_public = true, show_author = $1, author_name = $2, categories = $3, updated_at = NOW()
+         WHERE id = $4 AND user_id = $5
          RETURNING id`,
-        [showAuthor, authorName, id, userId],
+        [showAuthor, authorName, categories, id, userId],
       );
 
       if (res.rows.length === 0) {

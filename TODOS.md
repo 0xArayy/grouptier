@@ -24,9 +24,7 @@
 
 ### ~~[css-modules]~~ ✅ Done — 11 `*.module.css` files created; all static styles moved out of inline `style={{}}` objects across every frontend component
 
-### [css-design-tokens] Extract shared primaryBtn style and other duplicated CSS
-
-Deferred 3× (code-health-audit → Sprint 2 → refactor sprint). `HomeStep.tsx` and `OptionsStep.tsx` have an identical 10-property `primaryBtn` style object copy-pasted. Extract to `create-poll/styles.ts` or a CSS module shared class.
+### ~~[css-design-tokens]~~ ✅ Done — `shared.module.css` created with canonical `primaryBtn` (gradient, flex, disabled, active states); `HomeStep.module.css` and `OptionsStep.module.css` compose from it; also fixed missing `:disabled` style on `.startBtn`.
 
 ### ~~[websocket]~~ ✅ Done — EventEmitter bus + `/ws/sessions/:id` route; emitSession from POST /results and POST /close; App.tsx auto-reconnect WS replaces 3s polling; initData auth via query param; log redaction.
 

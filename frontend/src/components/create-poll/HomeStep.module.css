@@ -30,31 +30,7 @@
 
 /* Primary CTA — gradient */
 .primaryBtn {
-  width: 100%;
-  padding: 16px 18px;
-  border-radius: var(--radius-xl);
-  border: none;
-  background: var(--cta-bg);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  min-height: var(--tap-target-min);
-  font-family: inherit;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: transform 120ms ease, opacity 200ms ease;
-}
-
-.primaryBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.primaryBtn:not(:disabled):active {
-  transform: scale(0.98);
+  composes: primaryBtn from './shared.module.css';
 }
 
 /* My polls button — surface card */

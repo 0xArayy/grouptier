@@ -296,22 +296,7 @@
 
 /* Start voting button */
 .startBtn {
-  width: 100%;
-  padding: 16px 18px;
-  border-radius: var(--radius-xl);
-  border: none;
-  background: var(--cta-bg);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  min-height: var(--tap-target-min);
-  font-family: inherit;
-  transition: transform 120ms ease, opacity 200ms ease;
-}
-
-.startBtn:active {
-  transform: scale(0.98);
+  composes: primaryBtn from './shared.module.css';
 }
 
 /* Save template section */

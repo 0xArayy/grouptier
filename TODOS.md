@@ -28,13 +28,9 @@
 
 Deferred 3× (code-health-audit → Sprint 2 → refactor sprint). `HomeStep.tsx` and `OptionsStep.tsx` have an identical 10-property `primaryBtn` style object copy-pasted. Extract to `create-poll/styles.ts` or a CSS module shared class.
 
-### [websocket] Replace polling with WebSocket for real-time results
-REST polling at 3s is acceptable but will not scale. Upgrade path: WebSocket + Redis pub/sub. Week-2 infrastructure.
-**In progress** — PLAN.md has full eng-reviewed spec. EventEmitter (not Redis) for single-server deploy. See PLAN.md.
+### ~~[websocket]~~ ✅ Done — EventEmitter bus + `/ws/sessions/:id` route; emitSession from POST /results and POST /close; App.tsx auto-reconnect WS replaces 3s polling; initData auth via query param; log redaction.
 
-### [websocket-collecting-phase] Replace CreatePoll.tsx collecting-phase 3s poll with WebSocket
-
-Deferred from `[websocket]` sprint. CreatePoll.tsx polls `GET /api/sessions/:id` every 3s while users are adding options, waiting for the host to start voting. Lower latency-sensitivity than live results. Requires: `POST /api/sessions/:id/vote` emits `emitSession(id)`, CreatePoll.tsx opens a second WS connection during the collecting phase.
+### ~~[websocket-collecting-phase]~~ ✅ Done — emitSession added to POST /options, DELETE /options, PUT /options, POST /vote; CreatePoll.tsx replaces 2.5s setInterval with auto-reconnect WS; status===voting triggers onSessionReady transition.
 
 ### [websocket-connection-cap] Add hard cap on concurrent WS connections per session
 

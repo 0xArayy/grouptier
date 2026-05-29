@@ -287,6 +287,7 @@ describe('POST /api/sessions/:id/options', () => {
 
     expect(res.statusCode).toBe(201);
     expect(JSON.parse(res.body).options).toContain('Sushi');
+    expect(mockEmitSession).toHaveBeenCalledWith(SESSION_ID);
   });
 
   it('returns 200 with current options on duplicate option', async () => {
@@ -387,6 +388,7 @@ describe('POST /api/sessions/:id/vote', () => {
       'UPDATE sessions SET message_id = $1, message_sent = true WHERE id = $2',
       [999, SESSION_ID],
     );
+    expect(mockEmitSession).toHaveBeenCalledWith(SESSION_ID);
   });
 
   it('rolls back and returns 502 when sendPhoto fails', async () => {
@@ -620,6 +622,7 @@ describe('DELETE /api/sessions/:id/options/:text', () => {
 
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).options).toEqual(['Pizza']);
+    expect(mockEmitSession).toHaveBeenCalledWith(SESSION_ID);
   });
 
   it('returns 403 when session is not collecting', async () => {
@@ -677,6 +680,7 @@ describe('PUT /api/sessions/:id/options', () => {
 
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).options).toEqual(['Pizza', 'Sushi']);
+    expect(mockEmitSession).toHaveBeenCalledWith(SESSION_ID);
   });
 
   it('updates name atomically when provided', async () => {

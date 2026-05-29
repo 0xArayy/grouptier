@@ -373,6 +373,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
           [id],
         );
         await client.query('COMMIT');
+        emitSession(id);
         return reply.status(201).send({ options: afterRes.rows.map((r: { text: string }) => r.text) });
       } catch (err) {
         await client.query('ROLLBACK');
@@ -422,6 +423,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
         [id],
       );
+      emitSession(id);
       return { options: allRes.rows.map((r: { text: string }) => r.text) };
     },
   );
@@ -516,6 +518,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
           [id],
         );
         await client.query('COMMIT');
+        emitSession(id);
         return { options: allRes.rows.map((r: { text: string }) => r.text) };
       } catch (err) {
         await client.query('ROLLBACK');
@@ -564,6 +567,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
 
       // Chatless sessions have no group to announce to — just flip status and return share link.
       if (!session.chat_id) {
+        emitSession(id);
         return { ok: true, share_url: buildVoteUrl(id) };
       }
 
@@ -587,6 +591,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
           'UPDATE sessions SET message_id = $1, message_sent = true WHERE id = $2',
           [sent.message_id, id],
         );
+        emitSession(id);
         return { ok: true };
       } catch (err) {
         // Rollback status on sendMessage failure

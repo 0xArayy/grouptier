@@ -7,7 +7,6 @@ import {
   bulkReplaceOptions,
   startVoting,
   updateSessionName,
-  fetchSessionOptions,
   fetchSavedPolls,
   createSavedPoll,
   updateSavedPoll,
@@ -15,7 +14,9 @@ import {
   publishSavedPoll,
   unpublishSavedPoll,
   usePublicPoll,
+  connectSessionWs,
   type SavedPoll,
+  type SessionData as WsSessionData,
 } from '../api/client.ts';
 import appStyles from '../App.module.css';
 import { HomeStep } from './create-poll/HomeStep.tsx';
@@ -63,7 +64,7 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
   const [externalEdit, setExternalEdit] = useState(false);
   const [aiExistingOptions, setAiExistingOptions] = useState<string[]>([]);
 
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stopCollectingWsRef = useRef<(() => void) | null>(null);
   const externalEditTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const busyRef = useRef(busy);
   useEffect(() => { busyRef.current = busy; }, [busy]);
@@ -76,29 +77,62 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
 
   useEffect(() => {
     if (step !== 'options' || !sessionId) {
-      if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
+      stopCollectingWsRef.current?.();
+      stopCollectingWsRef.current = null;
       return;
     }
-    pollIntervalRef.current = setInterval(async () => {
-      if (busyRef.current) return;
-      try {
-        const data = await fetchSessionOptions(sessionId);
-        let didChange = false;
-        setOptions(prev => {
-          const prevSet = new Set(prev);
-          const changed = prev.length !== data.options.length || data.options.some((o: string) => !prevSet.has(o));
-          if (!changed) return prev;
-          didChange = true;
-          return data.options as string[];
-        });
-        if (didChange) {
-          setExternalEdit(true);
-          if (externalEditTimerRef.current) clearTimeout(externalEditTimerRef.current);
-          externalEditTimerRef.current = setTimeout(() => setExternalEdit(false), 3000);
-        }
-      } catch { /* silent */ }
-    }, 2500);
-    return () => { if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; } };
+    if (stopCollectingWsRef.current) return;
+
+    let stopped = false;
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let backoff = 1000;
+
+    function connect() {
+      ws = connectSessionWs(
+        sessionId!,
+        (data: WsSessionData) => {
+          // Status changed to voting — host started the poll; transition to compare screen.
+          if (data.status === 'voting' || data.status === 'closed') {
+            onSessionReady(sessionId!);
+            return;
+          }
+          if (busyRef.current) return;
+          let didChange = false;
+          setOptions(prev => {
+            const prevSet = new Set(prev);
+            const changed = prev.length !== data.options.length || data.options.some(o => !prevSet.has(o));
+            if (!changed) return prev;
+            didChange = true;
+            return data.options;
+          });
+          if (didChange) {
+            setExternalEdit(true);
+            if (externalEditTimerRef.current) clearTimeout(externalEditTimerRef.current);
+            externalEditTimerRef.current = setTimeout(() => setExternalEdit(false), 3000);
+          }
+        },
+        () => {
+          if (stopped) return;
+          reconnectTimeout = setTimeout(() => {
+            backoff = Math.min(backoff * 2, 30000);
+            connect();
+          }, backoff);
+        },
+      );
+    }
+
+    function stop() {
+      stopped = true;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      ws?.close();
+      stopCollectingWsRef.current = null;
+    }
+
+    stopCollectingWsRef.current = stop;
+    connect();
+
+    return () => stop();
   }, [step, sessionId]);
 
   useEffect(() => {

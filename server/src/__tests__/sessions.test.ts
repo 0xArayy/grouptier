@@ -50,6 +50,9 @@ vi.mock('../middleware/initData.js', () => ({
   },
 }));
 
+const mockEmitSession = vi.fn();
+vi.mock('../lib/sessionEvents.js', () => ({ emitSession: mockEmitSession }));
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 async function buildApp(): Promise<FastifyInstance> {
@@ -558,6 +561,7 @@ describe('POST /api/sessions/:id/results', () => {
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).borda_ranking).toBeDefined();
     expect(JSON.parse(res.body).result_count).toBe(1);
+    expect(mockEmitSession).toHaveBeenCalledWith(SESSION_ID);
   });
 });
 
@@ -878,6 +882,7 @@ describe('POST /api/sessions/:id/close', () => {
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).ok).toBe(true);
     expect(JSON.parse(res.body).winner).toBeTruthy();
+    expect(mockEmitSession).toHaveBeenCalledWith(SESSION_ID);
   });
 
   it('returns 409 when session is not in voting state', async () => {

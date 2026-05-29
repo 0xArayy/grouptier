@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { fetchSession, submitResults, fetchActiveSession, closeSession, createSavedPoll, ApiError } from './api/client.ts';
+import { fetchSession, submitResults, fetchActiveSession, closeSession, createSavedPoll, connectSessionWs, ApiError } from './api/client.ts';
+import type { SessionData as WsSessionData } from './api/client.ts';
 import { Compare } from './components/Compare.tsx';
 import { ByeScreen } from './components/ByeScreen.tsx';
 import { TierList } from './components/TierList.tsx';
@@ -50,7 +51,7 @@ export default function App() {
   const [submitError, setSubmitError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [offline, setOffline] = useState(!navigator.onLine);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stopWsRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const goOffline = () => setOffline(true);
@@ -69,7 +70,7 @@ export default function App() {
         setSession(data);
         if (data.status === 'collecting') { setScreen('create'); return; }
         if (data.options.length < 2) { setScreen('waiting'); return; }
-        if (data.my_result) { setScreen('live'); setSubmitted(true); startPolling(id); return; }
+        if (data.my_result) { setScreen('live'); setSubmitted(true); startLiveWs(id); return; }
         if (data.status === 'closed') { setScreen('live'); return; }
         const t = createTournament(data.options, getUserId());
         setTournament(t);
@@ -94,25 +95,44 @@ export default function App() {
     loadSession(sessionId);
   }, [sessionId]);
 
-  function startPolling(sid: string) {
-    if (pollRef.current) return;
-    pollRef.current = setInterval(async () => {
-      try {
-        const data: SessionData = await fetchSession(sid);
-        setSession(data);
-        if (data.status === 'closed') {
-          clearInterval(pollRef.current!);
-          pollRef.current = null;
-        }
-      } catch {
-        // silent — keep polling
-      }
-    }, 3000);
+  function startLiveWs(sid: string) {
+    if (stopWsRef.current) return;
+    let stopped = false;
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let backoff = 1000;
+
+    function connect() {
+      ws = connectSessionWs(
+        sid,
+        (data: WsSessionData) => {
+          setSession(data as unknown as SessionData);
+          if (data.status === 'closed') stop();
+        },
+        () => {
+          if (stopped) return;
+          reconnectTimeout = setTimeout(() => {
+            backoff = Math.min(backoff * 2, 30000);
+            connect();
+          }, backoff);
+        },
+      );
+    }
+
+    function stop() {
+      stopped = true;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      ws?.close();
+      stopWsRef.current = null;
+    }
+
+    stopWsRef.current = stop;
+    connect();
   }
 
   useEffect(() => {
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
+      stopWsRef.current?.();
     };
   }, []);
 
@@ -158,7 +178,7 @@ export default function App() {
       setSession(prev => prev ? { ...prev, ...data } : prev);
       setSubmitted(true);
       setScreen('live');
-      startPolling(sessionId);
+      startLiveWs(sessionId);
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
         // Session was closed while the user was on the tier list.
@@ -183,7 +203,7 @@ export default function App() {
     try {
       await closeSession(sessionId);
       setSession(prev => prev ? { ...prev, status: 'closed' } : prev);
-      if (pollRef.current) clearInterval(pollRef.current);
+      stopWsRef.current?.();
     } catch (err) {
       console.error('close failed:', err);
     } finally {
@@ -205,10 +225,7 @@ export default function App() {
   }
 
   function handleNewPoll() {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
+    stopWsRef.current?.();
     setSessionId(null);
     setSession(null);
     setShareUrl(null);
@@ -218,10 +235,7 @@ export default function App() {
   }
 
   function handleGoHome() {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
+    stopWsRef.current?.();
     setSessionId(null);
     setSession(null);
     setShareUrl(null);

@@ -8,6 +8,7 @@ import { buildVoteUrl } from '../lib/urls.js';
 import { buildVotingCard, buildVotingCaption, buildWinnerCard } from '../bot/cards.js';
 import { MAX_NAME_LENGTH, MAX_OPTION_TEXT_LENGTH, MAX_OPTIONS } from '../lib/constants.js';
 import { createSession } from '../lib/sessions.js';
+import { emitSession } from '../lib/sessionEvents.js';
 
 export async function sessionRoutes(fastify: FastifyInstance) {
   // POST /api/sessions — create session from Mini App (chat_id from validated initData)
@@ -269,6 +270,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
           .catch((err: unknown) => console.error('editMessageCaption failed:', err));
       }
 
+      emitSession(id);
       return { borda_ranking: borda, result_count: resultCount, voter_count: totalVoters };
     },
   );
@@ -621,6 +623,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       }
 
       await pool.query("UPDATE sessions SET status = 'closed' WHERE id = $1", [id]);
+      emitSession(id);
 
       const resultsRes = await pool.query(
         'SELECT ranked_list FROM user_results WHERE session_id = $1',

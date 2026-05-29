@@ -79,7 +79,10 @@ export async function initDataMiddleware(
   }
 
   const body = request.body as Record<string, unknown> | undefined;
-  const initData = (request.headers['x-init-data'] as string) || (body?.initData as string | undefined);
+  const query = request.query as Record<string, unknown> | undefined;
+  const initData = (request.headers['x-init-data'] as string)
+    || (query?.initData as string | undefined)
+    || (body?.initData as string | undefined);
   if (!initData) {
     reply.status(401).send({ error: 'Missing initData' });
     return;

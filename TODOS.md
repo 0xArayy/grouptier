@@ -30,6 +30,15 @@ Deferred 3× (code-health-audit → Sprint 2 → refactor sprint). `HomeStep.tsx
 
 ### [websocket] Replace polling with WebSocket for real-time results
 REST polling at 3s is acceptable but will not scale. Upgrade path: WebSocket + Redis pub/sub. Week-2 infrastructure.
+**In progress** — PLAN.md has full eng-reviewed spec. EventEmitter (not Redis) for single-server deploy. See PLAN.md.
+
+### [websocket-collecting-phase] Replace CreatePoll.tsx collecting-phase 3s poll with WebSocket
+
+Deferred from `[websocket]` sprint. CreatePoll.tsx polls `GET /api/sessions/:id` every 3s while users are adding options, waiting for the host to start voting. Lower latency-sensitivity than live results. Requires: `POST /api/sessions/:id/vote` emits `emitSession(id)`, CreatePoll.tsx opens a second WS connection during the collecting phase.
+
+### [websocket-connection-cap] Add hard cap on concurrent WS connections per session
+
+Deferred from `[websocket]` sprint. `setMaxListeners(0)` suppresses the Node.js warning but doesn't bound memory. A hypothetical high-concurrency session accumulates one EventEmitter listener + one WS socket per viewer with no upper bound. Add a `Map<sessionId, Set<WebSocket>>` to track connections per session; reject at 500+. Not a concern for current Telegram group sizes (20–200 members).
 
 ### ~~[contributing]~~ ✅ Done — `CONTRIBUTING.md` added: env setup, dev bypass, test runner, qMocks/mockClient patterns, project structure, architecture notes
 

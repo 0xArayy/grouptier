@@ -222,3 +222,29 @@ export async function submitResults(sessionId: string, rankedList: string[]) {
   await throwOnError(res);
   return res.json();
 }
+
+export interface SessionData {
+  id: string;
+  name: string;
+  status: string;
+  options: string[];
+  voter_count: number;
+  result_count: number;
+  borda_ranking: { option: string; score: number }[];
+  my_result: string[] | null;
+  share_url: string;
+}
+
+export function connectSessionWs(
+  sessionId: string,
+  onData: (session: SessionData) => void,
+  onClose: () => void,
+): WebSocket {
+  const initData = getInitData();
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = `${protocol}//${window.location.host}/ws/sessions/${sessionId}?initData=${encodeURIComponent(initData)}`;
+  const ws = new WebSocket(url);
+  ws.onmessage = (e) => onData(JSON.parse(e.data as string) as SessionData);
+  ws.onclose = onClose;
+  return ws;
+}

@@ -5,11 +5,13 @@ import Fastify from 'fastify';
 import fastifyCors from '@fastify/cors';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
+import fastifyWebsocket from '@fastify/websocket';
 import { sessionRoutes } from './routes/sessions.js';
 import { savedPollRoutes } from './routes/savedPolls.js';
 import { aiRoutes } from './routes/ai.js';
 import { publicPollRoutes } from './routes/publicPolls.js';
 import { templateRoutes } from './routes/templates.js';
+import { wsRoutes } from './routes/ws.js';
 import { pool } from './db/client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -61,7 +63,20 @@ if (cleaned.rowCount && cleaned.rowCount > 0) {
 // Import bot AFTER env check so grammy never gets an empty token
 const { bot } = await import('./bot/bot.js');
 
-const fastify = Fastify({ logger: true });
+// Prevent Telegram initData from appearing in access logs (it's passed as a
+// query param for WebSocket upgrades and is a short-lived auth credential).
+const fastify = Fastify({
+  logger: {
+    serializers: {
+      req(req) {
+        return {
+          method: req.method,
+          url: (req.url as string).replace(/([?&])initData=[^&]*/g, '$1initData=[REDACTED]'),
+        };
+      },
+    },
+  },
+});
 
 const allowedOrigin = process.env.ALLOWED_ORIGIN;
 if (!allowedOrigin && process.env.NODE_ENV === 'production') {
@@ -80,11 +95,13 @@ await fastify.register(fastifyRateLimit, {
 // /health must be registered before static so it's never shadowed
 fastify.get('/health', async () => ({ ok: true }));
 
+await fastify.register(fastifyWebsocket);
 await fastify.register(sessionRoutes);
 await fastify.register(savedPollRoutes);
 await fastify.register(publicPollRoutes);
 await fastify.register(aiRoutes);
 await fastify.register(templateRoutes);
+await fastify.register(wsRoutes);
 
 // Serve React Mini App — only if dist exists
 const frontendDist = path.join(__dirname, '../../frontend/dist');

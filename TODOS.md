@@ -32,9 +32,7 @@ Deferred 3× (code-health-audit → Sprint 2 → refactor sprint). `HomeStep.tsx
 
 ### ~~[websocket-collecting-phase]~~ ✅ Done — emitSession added to POST /options, DELETE /options, PUT /options, POST /vote; CreatePoll.tsx replaces 2.5s setInterval with auto-reconnect WS; status===voting triggers onSessionReady transition.
 
-### [websocket-connection-cap] Add hard cap on concurrent WS connections per session
-
-Deferred from `[websocket]` sprint. `setMaxListeners(0)` suppresses the Node.js warning but doesn't bound memory. A hypothetical high-concurrency session accumulates one EventEmitter listener + one WS socket per viewer with no upper bound. Add a `Map<sessionId, Set<WebSocket>>` to track connections per session; reject at 500+. Not a concern for current Telegram group sizes (20–200 members).
+### ~~[websocket-connection-cap]~~ ✅ Done — `tryAddConnection`/`removeConnection`/`getConnectionCount` added to `sessionEvents.ts`; ws.ts closes with 1013 at 500 connections/session; 8 unit tests cover cap enforcement and cleanup.
 
 ### ~~[contributing]~~ ✅ Done — `CONTRIBUTING.md` added: env setup, dev bypass, test runner, qMocks/mockClient patterns, project structure, architecture notes
 

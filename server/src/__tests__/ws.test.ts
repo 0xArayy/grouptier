@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { emitSession, onSession, offSession } from '../lib/sessionEvents.js';
+import {
+  emitSession, onSession, offSession,
+  tryAddConnection, removeConnection, getConnectionCount, MAX_WS_PER_SESSION,
+} from '../lib/sessionEvents.js';
 
 // ── sessionEvents unit tests ────────────────────────────────────────────────
 // These test the thin EventEmitter wrapper that drives WS push notifications.
@@ -72,5 +75,72 @@ describe('sessionEvents', () => {
     emitSession('ev-7');
     expect(cb).toHaveBeenCalledTimes(3);
     offSession('ev-7', cb);
+  });
+});
+
+// ── WS connection cap tests ─────────────────────────────────────────────────
+// Each test uses a unique session ID prefix ('cap-N') to avoid state bleed
+// from the module-level connectionCounts map.
+
+describe('connection cap', () => {
+  it('tryAddConnection returns true and increments count', () => {
+    expect(tryAddConnection('cap-1')).toBe(true);
+    expect(getConnectionCount('cap-1')).toBe(1);
+    removeConnection('cap-1');
+  });
+
+  it('count increments on each accepted connection', () => {
+    tryAddConnection('cap-2');
+    tryAddConnection('cap-2');
+    expect(getConnectionCount('cap-2')).toBe(2);
+    removeConnection('cap-2');
+    removeConnection('cap-2');
+  });
+
+  it('removeConnection decrements count', () => {
+    tryAddConnection('cap-3');
+    tryAddConnection('cap-3');
+    removeConnection('cap-3');
+    expect(getConnectionCount('cap-3')).toBe(1);
+    removeConnection('cap-3');
+  });
+
+  it('removeConnection deletes map entry when count reaches zero', () => {
+    tryAddConnection('cap-4');
+    removeConnection('cap-4');
+    expect(getConnectionCount('cap-4')).toBe(0);
+  });
+
+  it('removeConnection on unknown session is a no-op', () => {
+    expect(() => removeConnection('cap-never-added')).not.toThrow();
+    expect(getConnectionCount('cap-never-added')).toBe(0);
+  });
+
+  it('returns false and does not increment when at cap', () => {
+    const id = 'cap-5';
+    for (let i = 0; i < MAX_WS_PER_SESSION; i++) tryAddConnection(id);
+    expect(getConnectionCount(id)).toBe(MAX_WS_PER_SESSION);
+    expect(tryAddConnection(id)).toBe(false);
+    expect(getConnectionCount(id)).toBe(MAX_WS_PER_SESSION);
+    for (let i = 0; i < MAX_WS_PER_SESSION; i++) removeConnection(id);
+  });
+
+  it('accepts a new connection after one is removed from a full session', () => {
+    const id = 'cap-6';
+    for (let i = 0; i < MAX_WS_PER_SESSION; i++) tryAddConnection(id);
+    removeConnection(id);
+    expect(tryAddConnection(id)).toBe(true);
+    for (let i = 0; i < MAX_WS_PER_SESSION; i++) removeConnection(id);
+  });
+
+  it('counts are independent per session', () => {
+    tryAddConnection('cap-7a');
+    tryAddConnection('cap-7a');
+    tryAddConnection('cap-7b');
+    expect(getConnectionCount('cap-7a')).toBe(2);
+    expect(getConnectionCount('cap-7b')).toBe(1);
+    removeConnection('cap-7a');
+    removeConnection('cap-7a');
+    removeConnection('cap-7b');
   });
 });

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { initDataMiddleware } from '../middleware/initData.js';
 import { buildSessionPayload } from '../lib/sessionPayload.js';
-import { onSession, offSession } from '../lib/sessionEvents.js';
+import { onSession, offSession, tryAddConnection, removeConnection } from '../lib/sessionEvents.js';
 
 export async function wsRoutes(fastify: FastifyInstance) {
   fastify.get<{ Params: { id: string } }>(
@@ -10,6 +10,11 @@ export async function wsRoutes(fastify: FastifyInstance) {
     (socket, request) => {
       const { id } = request.params;
       const userId = request.telegramUser?.id;
+
+      if (!tryAddConnection(id)) {
+        socket.close(1013, 'Too many connections for this session');
+        return;
+      }
 
       // Push updated session state to this client. Called on every emitSession(id).
       const push = async () => {
@@ -34,6 +39,7 @@ export async function wsRoutes(fastify: FastifyInstance) {
 
       socket.on('close', () => {
         offSession(id, push);
+        removeConnection(id);
       });
     },
   );

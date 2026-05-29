@@ -312,15 +312,24 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       }
 
       const chat = request.telegramChat;
+      const userId = request.telegramUser.id;
 
-      const sessionRes = await pool.query('SELECT status, chat_id FROM sessions WHERE id = $1', [id]);
+      const sessionRes = await pool.query(
+        'SELECT status, chat_id, creator_user_id FROM sessions WHERE id = $1',
+        [id],
+      );
       if (sessionRes.rows.length === 0) {
         return reply.status(404).send({ error: 'Session not found' });
       }
-      if (chat && sessionRes.rows[0].chat_id !== chat.id) {
+      const sess = sessionRes.rows[0];
+      if (chat && sess.chat_id !== chat.id) {
         return reply.status(403).send({ error: 'Forbidden' });
       }
-      if (sessionRes.rows[0].status !== 'collecting') {
+      // Chatless sessions: only the creator can add options
+      if (!sess.chat_id && sess.creator_user_id && String(sess.creator_user_id) !== String(userId)) {
+        return reply.status(403).send({ error: 'Only the creator can add options' });
+      }
+      if (sess.status !== 'collecting') {
         return reply.status(403).send({ error: 'Session is not collecting options' });
       }
 

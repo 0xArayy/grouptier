@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { MAX_OPTION_TEXT_LENGTH } from '../lib/constants.js';
+import { MAX_NAME_LENGTH, MAX_OPTION_TEXT_LENGTH } from '../lib/constants.js';
 import { initDataMiddleware } from '../middleware/initData.js';
 
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
@@ -59,6 +59,7 @@ export async function aiRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const name = (request.body?.name ?? '').trim();
       if (!name) return reply.status(400).send({ error: 'name is required' });
+      if (name.length > MAX_NAME_LENGTH) return reply.status(400).send({ error: 'name is too long' });
 
       const existing = Array.isArray(request.body?.existingOptions)
         ? (request.body.existingOptions as unknown[]).filter((o): o is string => typeof o === 'string')

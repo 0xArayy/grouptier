@@ -24,6 +24,10 @@
 
 ### ~~[css-modules]~~ ✅ Done — 11 `*.module.css` files created; all static styles moved out of inline `style={{}}` objects across every frontend component
 
+### [css-design-tokens] Extract shared primaryBtn style and other duplicated CSS
+
+Deferred 3× (code-health-audit → Sprint 2 → refactor sprint). `HomeStep.tsx` and `OptionsStep.tsx` have an identical 10-property `primaryBtn` style object copy-pasted. Extract to `create-poll/styles.ts` or a CSS module shared class.
+
 ### [websocket] Replace polling with WebSocket for real-time results
 REST polling at 3s is acceptable but will not scale. Upgrade path: WebSocket + Redis pub/sub. Week-2 infrastructure.
 

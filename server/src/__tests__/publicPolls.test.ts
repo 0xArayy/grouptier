@@ -164,8 +164,7 @@ describe('POST /api/public-polls/:id/use', () => {
       .mockResolvedValueOnce(undefined) // BEGIN
       .mockResolvedValueOnce({ rows: [{ name: 'Movies', options: ['A', 'B'] }] }) // SELECT poll FOR UPDATE
       .mockResolvedValueOnce({ rows: [{ id: SESSION_ID }] }) // createSession INSERT (no chat → no guard)
-      .mockResolvedValueOnce(undefined) // INSERT option A
-      .mockResolvedValueOnce(undefined) // INSERT option B
+      .mockResolvedValueOnce(undefined) // bulk INSERT options
       .mockResolvedValueOnce(undefined) // UPDATE uses_count
       .mockResolvedValueOnce(undefined); // COMMIT
 
@@ -181,6 +180,57 @@ describe('POST /api/public-polls/:id/use', () => {
     expect(body.share_url).toContain(SESSION_ID);
     expect(body.options).toEqual(['A', 'B']);
     expect(body.name).toBe('Movies');
+    expect(client.release).toHaveBeenCalledOnce();
+  });
+
+  it('uses single bulk INSERT for N options — one query, params.length === N+1', async () => {
+    const options = ['Alpha', 'Beta', 'Gamma'];
+    const client = makeMockClient();
+    mockConnect.mockResolvedValueOnce(client);
+
+    client.query
+      .mockResolvedValueOnce(undefined) // BEGIN
+      .mockResolvedValueOnce({ rows: [{ name: 'Test', options }] }) // SELECT poll FOR UPDATE
+      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID }] }) // createSession INSERT
+      .mockResolvedValueOnce(undefined) // bulk INSERT
+      .mockResolvedValueOnce(undefined) // UPDATE uses_count
+      .mockResolvedValueOnce(undefined); // COMMIT
+
+    await app.inject({
+      method: 'POST',
+      url: `/api/public-polls/${POLL_ID}/use`,
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    // Bulk INSERT is call index 3 (BEGIN=0, SELECT=1, session INSERT=2, bulk=3)
+    const insertCall = client.query.mock.calls[3];
+    expect(insertCall[0]).toContain('INSERT INTO options');
+    // params: [session_id, opt1, opt2, opt3] — exactly N+1
+    expect(insertCall[1]).toHaveLength(options.length + 1);
+    expect(insertCall[1][0]).toBe(SESSION_ID);
+    expect(insertCall[1].slice(1)).toEqual(options);
+    // Exactly one INSERT call (not N separate calls)
+    const insertCalls = client.query.mock.calls.filter(c => String(c[0]).includes('INSERT INTO options'));
+    expect(insertCalls).toHaveLength(1);
+  });
+
+  it('returns 422 when public poll has no options', async () => {
+    const client = makeMockClient();
+    mockConnect.mockResolvedValueOnce(client);
+
+    client.query
+      .mockResolvedValueOnce(undefined) // BEGIN
+      .mockResolvedValueOnce({ rows: [{ name: 'Empty Poll', options: [] }] }) // SELECT poll → empty options
+      .mockResolvedValueOnce(undefined); // ROLLBACK
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/public-polls/${POLL_ID}/use`,
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(JSON.parse(res.body).error).toBe('Public poll has no options');
     expect(client.release).toHaveBeenCalledOnce();
   });
 

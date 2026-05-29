@@ -25,92 +25,75 @@ function getInitData(): string {
   return import.meta.env.DEV ? 'dev' : '';
 }
 
-export async function createSession(name: string): Promise<{ id: string; share_url: string }> {
-  const res = await fetch(`${BASE}/sessions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
-    body: JSON.stringify({ name }),
+async function apiFetch(url: string, opts: RequestInit & { json?: unknown } = {}): Promise<Response> {
+  const { json, headers: extraHeaders, ...rest } = opts;
+  const h: Record<string, string> = { 'x-init-data': getInitData() };
+  if (json !== undefined) h['Content-Type'] = 'application/json';
+  return fetch(url, {
+    ...rest,
+    headers: { ...h, ...(extraHeaders as Record<string, string> | undefined ?? {}) },
+    ...(json !== undefined && { body: JSON.stringify(json) }),
   });
+}
+
+export async function createSession(name: string): Promise<{ id: string; share_url: string }> {
+  const res = await apiFetch(`${BASE}/sessions`, { method: 'POST', json: { name } });
   await throwOnError(res);
   return res.json();
 }
 
 export async function fetchActiveSession(): Promise<{ id: string; name: string; status: string }> {
-  const res = await fetch(`${BASE}/sessions/active`, {
-    headers: { 'x-init-data': getInitData() },
-  });
+  const res = await apiFetch(`${BASE}/sessions/active`);
   await throwOnError(res);
   return res.json();
 }
 
 export async function updateSessionName(sessionId: string, name: string): Promise<void> {
-  const res = await fetch(`${BASE}/sessions/${sessionId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
-    body: JSON.stringify({ name }),
-  });
+  const res = await apiFetch(`${BASE}/sessions/${sessionId}`, { method: 'PATCH', json: { name } });
   await throwOnError(res);
 }
 
 export async function addOption(sessionId: string, text: string): Promise<{ options: string[] }> {
-  const res = await fetch(`${BASE}/sessions/${sessionId}/options`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
-    body: JSON.stringify({ text }),
-  });
+  const res = await apiFetch(`${BASE}/sessions/${sessionId}/options`, { method: 'POST', json: { text } });
   await throwOnError(res);
   return res.json();
 }
 
 export async function bulkReplaceOptions(sessionId: string, options: string[], name?: string): Promise<{ options: string[] }> {
-  const res = await fetch(`${BASE}/sessions/${sessionId}/options`, {
+  const res = await apiFetch(`${BASE}/sessions/${sessionId}/options`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
-    body: JSON.stringify({ options, ...(name !== undefined && { name }) }),
+    json: { options, ...(name !== undefined && { name }) },
   });
   await throwOnError(res);
   return res.json();
 }
 
 export async function removeOption(sessionId: string, text: string): Promise<{ options: string[] }> {
-  const res = await fetch(`${BASE}/sessions/${sessionId}/options/${encodeURIComponent(text)}`, {
-    method: 'DELETE',
-    headers: { 'x-init-data': getInitData() },
-  });
+  const res = await apiFetch(`${BASE}/sessions/${sessionId}/options/${encodeURIComponent(text)}`, { method: 'DELETE' });
   await throwOnError(res);
   return res.json();
 }
 
 export async function startVoting(sessionId: string): Promise<{ share_url?: string }> {
-  const res = await fetch(`${BASE}/sessions/${sessionId}/vote`, {
-    method: 'POST',
-    headers: { 'x-init-data': getInitData() },
-  });
+  const res = await apiFetch(`${BASE}/sessions/${sessionId}/vote`, { method: 'POST' });
   await throwOnError(res);
   return res.json();
 }
 
 export async function fetchSessionOptions(sessionId: string): Promise<{ options: string[] }> {
-  const res = await fetch(`${BASE}/sessions/${sessionId}/options`, {
-    headers: { 'x-init-data': getInitData() },
-  });
+  const res = await apiFetch(`${BASE}/sessions/${sessionId}/options`);
   await throwOnError(res);
   return res.json();
 }
 
 export async function fetchSession(sessionId: string) {
-  const res = await fetch(`${BASE}/sessions/${sessionId}`, {
-    headers: { 'x-init-data': getInitData() },
-  });
+  const res = await apiFetch(`${BASE}/sessions/${sessionId}`);
   await throwOnError(res);
   return res.json();
 }
 
 export async function closeSession(sessionId: string): Promise<{ ok: boolean; winner: string | null }> {
-  const res = await fetch(`${BASE}/sessions/${sessionId}/close`, {
-    method: 'POST',
-    headers: { 'x-init-data': getInitData() },
-  });
+  const res = await apiFetch(`${BASE}/sessions/${sessionId}/close`, { method: 'POST' });
   await throwOnError(res);
   return res.json();
 }
@@ -127,37 +110,24 @@ export interface SavedPoll {
 }
 
 export async function fetchSavedPolls(): Promise<SavedPoll[]> {
-  const res = await fetch(`${BASE}/saved-polls`, {
-    headers: { 'x-init-data': getInitData() },
-  });
+  const res = await apiFetch(`${BASE}/saved-polls`);
   await throwOnError(res);
   return res.json();
 }
 
 export async function createSavedPoll(name: string, options: string[], emoji: string): Promise<{ id: string }> {
-  const res = await fetch(`${BASE}/saved-polls`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
-    body: JSON.stringify({ name, options, emoji }),
-  });
+  const res = await apiFetch(`${BASE}/saved-polls`, { method: 'POST', json: { name, options, emoji } });
   await throwOnError(res);
   return res.json();
 }
 
 export async function updateSavedPoll(id: string, data: { name?: string; options?: string[]; emoji?: string }): Promise<void> {
-  const res = await fetch(`${BASE}/saved-polls/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
-    body: JSON.stringify(data),
-  });
+  const res = await apiFetch(`${BASE}/saved-polls/${id}`, { method: 'PUT', json: data });
   await throwOnError(res);
 }
 
 export async function deleteSavedPoll(id: string): Promise<void> {
-  const res = await fetch(`${BASE}/saved-polls/${id}`, {
-    method: 'DELETE',
-    headers: { 'x-init-data': getInitData() },
-  });
+  const res = await apiFetch(`${BASE}/saved-polls/${id}`, { method: 'DELETE' });
   await throwOnError(res);
 }
 
@@ -174,31 +144,29 @@ export interface PublicTemplate {
 }
 
 export async function fetchTemplates(signal?: AbortSignal): Promise<PublicTemplate[]> {
-  const res = await fetch(`${BASE}/templates`, { signal });
+  const res = await apiFetch(`${BASE}/templates`, { signal });
   await throwOnError(res);
   const data: { items: PublicTemplate[] } = await res.json();
   return data.items;
 }
 
 export async function recordTemplateUse(id: string): Promise<void> {
+  // best-effort: intentionally not using apiFetch — errors must never block the user flow
   try {
     await fetch(`${BASE}/templates/${id}/use`, {
       method: 'POST',
       headers: { 'x-init-data': getInitData() },
     });
-  } catch {
-    // best-effort — never block the user flow
-  }
+  } catch { /* silent */ }
 }
 
 export async function generateAiOptions(
   name: string,
   existingOptions?: string[],
 ): Promise<{ options: string[] }> {
-  const res = await fetch(`${BASE}/ai/generate-options`, {
+  const res = await apiFetch(`${BASE}/ai/generate-options`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
-    body: JSON.stringify({ name, ...(existingOptions?.length ? { existingOptions } : {}) }),
+    json: { name, ...(existingOptions?.length ? { existingOptions } : {}) },
   });
   await throwOnError(res);
   return res.json();
@@ -222,47 +190,34 @@ export async function searchPublicPolls(
   if (q) params.set('q', q);
   if (offset > 0) params.set('offset', String(offset));
   const qs = params.size ? `?${params.toString()}` : '';
-  const res = await fetch(`${BASE}/public-polls${qs}`, {
-    headers: { 'x-init-data': getInitData() },
-  });
+  const res = await apiFetch(`${BASE}/public-polls${qs}`);
   await throwOnError(res);
   return res.json();
 }
 
 export async function usePublicPoll(id: string): Promise<{ id: string; share_url: string; name: string; options: string[] }> {
-  const res = await fetch(`${BASE}/public-polls/${id}/use`, {
-    method: 'POST',
-    headers: { 'x-init-data': getInitData() },
-  });
+  const res = await apiFetch(`${BASE}/public-polls/${id}/use`, { method: 'POST' });
   await throwOnError(res);
   return res.json();
 }
 
 export async function publishSavedPoll(id: string, showAuthor: boolean, categories: string[]): Promise<void> {
-  const res = await fetch(`${BASE}/saved-polls/${id}/publish`, {
+  const res = await apiFetch(`${BASE}/saved-polls/${id}/publish`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-init-data': getInitData() },
-    body: JSON.stringify({ show_author: showAuthor, categories }),
+    json: { show_author: showAuthor, categories },
   });
   await throwOnError(res);
 }
 
 export async function unpublishSavedPoll(id: string): Promise<void> {
-  const res = await fetch(`${BASE}/saved-polls/${id}/unpublish`, {
-    method: 'POST',
-    headers: { 'x-init-data': getInitData() },
-  });
+  const res = await apiFetch(`${BASE}/saved-polls/${id}/unpublish`, { method: 'POST' });
   await throwOnError(res);
 }
 
 export async function submitResults(sessionId: string, rankedList: string[]) {
-  const res = await fetch(`${BASE}/sessions/${sessionId}/results`, {
+  const res = await apiFetch(`${BASE}/sessions/${sessionId}/results`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-init-data': getInitData(),
-    },
-    body: JSON.stringify({ ranked_list: rankedList }),
+    json: { ranked_list: rankedList },
   });
   await throwOnError(res);
   return res.json();

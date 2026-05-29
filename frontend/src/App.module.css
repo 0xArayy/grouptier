@@ -159,6 +159,7 @@
 
 .timeoutBtn {
   margin-top: 8px;
+  min-height: 44px;
   padding: 12px 24px;
   border-radius: var(--radius-xl);
   border: none;
@@ -166,6 +167,20 @@
   color: #fff;
   font-size: 15px;
   font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.timeoutBtnSecondary {
+  margin-top: 8px;
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-color, rgba(255,255,255,0.15));
+  background: transparent;
+  color: var(--hint-color, #888);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   font-family: inherit;
 }

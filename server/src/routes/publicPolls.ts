@@ -73,6 +73,11 @@ export async function publicPollRoutes(fastify: FastifyInstance) {
 
         const { name, options } = pollRes.rows[0];
 
+        if ((options as string[]).length === 0) {
+          await client.query('ROLLBACK');
+          return reply.status(422).send({ error: 'Public poll has no options' });
+        }
+
         // Create the session (409 guard included); pass client so the INSERT
         // participates in this transaction and won't orphan on options failure.
         const outcome = await createSession(chat, userId, name, client);
@@ -81,13 +86,13 @@ export async function publicPollRoutes(fastify: FastifyInstance) {
           return reply.status(409).send({ error: 'Session already exists', id: outcome.id, share_url: outcome.share_url });
         }
 
-        // Bulk-insert options
-        for (const text of options as string[]) {
-          await client.query(
-            'INSERT INTO options (session_id, text) VALUES ($1, $2)',
-            [outcome.id, text],
-          );
-        }
+        // Single bulk INSERT — clock_timestamp() gives each row its own timestamp for stable ordering
+        const vals = options as string[];
+        const placeholders = vals.map((_, i) => `($1, $${i + 2}, clock_timestamp())`).join(', ');
+        await client.query(
+          `INSERT INTO options (session_id, text, created_at) VALUES ${placeholders}`,
+          [outcome.id, ...vals],
+        );
 
         // Increment uses_count
         await client.query(

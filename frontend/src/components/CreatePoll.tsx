@@ -59,6 +59,7 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [startingTimedOut, setStartingTimedOut] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [externalEdit, setExternalEdit] = useState(false);
   const [aiExistingOptions, setAiExistingOptions] = useState<string[]>([]);
 
@@ -71,7 +72,7 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
     if (step !== 'starting') { setStartingTimedOut(false); return; }
     const t = setTimeout(() => setStartingTimedOut(true), 10000);
     return () => clearTimeout(t);
-  }, [step]);
+  }, [step, retryCount]);
 
   useEffect(() => {
     if (step !== 'options' || !sessionId) {
@@ -393,8 +394,12 @@ export function CreatePoll({ onSessionReady, onShareReady, existingSession }: Pr
             Не удалось отправить сообщение в группу. Попробуй ещё раз.
           </div>
           <button
-            onClick={() => { setStartingTimedOut(false); setBusy(false); setStep('options'); setError(''); }}
+            onClick={() => { setStartingTimedOut(false); setBusy(false); setRetryCount(c => c + 1); handleStartVoting(); }}
             className={appStyles.timeoutBtn}
+          >Попробовать снова</button>
+          <button
+            onClick={() => { setStartingTimedOut(false); setBusy(false); setStep('options'); setError(''); }}
+            className={appStyles.timeoutBtnSecondary}
           >Вернуться к вариантам</button>
         </>
       ) : (

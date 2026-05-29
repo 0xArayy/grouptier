@@ -33,11 +33,32 @@ interface Props {
 }
 
 export function OptionsStep({
-  sessionName, options, optionInput, setOptionInput, error, busy, removingOption,
-  editingName, setEditingName, nameInput, setNameInput, externalEdit,
-  savedId, showSaveForm, setShowSaveForm, saveEmoji, setSaveEmoji,
-  saving, saveSuccess, shareUrl,
-  onBack, onAddOption, onRemoveOption, onStartVoting, onSaveTemplate, onSaveName,
+  sessionName,
+  options,
+  optionInput,
+  setOptionInput,
+  error,
+  busy,
+  removingOption,
+  editingName,
+  setEditingName,
+  nameInput,
+  setNameInput,
+  externalEdit,
+  savedId,
+  showSaveForm,
+  setShowSaveForm,
+  saveEmoji,
+  setSaveEmoji,
+  saving,
+  saveSuccess,
+  shareUrl,
+  onBack,
+  onAddOption,
+  onRemoveOption,
+  onStartVoting,
+  onSaveTemplate,
+  onSaveName,
   onGenerateWithAi,
 }: Props) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -45,10 +66,13 @@ export function OptionsStep({
 
   function handleShare() {
     if (!shareUrl) return;
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2500);
-    }).catch(() => {});
+    navigator.clipboard
+      .writeText(shareUrl)
+      .then(() => {
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2500);
+      })
+      .catch(() => {});
   }
 
   const votingLabel = `Запустить голосование (${options.length} вар${options.length === 1 ? 'иант' : options.length < 5 ? 'ианта' : 'иантов'})`;
@@ -63,9 +87,12 @@ export function OptionsStep({
       )}
 
       <div className={styles.navRow}>
-        <button onClick={onBack} className={styles.backBtn}>←</button>
+        <button type="button" onClick={onBack} className={styles.backBtn}>
+          ←
+        </button>
         {shareUrl && (
           <button
+            type="button"
             onClick={handleShare}
             className={`${styles.shareBtn}${shareCopied ? ` ${styles.shareBtnCopied}` : ''}`}
             title="Поделиться ссылкой для добавления вариантов"
@@ -78,16 +105,18 @@ export function OptionsStep({
       <div className={styles.content}>
         {editingName ? (
           <input
-            autoFocus
             className={styles.nameInput}
             value={nameInput}
-            onChange={e => setNameInput(e.target.value)}
+            onChange={(e) => setNameInput(e.target.value)}
             onBlur={onSaveName}
-            onKeyDown={e => e.key === 'Enter' && onSaveName()}
+            onKeyDown={(e) => e.key === 'Enter' && onSaveName()}
           />
         ) : (
           <div
-            onClick={() => { setNameInput(sessionName); setEditingName(true); }}
+            onClick={() => {
+              setNameInput(sessionName);
+              setEditingName(true);
+            }}
             className={styles.nameDisplay}
           >
             {sessionName || 'Без названия'}
@@ -113,22 +142,23 @@ export function OptionsStep({
                 <span className={styles.optionNum}>{String(i + 1).padStart(2, '0')}</span>
                 <span className={styles.optionText}>{opt}</span>
                 <button
+                  type="button"
                   onClick={() => onRemoveOption(opt)}
                   disabled={removingOption === opt || busy}
                   className={styles.optionRemoveBtn}
                   aria-label={`Удалить ${opt}`}
-                >×</button>
+                >
+                  ×
+                </button>
               </div>
             ))}
           </div>
         )}
 
         {options.length < 4 && onGenerateWithAi && (
-          <button
-            onClick={onGenerateWithAi}
-            disabled={busy}
-            className={styles.aiLink}
-          >✨ Предложить варианты</button>
+          <button type="button" onClick={onGenerateWithAi} disabled={busy} className={styles.aiLink}>
+            ✨ Предложить варианты
+          </button>
         )}
 
         {options.length < 32 && (
@@ -139,17 +169,22 @@ export function OptionsStep({
                 placeholder="Добавить вариант…"
                 maxLength={100}
                 value={optionInput}
-                onChange={e => setOptionInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && onAddOption()}
+                onChange={(e) => setOptionInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && onAddOption()}
               />
               <button
+                type="button"
                 onClick={onAddOption}
                 disabled={!optionInput.trim() || busy}
                 className={styles.addBtn}
-              >+</button>
+              >
+                +
+              </button>
             </div>
             {optionInput.length >= 80 && (
-              <div className={`${styles.charCount}${optionInput.length >= 100 ? ` ${styles.charCountWarn}` : ''}`}>
+              <div
+                className={`${styles.charCount}${optionInput.length >= 100 ? ` ${styles.charCountWarn}` : ''}`}
+              >
                 {optionInput.length}/100
               </div>
             )}
@@ -159,16 +194,17 @@ export function OptionsStep({
         {error && <div className={styles.errorText}>{error}</div>}
 
         <button
+          type="button"
           className={styles.startBtn}
-          style={{ opacity: (options.length < 2 || busy) ? 0.5 : 1 }}
+          style={{ opacity: options.length < 2 || busy ? 0.5 : 1 }}
           disabled={options.length < 2 || busy}
           onClick={onStartVoting}
-        >{votingLabel}</button>
+        >
+          {votingLabel}
+        </button>
 
         <div className={styles.saveSection}>
-          {saveSuccess && (
-            <div className={styles.saveSuccess}>✓ Шаблон сохранён</div>
-          )}
+          {saveSuccess && <div className={styles.saveSuccess}>✓ Шаблон сохранён</div>}
           {showSaveForm ? (
             <div className={styles.saveForm}>
               <div className={styles.saveFormTitle}>
@@ -176,39 +212,50 @@ export function OptionsStep({
               </div>
               <div className={styles.saveFormTop}>
                 <button
+                  type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   className={`${styles.emojiPickerToggle}${showEmojiPicker ? ` ${styles.emojiPickerToggleOpen}` : ''}`}
-                >{saveEmoji}</button>
+                >
+                  {saveEmoji}
+                </button>
                 <div className={styles.saveFormInfo}>
                   «{sessionName}» · {options.length} вариантов
                 </div>
               </div>
               {showEmojiPicker && (
                 <div className={styles.emojiGrid}>
-                  {EMOJI_PRESETS.map(e => (
+                  {EMOJI_PRESETS.map((e) => (
                     <button
+                      type="button"
                       key={e}
-                      onClick={() => { setSaveEmoji(e); setShowEmojiPicker(false); }}
+                      onClick={() => {
+                        setSaveEmoji(e);
+                        setShowEmojiPicker(false);
+                      }}
                       className={`${styles.emojiCell}${saveEmoji === e ? ` ${styles.emojiCellActive}` : ''}`}
-                    >{e}</button>
+                    >
+                      {e}
+                    </button>
                   ))}
                 </div>
               )}
               <div className={styles.saveFormBtns}>
-                <button onClick={() => setShowSaveForm(false)} className={styles.cancelBtn}>
+                <button type="button" onClick={() => setShowSaveForm(false)} className={styles.cancelBtn}>
                   Отмена
                 </button>
                 <button
+                  type="button"
                   onClick={onSaveTemplate}
                   disabled={saving}
                   className={styles.saveConfirmBtn}
                 >
-                  {saving ? 'Сохраняем…' : (savedId ? 'Обновить' : 'Сохранить')}
+                  {saving ? 'Сохраняем…' : savedId ? 'Обновить' : 'Сохранить'}
                 </button>
               </div>
             </div>
           ) : (
             <button
+              type="button"
               onClick={() => options.length >= 2 && setShowSaveForm(true)}
               disabled={options.length < 2}
               className={styles.saveTemplateBtn}

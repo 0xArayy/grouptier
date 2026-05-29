@@ -1,29 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
-import { fetchSession, submitResults, fetchActiveSession, closeSession, createSavedPoll, connectSessionWs, ApiError } from './api/client.ts';
-import type { SessionData as WsSessionData } from './api/client.ts';
-import { Compare } from './components/Compare.tsx';
-import { ByeScreen } from './components/ByeScreen.tsx';
-import { TierList } from './components/TierList.tsx';
-import { LiveResults } from './components/LiveResults.tsx';
-import { CreatePoll } from './components/CreatePoll.tsx';
-import { ShareStep } from './components/ShareStep.tsx';
-import { createTournament, pick, buildRankedList } from './lib/tournament.ts';
-import type { TournamentState } from './lib/tournament.ts';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './App.module.css';
+import type { SessionData } from './api/client.ts';
+import {
+  ApiError,
+  closeSession,
+  connectSessionWs,
+  createSavedPoll,
+  fetchActiveSession,
+  fetchSession,
+  submitResults,
+} from './api/client.ts';
+import { ByeScreen } from './components/ByeScreen.tsx';
+import { Compare } from './components/Compare.tsx';
+import { CreatePoll } from './components/CreatePoll.tsx';
+import { LiveResults } from './components/LiveResults.tsx';
+import { ShareStep } from './components/ShareStep.tsx';
+import { TierList } from './components/TierList.tsx';
+import type { TournamentState } from './lib/tournament.ts';
+import { buildRankedList, createTournament, pick } from './lib/tournament.ts';
 
 type Screen = 'loading' | 'error' | 'waiting' | 'compare' | 'bye' | 'tierlist' | 'live' | 'create' | 'share';
-
-interface SessionData {
-  id: string;
-  name: string;
-  status: string;
-  options: string[];
-  voter_count: number;
-  result_count: number;
-  borda_ranking: { option: string; score: number }[];
-  my_result: string[] | null;
-  share_url?: string;
-}
 
 function getUserId(): number {
   if (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
@@ -34,8 +30,10 @@ function getUserId(): number {
 
 function getSessionId(): string | null {
   // When opened via t.me/bot/app?startapp=ID the session id is in start_param, not URL.
-  return window.Telegram?.WebApp?.initDataUnsafe?.start_param
-    ?? new URLSearchParams(window.location.search).get('session_id');
+  return (
+    window.Telegram?.WebApp?.initDataUnsafe?.start_param ??
+    new URLSearchParams(window.location.search).get('session_id')
+  );
 }
 
 export default function App() {
@@ -64,38 +62,7 @@ export default function App() {
     };
   }, []);
 
-  function loadSession(id: string) {
-    fetchSession(id)
-      .then((data: SessionData) => {
-        setSession(data);
-        if (data.status === 'collecting') { setScreen('create'); return; }
-        if (data.options.length < 2) { setScreen('waiting'); return; }
-        if (data.my_result) { setScreen('live'); setSubmitted(true); startLiveWs(id); return; }
-        if (data.status === 'closed') { setScreen('live'); return; }
-        const t = createTournament(data.options, getUserId());
-        setTournament(t);
-        const m = t.rounds[t.currentRound][t.currentMatchup];
-        setScreen(m.isBye ? 'bye' : 'compare');
-      })
-      .catch((err: unknown) => { setErrorMsg(String(err)); setScreen('error'); });
-  }
-
-  // Initial load
-  useEffect(() => {
-    if (!sessionId) {
-      // No session in URL — check if one exists in the group, else show CreatePoll
-      fetchActiveSession()
-        .then(active => { setSessionId(active.id); })
-        .catch((err: unknown) => {
-          if (err instanceof ApiError && err.status === 404) setScreen('create');
-          else { setErrorMsg(String(err)); setScreen('error'); }
-        });
-      return;
-    }
-    loadSession(sessionId);
-  }, [sessionId]);
-
-  function startLiveWs(sid: string) {
+  const startLiveWs = useCallback((sid: string) => {
     if (stopWsRef.current) return;
     let stopped = false;
     let ws: WebSocket | null = null;
@@ -105,16 +72,19 @@ export default function App() {
     function connect() {
       ws = connectSessionWs(
         sid,
-        (data: WsSessionData) => {
-          setSession(data as unknown as SessionData);
+        (data: SessionData) => {
+          setSession(data);
           if (data.status === 'closed') stop();
         },
         () => {
           if (stopped) return;
+          // Full jitter: spread reconnects across [0, backoff] to avoid thundering herd
+          // when the server restarts and all clients reconnect at once.
+          const delay = backoff * Math.random();
           reconnectTimeout = setTimeout(() => {
             backoff = Math.min(backoff * 2, 30000);
             connect();
-          }, backoff);
+          }, delay);
         },
       );
     }
@@ -128,7 +98,63 @@ export default function App() {
 
     stopWsRef.current = stop;
     connect();
-  }
+  }, []);
+
+  const loadSession = useCallback(
+    (id: string) => {
+      fetchSession(id)
+        .then((data: SessionData) => {
+          setSession(data);
+          if (data.status === 'collecting') {
+            setScreen('create');
+            return;
+          }
+          if (data.options.length < 2) {
+            setScreen('waiting');
+            return;
+          }
+          if (data.my_result) {
+            setScreen('live');
+            setSubmitted(true);
+            startLiveWs(id);
+            return;
+          }
+          if (data.status === 'closed') {
+            setScreen('live');
+            return;
+          }
+          const t = createTournament(data.options, getUserId());
+          setTournament(t);
+          const m = t.rounds[t.currentRound][t.currentMatchup];
+          setScreen(m.isBye ? 'bye' : 'compare');
+        })
+        .catch((err: unknown) => {
+          setErrorMsg(String(err));
+          setScreen('error');
+        });
+    },
+    [startLiveWs],
+  );
+
+  // Initial load
+  useEffect(() => {
+    if (!sessionId) {
+      // No session in URL — check if one exists in the group, else show CreatePoll
+      fetchActiveSession()
+        .then((active) => {
+          setSessionId(active.id);
+        })
+        .catch((err: unknown) => {
+          if (err instanceof ApiError && err.status === 404) setScreen('create');
+          else {
+            setErrorMsg(String(err));
+            setScreen('error');
+          }
+        });
+      return;
+    }
+    loadSession(sessionId);
+  }, [sessionId, loadSession]);
 
   useEffect(() => {
     return () => {
@@ -175,7 +201,7 @@ export default function App() {
     setSubmitError('');
     try {
       const data = await submitResults(sessionId, reorderedList);
-      setSession(prev => prev ? { ...prev, ...data } : prev);
+      setSession((prev) => (prev ? { ...prev, ...data } : prev));
       setSubmitted(true);
       setScreen('live');
       startLiveWs(sessionId);
@@ -187,7 +213,9 @@ export default function App() {
         try {
           const fresh: SessionData = await fetchSession(sessionId);
           setSession(fresh);
-        } catch { /* keep stale session data — live screen handles empty ranking */ }
+        } catch {
+          /* keep stale session data — live screen handles empty ranking */
+        }
         setScreen('live');
       } else {
         setSubmitError(String(err));
@@ -202,7 +230,7 @@ export default function App() {
     setClosing(true);
     try {
       await closeSession(sessionId);
-      setSession(prev => prev ? { ...prev, status: 'closed' } : prev);
+      setSession((prev) => (prev ? { ...prev, status: 'closed' } : prev));
       stopWsRef.current?.();
     } catch (err) {
       console.error('close failed:', err);
@@ -216,7 +244,7 @@ export default function App() {
 
     if (session.status === 'closed') {
       // Inline query → bot returns winner card photo → user picks chat → photo sent
-      window.Telegram?.WebApp?.switchInlineQuery?.(session.id + ':winner', ['users', 'groups', 'channels']);
+      window.Telegram?.WebApp?.switchInlineQuery?.(`${session.id}:winner`, ['users', 'groups', 'channels']);
       return;
     }
 
@@ -234,7 +262,7 @@ export default function App() {
     setScreen('loading');
   }
 
-  function handleGoHome() {
+  const handleGoHome = useCallback(() => {
     stopWsRef.current?.();
     setSessionId(null);
     setSession(null);
@@ -242,7 +270,7 @@ export default function App() {
     setSubmitted(false);
     setTournament(null);
     setScreen('create');
-  }
+  }, []);
 
   // Telegram BackButton — show on all non-home screens
   useEffect(() => {
@@ -254,12 +282,14 @@ export default function App() {
     }
     tgBack.show();
     tgBack.onClick(handleGoHome);
-    return () => { tgBack.offClick(handleGoHome); };
-  }, [screen]);
+    return () => {
+      tgBack.offClick(handleGoHome);
+    };
+  }, [screen, handleGoHome]);
 
   async function handleSaveTemplate(name: string, emoji: string) {
     const opts = session?.options ?? []; // snapshot before await — prevents polling race
-    const trimmed = opts.map(o => o.trim()).filter(Boolean);
+    const trimmed = opts.map((o) => o.trim()).filter(Boolean);
     await createSavedPoll(name, trimmed, emoji);
     sessionStorage.setItem(`saved-tmpl-${getUserId()}-${sessionId}`, '1');
   }
@@ -296,13 +326,18 @@ export default function App() {
   }
 
   if (screen === 'create') {
-    const existing = session?.status === 'collecting'
-      ? { id: session.id, name: session.name, options: session.options, shareUrl: session.share_url }
-      : undefined;
+    const existing =
+      session?.status === 'collecting'
+        ? { id: session.id, name: session.name, options: session.options, shareUrl: session.share_url }
+        : undefined;
     return (
       <>
         {offline && <OfflineBanner />}
-        <CreatePoll onSessionReady={handlePollReady} onShareReady={handleShareReady} existingSession={existing} />
+        <CreatePoll
+          onSessionReady={handlePollReady}
+          onShareReady={handleShareReady}
+          existingSession={existing}
+        />
       </>
     );
   }
@@ -431,23 +466,23 @@ export default function App() {
     );
   }
 
-  return <FullCenter><Spinner /></FullCenter>;
+  return (
+    <FullCenter>
+      <Spinner />
+    </FullCenter>
+  );
 }
 
 function HomeButton({ onClick }: { onClick: () => void }) {
   return (
-    <button onClick={onClick} className={styles.homeBtn}>
+    <button type="button" onClick={onClick} className={styles.homeBtn}>
       ← Меню
     </button>
   );
 }
 
 function OfflineBanner() {
-  return (
-    <div className={styles.offlineBanner}>
-      No internet connection
-    </div>
-  );
+  return <div className={styles.offlineBanner}>No internet connection</div>;
 }
 
 function CompareSkeleton() {
@@ -469,11 +504,7 @@ function CompareSkeleton() {
 }
 
 function FullCenter({ children }: { children: React.ReactNode }) {
-  return (
-    <div className={styles.fullCenter}>
-      {children}
-    </div>
-  );
+  return <div className={styles.fullCenter}>{children}</div>;
 }
 
 function Spinner() {

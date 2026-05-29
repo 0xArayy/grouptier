@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
+import { offSession, onSession, removeConnection, tryAddConnection } from '../lib/sessionEvents.js';
+import { buildSharedPayload, hydratePayload, type SharedPayload } from '../lib/sessionPayload.js';
 import { initDataMiddleware } from '../middleware/initData.js';
-import { buildSessionPayload } from '../lib/sessionPayload.js';
-import { onSession, offSession, tryAddConnection, removeConnection } from '../lib/sessionEvents.js';
 
 export async function wsRoutes(fastify: FastifyInstance) {
   fastify.get<{ Params: { id: string } }>(
@@ -16,12 +16,14 @@ export async function wsRoutes(fastify: FastifyInstance) {
         return;
       }
 
-      // Push updated session state to this client. Called on every emitSession(id).
-      const push = async () => {
+      // Receives the pre-built shared payload from the broadcast coordinator.
+      // The shared payload was fetched ONCE for all subscribers — this callback
+      // only does an in-memory my_result lookup (no extra DB queries).
+      const push = (shared: SharedPayload) => {
         if (socket.readyState !== socket.OPEN) return;
         try {
-          const payload = await buildSessionPayload(id, userId);
-          if (payload && socket.readyState === socket.OPEN) {
+          const payload = hydratePayload(shared, userId);
+          if (socket.readyState === socket.OPEN) {
             socket.send(JSON.stringify(payload));
           }
         } catch (err) {
@@ -35,7 +37,17 @@ export async function wsRoutes(fastify: FastifyInstance) {
       onSession(id, push);
 
       // Send initial snapshot immediately so client has current state on connect.
-      push();
+      // The initial push must build the payload itself (no shared broadcast pending).
+      buildSharedPayload(id)
+        .then((shared) => {
+          if (shared && socket.readyState === socket.OPEN) {
+            socket.send(JSON.stringify(hydratePayload(shared, userId)));
+          }
+        })
+        .catch((err) => {
+          console.error(`ws initial snapshot error for session ${id}:`, err);
+          socket.close(1011, 'internal error');
+        });
 
       socket.on('close', () => {
         offSession(id, push);

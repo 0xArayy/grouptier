@@ -18,7 +18,9 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: transform 120ms ease, opacity 200ms ease;
+  transition:
+    transform 120ms ease,
+    opacity 200ms ease;
 }
 
 .primaryBtn:disabled {

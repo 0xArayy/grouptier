@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
+import Fastify from 'fastify';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearTemplateCache } from '../routes/templates.js';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────

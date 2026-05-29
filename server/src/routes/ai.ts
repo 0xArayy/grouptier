@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
+import { MAX_OPTION_TEXT_LENGTH } from '../lib/constants.js';
 import { initDataMiddleware } from '../middleware/initData.js';
 
-const MAX_OPTION_LENGTH = 100;
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const SYSTEM_INSTRUCTION =
@@ -21,18 +21,22 @@ function parseOptions(text: string, existingLower: Set<string>): string[] {
   const match = text.match(/\[[\s\S]*\]/);
   if (!match) return [];
   let arr: unknown;
-  try { arr = JSON.parse(match[0]); } catch { return []; }
+  try {
+    arr = JSON.parse(match[0]);
+  } catch {
+    return [];
+  }
   if (!Array.isArray(arr)) return [];
   return (arr as unknown[])
     .filter((o): o is string => typeof o === 'string')
-    .map(o => o.slice(0, MAX_OPTION_LENGTH).trim())
-    .filter(o => o.length > 0 && !existingLower.has(o.toLowerCase()));
+    .map((o) => o.slice(0, MAX_OPTION_TEXT_LENGTH).trim())
+    .filter((o) => o.length > 0 && !existingLower.has(o.toLowerCase()));
 }
 
 async function callGroq(prompt: string, apiKey: string): Promise<string> {
   const res = await fetch(GROQ_URL, {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: GROQ_MODEL,
       messages: [
@@ -44,7 +48,7 @@ async function callGroq(prompt: string, apiKey: string): Promise<string> {
     }),
   });
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-  const data = await res.json() as { choices: { message: { content: string } }[] };
+  const data = (await res.json()) as { choices: { message: { content: string } }[] };
   return data.choices[0].message.content;
 }
 
@@ -59,11 +63,12 @@ export async function aiRoutes(fastify: FastifyInstance) {
       const existing = Array.isArray(request.body?.existingOptions)
         ? (request.body.existingOptions as unknown[]).filter((o): o is string => typeof o === 'string')
         : [];
-      const existingLower = new Set(existing.map(o => o.toLowerCase()));
+      const existingLower = new Set(existing.map((o) => o.toLowerCase()));
 
-      const prompt = existing.length > 0
-        ? `Poll title: "${name}"\nAlready added: ${existing.map(o => `"${o}"`).join(', ')}\nGenerate exactly 12 more options. Do not repeat or semantically duplicate any already added.`
-        : `Poll title: "${name}"\nGenerate exactly 12 options.`;
+      const prompt =
+        existing.length > 0
+          ? `Poll title: "${name}"\nAlready added: ${existing.map((o) => `"${o}"`).join(', ')}\nGenerate exactly 12 more options. Do not repeat or semantically duplicate any already added.`
+          : `Poll title: "${name}"\nGenerate exactly 12 options.`;
 
       for (let attempt = 0; attempt < 2; attempt++) {
         const text = await callGroq(prompt, process.env.GROQ_API_KEY!);

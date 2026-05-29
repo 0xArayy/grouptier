@@ -1,5 +1,5 @@
-import { createHmac } from 'crypto';
-import type { FastifyRequest, FastifyReply } from 'fastify';
+import { createHmac } from 'node:crypto';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 export interface TelegramUser {
   id: number;
@@ -43,7 +43,7 @@ function validateInitData(initData: string, botToken: string): ValidatedInitData
   const authDate = params.get('auth_date');
   if (!authDate) return null;
   const authTimestamp = parseInt(authDate, 10);
-  if (isNaN(authTimestamp) || Math.floor(Date.now() / 1000) - authTimestamp > 86400) return null;
+  if (Number.isNaN(authTimestamp) || Math.floor(Date.now() / 1000) - authTimestamp > 86400) return null;
 
   const userRaw = params.get('user');
   if (!userRaw) return null;
@@ -68,10 +68,7 @@ function validateInitData(initData: string, botToken: string): ValidatedInitData
   return { user, chat };
 }
 
-export async function initDataMiddleware(
-  request: FastifyRequest,
-  reply: FastifyReply,
-): Promise<void> {
+export async function initDataMiddleware(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const botToken = process.env.BOT_TOKEN;
   if (!botToken) {
     reply.status(500).send({ error: 'Server misconfigured' });
@@ -80,9 +77,10 @@ export async function initDataMiddleware(
 
   const body = request.body as Record<string, unknown> | undefined;
   const query = request.query as Record<string, unknown> | undefined;
-  const initData = (request.headers['x-init-data'] as string)
-    || (query?.initData as string | undefined)
-    || (body?.initData as string | undefined);
+  const initData =
+    (request.headers['x-init-data'] as string) ||
+    (query?.initData as string | undefined) ||
+    (body?.initData as string | undefined);
   if (!initData) {
     reply.status(401).send({ error: 'Missing initData' });
     return;

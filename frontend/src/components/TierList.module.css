@@ -26,7 +26,7 @@
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.15em;
-  color: rgba(255,255,255,0.40);
+  color: rgba(255, 255, 255, 0.4);
   padding: 0 16px;
   margin-bottom: 4px;
 }
@@ -66,7 +66,7 @@
 }
 
 .rowTargeted {
-  border-color: rgba(255,255,255,0.18);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .tierLabel {
@@ -82,7 +82,7 @@
   line-height: 1;
   flex-shrink: 0;
   color: #fff;
-  text-shadow: 0 2px 0 rgba(0,0,0,0.22);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.22);
 }
 
 .chips {
@@ -95,8 +95,8 @@
 }
 
 .chip {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 10px;
   padding: 8px 12px;
   font-size: 13px;
@@ -126,7 +126,7 @@
 .dragHint {
   text-align: center;
   font-size: 12px;
-  color: rgba(255,255,255,0.35);
+  color: rgba(255, 255, 255, 0.35);
   padding: 0 16px;
   display: flex;
   align-items: center;
@@ -139,14 +139,14 @@
   position: fixed;
   z-index: 1000;
   pointer-events: none;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 10px;
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-1);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   transform: scale(1.1) rotate(-2deg);
 }
 
@@ -173,7 +173,9 @@
   font-size: 15px;
   font-weight: 700;
   min-height: var(--tap-target-min);
-  transition: opacity 0.2s, transform 120ms ease;
+  transition:
+    opacity 0.2s,
+    transform 120ms ease;
   cursor: pointer;
   font-family: inherit;
 }
@@ -185,7 +187,7 @@
 .groupBtn {
   flex: 1;
   padding: 16px;
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border);
   color: var(--accent-warm);
   border-radius: var(--radius-xl);
@@ -200,7 +202,7 @@
   display: inline-block;
   width: 2px;
   height: 20px;
-  background: rgba(255,255,255,0.4);
+  background: rgba(255, 255, 255, 0.4);
   border-radius: 1px;
   flex-shrink: 0;
   align-self: center;

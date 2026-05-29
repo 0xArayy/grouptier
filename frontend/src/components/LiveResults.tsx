@@ -36,7 +36,7 @@ function assignTiers(ranking: BordaEntry[]) {
     tier: meta.tier,
     bg: meta.bg,
     items: ranking.slice(i * size, (i + 1) * size),
-  })).filter(t => t.items.length > 0);
+  })).filter((t) => t.items.length > 0);
 }
 
 export function LiveResults({
@@ -109,9 +109,7 @@ export function LiveResults({
             LIVE
           </div>
         )}
-        {sessionClosed && (
-          <div className={styles.closedBadge}>🔒 FINAL</div>
-        )}
+        {sessionClosed && <div className={styles.closedBadge}>🔒 FINAL</div>}
       </div>
 
       {/* Voter progress bar */}
@@ -120,7 +118,9 @@ export function LiveResults({
           <div className={styles.voterTrack}>
             <div className={styles.voterFill} style={{ width: `${voteProgress}%` }} />
           </div>
-          <span className={styles.voterCount}>{resultCount}/{voterCount} voted</span>
+          <span className={styles.voterCount}>
+            {resultCount}/{voterCount} voted
+          </span>
         </div>
       )}
 
@@ -130,14 +130,11 @@ export function LiveResults({
         <div className={styles.tierRows}>
           {tiers.map(({ tier, bg, items }) => (
             <div key={tier} className={styles.tierRow}>
-              <div
-                className={styles.tierBlock}
-                style={{ background: bg }}
-              >
+              <div className={styles.tierBlock} style={{ background: bg }}>
                 {tier}
               </div>
               <div className={styles.bordaItems}>
-                {items.map(entry => (
+                {items.map((entry) => (
                   <div key={entry.option} className={styles.bordaItem}>
                     <span className={styles.itemName}>{entry.option}</span>
                     <div className={styles.barTrack}>
@@ -164,13 +161,14 @@ export function LiveResults({
           <input
             className={styles.saveNameInput}
             value={saveName}
-            onChange={e => setSaveName(e.target.value)}
+            onChange={(e) => setSaveName(e.target.value)}
             maxLength={100}
             placeholder="Название шаблона"
           />
           <div className={styles.emojiGrid}>
-            {EMOJI_PRESETS.map(e => (
+            {EMOJI_PRESETS.map((e) => (
               <button
+                type="button"
                 key={e}
                 className={`${styles.emojiCell}${saveEmoji === e ? ` ${styles.emojiCellActive}` : ''}`}
                 onClick={() => setSaveEmoji(e)}
@@ -182,6 +180,7 @@ export function LiveResults({
           {saveError && <div className={styles.saveError}>{saveError}</div>}
           <div className={styles.saveFormBtns}>
             <button
+              type="button"
               className={styles.saveConfirmBtn}
               style={{ opacity: saving ? 0.6 : 1 }}
               onClick={confirmSave}
@@ -189,7 +188,7 @@ export function LiveResults({
             >
               {saving ? 'Сохранение…' : 'Сохранить шаблон'}
             </button>
-            <button className={styles.saveCancelBtn} onClick={cancelSave} disabled={saving}>
+            <button type="button" className={styles.saveCancelBtn} onClick={cancelSave} disabled={saving}>
               Отмена
             </button>
           </div>
@@ -199,12 +198,13 @@ export function LiveResults({
       {/* Footer buttons */}
       <div className={styles.footer}>
         {onShare && (
-          <button className={styles.shareBtn} onClick={onShare}>
+          <button type="button" className={styles.shareBtn} onClick={onShare}>
             ↗ Share
           </button>
         )}
         {onSaveTemplate && (
           <button
+            type="button"
             className={styles.saveBtn}
             style={{ opacity: saved ? 0.7 : 1, cursor: saved ? 'default' : 'pointer' }}
             onClick={saved ? undefined : openSaveForm}
@@ -215,6 +215,7 @@ export function LiveResults({
         )}
         {onClose && !sessionClosed && (
           <button
+            type="button"
             className={styles.closeBtn}
             style={{ opacity: closing ? 0.6 : 1 }}
             onClick={onClose}
@@ -226,7 +227,7 @@ export function LiveResults({
       </div>
       {sessionClosed && onNewPoll && (
         <div className={styles.newPollWrap}>
-          <button className={styles.newPollBtn} onClick={onNewPoll}>
+          <button type="button" className={styles.newPollBtn} onClick={onNewPoll}>
             + Новый тир-лист
           </button>
         </div>

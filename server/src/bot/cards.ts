@@ -1,57 +1,120 @@
-import { generateVotingCardAsync, generateSetupCardAsync, generateWinnerCardAsync } from './imageCard.js';
 import type { BordaResult } from '../db/borda.js';
+import { generateSetupCardAsync, generateVotingCardAsync, generateWinnerCardAsync } from './imageCard.js';
 
 export type { BordaResult };
 
 // ── Emoji mapping ────────────────────────────────────────────────────────────
 
-const EMOJI_KEYWORDS: [string, string][] = [
-  ['pizza', '🍕'], ['пицца', '🍕'],
-  ['burger', '🍔'], ['бургер', '🍔'], ['hamburger', '🍔'],
-  ['sushi', '🍱'], ['суши', '🍱'],
-  ['ramen', '🍜'], ['рамен', '🍜'], ['noodle', '🍜'], ['лапша', '🍜'],
-  ['pasta', '🍝'], ['паста', '🍝'], ['спагетти', '🍝'],
+// Map for O(1) keyword lookup — built once at module load.
+// Ordering preserved: first match wins (same behaviour as the old linear scan).
+const EMOJI_MAP = new Map<string, string>([
+  ['pizza', '🍕'],
+  ['пицца', '🍕'],
+  ['burger', '🍔'],
+  ['бургер', '🍔'],
+  ['hamburger', '🍔'],
+  ['sushi', '🍱'],
+  ['суши', '🍱'],
+  ['ramen', '🍜'],
+  ['рамен', '🍜'],
+  ['noodle', '🍜'],
+  ['лапша', '🍜'],
+  ['pasta', '🍝'],
+  ['паста', '🍝'],
+  ['спагетти', '🍝'],
   ['taco', '🌮'],
-  ['sandwich', '🥪'], ['сэндвич', '🥪'], ['бутерброд', '🥪'],
-  ['salad', '🥗'], ['салат', '🥗'],
-  ['soup', '🍲'], ['суп', '🍲'], ['борщ', '🍲'],
-  ['chicken', '🍗'], ['курица', '🍗'],
-  ['fish', '🐟'], ['рыба', '🐟'],
-  ['roll', '🍣'], ['ролл', '🍣'],
-  ['steak', '🥩'], ['стейк', '🥩'], ['beef', '🥩'], ['мясо', '🥩'],
-  ['bbq', '🍖'], ['шашлык', '🍖'], ['grill', '🍖'],
-  ['beer', '🍺'], ['пиво', '🍺'],
-  ['coffee', '☕'], ['кофе', '☕'],
-  ['tea', '🍵'], ['чай', '🍵'],
-  ['wine', '🍷'], ['вино', '🍷'],
-  ['cake', '🎂'], ['торт', '🎂'],
-  ['ice', '🍦'], ['мороженое', '🍦'],
-  ['movie', '🎬'], ['кино', '🎬'], ['film', '🎬'], ['фильм', '🎬'],
-  ['music', '🎵'], ['музыка', '🎵'], ['concert', '🎵'], ['концерт', '🎵'],
-  ['game', '🎮'], ['игра', '🎮'],
-  ['football', '⚽'], ['soccer', '⚽'], ['футбол', '⚽'],
-  ['basketball', '🏀'], ['баскетбол', '🏀'],
-  ['tennis', '🎾'], ['теннис', '🎾'],
-  ['sport', '🏃'], ['спорт', '🏃'],
-  ['beach', '🏖️'], ['пляж', '🏖️'],
-  ['park', '🌳'], ['парк', '🌳'],
-  ['gym', '💪'], ['зал', '💪'],
-  ['book', '📚'], ['книга', '📚'],
-  ['travel', '✈️'], ['путешест', '✈️'],
-  ['bar', '🍹'], ['бар', '🍹'],
-  ['curry', '🍛'], ['карри', '🍛'],
-  ['rice', '🍚'], ['рис', '🍚'],
-];
+  ['sandwich', '🥪'],
+  ['сэндвич', '🥪'],
+  ['бутерброд', '🥪'],
+  ['salad', '🥗'],
+  ['салат', '🥗'],
+  ['soup', '🍲'],
+  ['суп', '🍲'],
+  ['борщ', '🍲'],
+  ['chicken', '🍗'],
+  ['курица', '🍗'],
+  ['fish', '🐟'],
+  ['рыба', '🐟'],
+  ['roll', '🍣'],
+  ['ролл', '🍣'],
+  ['steak', '🥩'],
+  ['стейк', '🥩'],
+  ['beef', '🥩'],
+  ['мясо', '🥩'],
+  ['bbq', '🍖'],
+  ['шашлык', '🍖'],
+  ['grill', '🍖'],
+  ['beer', '🍺'],
+  ['пиво', '🍺'],
+  ['coffee', '☕'],
+  ['кофе', '☕'],
+  ['tea', '🍵'],
+  ['чай', '🍵'],
+  ['wine', '🍷'],
+  ['вино', '🍷'],
+  ['cake', '🎂'],
+  ['торт', '🎂'],
+  ['ice', '🍦'],
+  ['мороженое', '🍦'],
+  ['movie', '🎬'],
+  ['кино', '🎬'],
+  ['film', '🎬'],
+  ['фильм', '🎬'],
+  ['music', '🎵'],
+  ['музыка', '🎵'],
+  ['concert', '🎵'],
+  ['концерт', '🎵'],
+  ['game', '🎮'],
+  ['игра', '🎮'],
+  ['football', '⚽'],
+  ['soccer', '⚽'],
+  ['футбол', '⚽'],
+  ['basketball', '🏀'],
+  ['баскетбол', '🏀'],
+  ['tennis', '🎾'],
+  ['теннис', '🎾'],
+  ['sport', '🏃'],
+  ['спорт', '🏃'],
+  ['beach', '🏖️'],
+  ['пляж', '🏖️'],
+  ['park', '🌳'],
+  ['парк', '🌳'],
+  ['gym', '💪'],
+  ['зал', '💪'],
+  ['book', '📚'],
+  ['книга', '📚'],
+  ['travel', '✈️'],
+  ['путешест', '✈️'],
+  ['bar', '🍹'],
+  ['бар', '🍹'],
+  ['curry', '🍛'],
+  ['карри', '🍛'],
+  ['rice', '🍚'],
+  ['рис', '🍚'],
+]);
 
 const FALLBACK_BULLETS = [
-  '🔴','🟠','🟡','🟢','🔵','🟣','🟤','⚫','⬜',
-  '🔷','🔶','🔹','🔸','🔺','🔻',
+  '🔴',
+  '🟠',
+  '🟡',
+  '🟢',
+  '🔵',
+  '🟣',
+  '🟤',
+  '⚫',
+  '⬜',
+  '🔷',
+  '🔶',
+  '🔹',
+  '🔸',
+  '🔺',
+  '🔻',
 ];
 
 /** Exported for unit tests in cards.test.ts */
 export function optionEmoji(text: string, index: number): string {
   const lower = text.toLowerCase();
-  for (const [kw, emoji] of EMOJI_KEYWORDS) {
+  for (const [kw, emoji] of EMOJI_MAP) {
     if (lower.includes(kw)) return emoji;
   }
   return FALLBACK_BULLETS[index % FALLBACK_BULLETS.length];
@@ -87,7 +150,7 @@ export async function buildVotingCard(
   parse_mode: 'HTML';
   reply_markup: { inline_keyboard: UrlBtn[][] };
 }> {
-  const image   = await generateVotingCardAsync(name, options.length);
+  const image = await generateVotingCardAsync(name, options.length);
   const voteBtn: UrlBtn = { text: '▶  ПРОГОЛОСОВАТЬ', url: voteUrl };
   return {
     image,
@@ -109,18 +172,19 @@ export async function buildSetupCard(voteUrl: string): Promise<{
   };
 }
 
-export async function buildWinnerCard(name: string, borda: BordaResult[]): Promise<{
+export async function buildWinnerCard(
+  name: string,
+  borda: BordaResult[],
+): Promise<{
   image: Buffer;
   caption: string;
   parse_mode: 'HTML';
 }> {
   if (borda.length === 0) throw new Error('buildWinnerCard: empty borda results');
   const medals = ['🥇', '🥈', '🥉'];
-  const lines = borda.slice(0, 3).map((r, i) =>
-    `${medals[i]} <b>${escapeHtml(r.option)}</b>`,
-  );
+  const lines = borda.slice(0, 3).map((r, i) => `${medals[i]} <b>${escapeHtml(r.option)}</b>`);
   return {
-    image:   await generateWinnerCardAsync(name, borda[0].option),
+    image: await generateWinnerCardAsync(name, borda[0].option),
     caption: lines.join('\n'),
     parse_mode: 'HTML',
   };

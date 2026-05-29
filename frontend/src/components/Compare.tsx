@@ -11,7 +11,14 @@ interface Props {
   onPick: (winner: string, loser: string) => Promise<void>;
 }
 
-export function Compare({ matchup, currentRound, totalRounds, completedMatchups, totalMatchups, onPick }: Props) {
+export function Compare({
+  matchup,
+  currentRound,
+  totalRounds,
+  completedMatchups,
+  totalMatchups,
+  onPick,
+}: Props) {
   const [picking, setPicking] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,8 +40,12 @@ export function Compare({ matchup, currentRound, totalRounds, completedMatchups,
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.roundRow}>
-          <span className={styles.roundLabel}>РАУНД {currentRound + 1}/{totalRounds}</span>
-          <span className={styles.progressText}>{completedMatchups} / {totalMatchups}</span>
+          <span className={styles.roundLabel}>
+            РАУНД {currentRound + 1}/{totalRounds}
+          </span>
+          <span className={styles.progressText}>
+            {completedMatchups} / {totalMatchups}
+          </span>
         </div>
         <div className={styles.progressBar}>
           <div className={styles.progressFill} style={{ width: `${progress}%` }} />
@@ -48,6 +59,7 @@ export function Compare({ matchup, currentRound, totalRounds, completedMatchups,
 
       <div className={styles.cards}>
         <button
+          type="button"
           className={styles.card}
           style={{
             opacity: picking && picking !== matchup.optionA ? 0.4 : 1,
@@ -62,6 +74,7 @@ export function Compare({ matchup, currentRound, totalRounds, completedMatchups,
         <div className={styles.orBadge}>ИЛИ</div>
 
         <button
+          type="button"
           className={styles.card}
           style={{
             opacity: picking && picking !== matchup.optionB ? 0.4 : 1,

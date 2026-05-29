@@ -3,9 +3,9 @@
   bottom: 16px;
   left: 16px;
   z-index: 60;
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.03);
   color: oklch(0.78 0.16 35);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xl);
   padding: 8px 14px;
   font-size: 13px;
@@ -83,8 +83,8 @@
 .spinner {
   width: 36px;
   height: 36px;
-  border: 3px solid rgba(255,255,255,0.08);
-  border-top-color: rgba(255,255,255,0.6);
+  border: 3px solid rgba(255, 255, 255, 0.08);
+  border-top-color: rgba(255, 255, 255, 0.6);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -132,8 +132,8 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 3px solid rgba(255,255,255,0.08);
-  border-top-color: rgba(255,255,255,0.6);
+  border: 3px solid rgba(255, 255, 255, 0.08);
+  border-top-color: rgba(255, 255, 255, 0.6);
   animation: spin 0.9s linear infinite;
 }
 
@@ -176,7 +176,7 @@
   min-height: 44px;
   padding: 10px 20px;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--border-color, rgba(255,255,255,0.15));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
   background: transparent;
   color: var(--hint-color, #888);
   font-size: 14px;

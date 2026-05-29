@@ -1,9 +1,11 @@
 import type { PoolClient } from 'pg';
 import { pool } from '../db/client.js';
-import { buildVoteUrl } from './urls.js';
 import { MAX_NAME_LENGTH } from './constants.js';
+import { buildVoteUrl } from './urls.js';
 
-interface TelegramChat { id: number | string }
+interface TelegramChat {
+  id: number | string;
+}
 
 interface CreateSessionResult {
   id: string;
@@ -16,7 +18,7 @@ interface ConflictResult {
   share_url: string;
 }
 
-export type CreateSessionOutcome = { conflict: false } & CreateSessionResult | ConflictResult;
+export type CreateSessionOutcome = ({ conflict: false } & CreateSessionResult) | ConflictResult;
 
 /**
  * Insert a new collecting session, enforcing one-per-chat 409 guard.

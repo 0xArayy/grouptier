@@ -1,18 +1,19 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { existsSync, readFileSync } from 'fs';
-import Fastify from 'fastify';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import fastifyCors from '@fastify/cors';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
-import { sessionRoutes } from './routes/sessions.js';
-import { savedPollRoutes } from './routes/savedPolls.js';
+import Fastify from 'fastify';
+import { closeCardPool } from './bot/imageCard.js';
+import { pool } from './db/client.js';
 import { aiRoutes } from './routes/ai.js';
 import { publicPollRoutes } from './routes/publicPolls.js';
+import { savedPollRoutes } from './routes/savedPolls.js';
+import { sessionRoutes } from './routes/sessions.js';
 import { templateRoutes } from './routes/templates.js';
 import { wsRoutes } from './routes/ws.js';
-import { pool } from './db/client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -26,7 +27,9 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 if (!process.env.MINI_APP_TGLINK) {
-  console.error('FATAL: MINI_APP_TGLINK environment variable is not set (e.g. https://t.me/grouptier_bot/vote).');
+  console.error(
+    'FATAL: MINI_APP_TGLINK environment variable is not set (e.g. https://t.me/grouptier_bot/vote).',
+  );
   process.exit(1);
 }
 if (!process.env.GROQ_API_KEY) {
@@ -127,5 +130,14 @@ bot.start({
   onStart: () => console.log('Bot polling started'),
 });
 
-process.once('SIGINT', () => bot.stop());
-process.once('SIGTERM', () => bot.stop());
+async function shutdown(signal: string) {
+  console.log(`${signal} received — shutting down gracefully`);
+  bot.stop();
+  await fastify.close();
+  await closeCardPool();
+  await pool.end();
+  process.exit(0);
+}
+
+process.once('SIGINT', () => void shutdown('SIGINT'));
+process.once('SIGTERM', () => void shutdown('SIGTERM'));

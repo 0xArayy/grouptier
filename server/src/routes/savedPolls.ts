@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { pool } from '../db/client.js';
+import { MAX_OPTION_TEXT_LENGTH, MAX_OPTIONS } from '../lib/constants.js';
 import { initDataMiddleware } from '../middleware/initData.js';
-import { MAX_OPTIONS, MAX_OPTION_TEXT_LENGTH } from '../lib/constants.js';
 
 interface SavedPoll {
   id: string;
@@ -15,20 +15,16 @@ interface SavedPoll {
 
 export async function savedPollRoutes(fastify: FastifyInstance) {
   // GET /api/saved-polls — list current user's saved poll templates
-  fastify.get(
-    '/api/saved-polls',
-    { preHandler: initDataMiddleware },
-    async (request, reply) => {
-      const userId = request.telegramUser.id;
+  fastify.get('/api/saved-polls', { preHandler: initDataMiddleware }, async (request, _reply) => {
+    const userId = request.telegramUser.id;
 
-      const res = await pool.query<SavedPoll>(
-        'SELECT id, name, options, emoji, is_public, created_at, updated_at FROM saved_polls WHERE user_id = $1 ORDER BY updated_at DESC',
-        [userId],
-      );
+    const res = await pool.query<SavedPoll>(
+      'SELECT id, name, options, emoji, is_public, created_at, updated_at FROM saved_polls WHERE user_id = $1 ORDER BY updated_at DESC',
+      [userId],
+    );
 
-      return res.rows;
-    },
-  );
+    return res.rows;
+  });
 
   // POST /api/saved-polls — create a saved poll template
   fastify.post<{ Body: { name: string; options: string[]; emoji?: string } }>(
@@ -49,8 +45,14 @@ export async function savedPollRoutes(fastify: FastifyInstance) {
       if (options.length > MAX_OPTIONS) {
         return reply.status(400).send({ error: 'Max 32 options allowed' });
       }
-      if (!options.every(o => typeof o === 'string' && o.trim().length > 0 && o.length <= MAX_OPTION_TEXT_LENGTH)) {
-        return reply.status(400).send({ error: 'Each option must be a non-empty string of 100 characters or fewer' });
+      if (
+        !options.every(
+          (o) => typeof o === 'string' && o.trim().length > 0 && o.length <= MAX_OPTION_TEXT_LENGTH,
+        )
+      ) {
+        return reply
+          .status(400)
+          .send({ error: 'Each option must be a non-empty string of 100 characters or fewer' });
       }
 
       const res = await pool.query<{ id: string }>(
@@ -73,7 +75,7 @@ export async function savedPollRoutes(fastify: FastifyInstance) {
       const { id } = request.params;
       const name = (request.body?.name ?? '').trim();
       const options = request.body?.options;
-      const emoji = request.body?.emoji !== undefined ? (request.body.emoji.trim() || '📝') : undefined;
+      const emoji = request.body?.emoji !== undefined ? request.body.emoji.trim() || '📝' : undefined;
 
       if (!name && options === undefined && emoji === undefined) {
         return reply.status(400).send({ error: 'Nothing to update' });
@@ -85,8 +87,14 @@ export async function savedPollRoutes(fastify: FastifyInstance) {
         if (options.length > MAX_OPTIONS) {
           return reply.status(400).send({ error: 'Max 32 options allowed' });
         }
-        if (!options.every(o => typeof o === 'string' && o.trim().length > 0 && o.length <= MAX_OPTION_TEXT_LENGTH)) {
-          return reply.status(400).send({ error: 'Each option must be a non-empty string of 100 characters or fewer' });
+        if (
+          !options.every(
+            (o) => typeof o === 'string' && o.trim().length > 0 && o.length <= MAX_OPTION_TEXT_LENGTH,
+          )
+        ) {
+          return reply
+            .status(400)
+            .send({ error: 'Each option must be a non-empty string of 100 characters or fewer' });
         }
       }
 
@@ -181,10 +189,10 @@ export async function savedPollRoutes(fastify: FastifyInstance) {
       const userId = request.telegramUser.id;
       const { id } = request.params;
 
-      const res = await pool.query(
-        'DELETE FROM saved_polls WHERE id = $1 AND user_id = $2 RETURNING id',
-        [id, userId],
-      );
+      const res = await pool.query('DELETE FROM saved_polls WHERE id = $1 AND user_id = $2 RETURNING id', [
+        id,
+        userId,
+      ]);
 
       if (res.rows.length === 0) {
         return reply.status(404).send({ error: 'Saved poll not found' });

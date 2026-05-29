@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
+import Fastify from 'fastify';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -8,7 +8,10 @@ const mockFetch = vi.fn();
 
 let mockRejectAuth = false;
 vi.mock('../middleware/initData.js', () => ({
-  initDataMiddleware: async (req: { telegramUser: unknown; telegramChat: unknown }, reply: { status: (n: number) => { send: (b: unknown) => void } }) => {
+  initDataMiddleware: async (
+    req: { telegramUser: unknown; telegramChat: unknown },
+    reply: { status: (n: number) => { send: (b: unknown) => void } },
+  ) => {
     if (mockRejectAuth) {
       reply.status(401).send({ error: 'Missing initData' });
       return;
@@ -50,7 +53,11 @@ describe('POST /api/ai/generate-options', () => {
 
   it('returns 401 when initData is missing', async () => {
     mockRejectAuth = true;
-    const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Test' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ai/generate-options',
+      payload: { name: 'Test' },
+    });
     expect(res.statusCode).toBe(401);
   });
 
@@ -65,31 +72,52 @@ describe('POST /api/ai/generate-options', () => {
   });
 
   it('returns options for a valid clean JSON response', async () => {
-    groqReturns('["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin","TypeScript","Ruby","PHP","Scala"]');
-    const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Top languages' } });
+    groqReturns(
+      '["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin","TypeScript","Ruby","PHP","Scala"]',
+    );
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ai/generate-options',
+      payload: { name: 'Top languages' },
+    });
     expect(res.statusCode).toBe(200);
     expect(res.json().options).toHaveLength(12);
     expect(res.json().options[0]).toBe('Python');
   });
 
   it('extracts options from fenced JSON (```json ... ```)', async () => {
-    groqReturns('```json\n["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin","TypeScript","Ruby","PHP","Scala"]\n```');
-    const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Top languages' } });
+    groqReturns(
+      '```json\n["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin","TypeScript","Ruby","PHP","Scala"]\n```',
+    );
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ai/generate-options',
+      payload: { name: 'Top languages' },
+    });
     expect(res.statusCode).toBe(200);
     expect(res.json().options).toHaveLength(12);
   });
 
   it('extracts options when model adds a preamble sentence', async () => {
-    groqReturns('Here are 12 options:\n["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin","TypeScript","Ruby","PHP","Scala"]');
-    const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Top languages' } });
+    groqReturns(
+      'Here are 12 options:\n["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin","TypeScript","Ruby","PHP","Scala"]',
+    );
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ai/generate-options',
+      payload: { name: 'Top languages' },
+    });
     expect(res.statusCode).toBe(200);
     expect(res.json().options).toHaveLength(12);
   });
 
   it('filters out existingOptions case-insensitively', async () => {
-    groqReturns('["python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin","TypeScript","Ruby","PHP","Scala"]');
+    groqReturns(
+      '["python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin","TypeScript","Ruby","PHP","Scala"]',
+    );
     const res = await app.inject({
-      method: 'POST', url: '/api/ai/generate-options',
+      method: 'POST',
+      url: '/api/ai/generate-options',
       payload: { name: 'Top languages', existingOptions: ['Python', 'JAVASCRIPT'] },
     });
     expect(res.statusCode).toBe(200);
@@ -102,32 +130,70 @@ describe('POST /api/ai/generate-options', () => {
   it('trims options longer than 100 characters', async () => {
     const longOption = 'A'.repeat(120);
     groqReturns(`["${longOption}","B","C","D","E","F","G","H"]`);
-    const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Test' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ai/generate-options',
+      payload: { name: 'Test' },
+    });
     expect(res.statusCode).toBe(200);
     expect((res.json().options as string[])[0].length).toBe(100);
   });
 
   it('retries once on invalid JSON and succeeds on second attempt', async () => {
     mockFetch
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ choices: [{ message: { content: 'not json' } }] }) })
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ choices: [{ message: { content: '["A","B","C","D","E","F","G","H","I","J","K","L"]' } }] }) });
-    const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Test' } });
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ choices: [{ message: { content: 'not json' } }] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: '["A","B","C","D","E","F","G","H","I","J","K","L"]' } }],
+          }),
+      });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ai/generate-options',
+      payload: { name: 'Test' },
+    });
     expect(res.statusCode).toBe(200);
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
   it('returns 502 after two failed parse attempts', async () => {
     groqReturns('not json at all');
-    const res = await app.inject({ method: 'POST', url: '/api/ai/generate-options', payload: { name: 'Test' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ai/generate-options',
+      payload: { name: 'Test' },
+    });
     expect(res.statusCode).toBe(502);
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
   it('returns fewer than 12 options when most are filtered by existingOptions', async () => {
-    groqReturns('["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin","TypeScript","Ruby","PHP","Scala"]');
+    groqReturns(
+      '["Python","JavaScript","Java","C++","Go","Rust","Swift","Kotlin","TypeScript","Ruby","PHP","Scala"]',
+    );
     const res = await app.inject({
-      method: 'POST', url: '/api/ai/generate-options',
-      payload: { name: 'Test', existingOptions: ['Python','JavaScript','Java','C++','Go','Rust','Swift','Kotlin','TypeScript','Ruby'] },
+      method: 'POST',
+      url: '/api/ai/generate-options',
+      payload: {
+        name: 'Test',
+        existingOptions: [
+          'Python',
+          'JavaScript',
+          'Java',
+          'C++',
+          'Go',
+          'Rust',
+          'Swift',
+          'Kotlin',
+          'TypeScript',
+          'Ruby',
+        ],
+      },
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().options.length).toBe(2);

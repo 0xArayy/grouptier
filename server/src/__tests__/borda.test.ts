@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { computeBorda } from '../db/borda.js';
 
 describe('computeBorda', () => {
@@ -13,7 +13,10 @@ describe('computeBorda', () => {
   });
 
   it('two voters, agreement — scores double', () => {
-    const result = computeBorda([['A', 'B'], ['A', 'B']]);
+    const result = computeBorda([
+      ['A', 'B'],
+      ['A', 'B'],
+    ]);
     expect(result[0].option).toBe('A');
     expect(result[0].score).toBe(2); // 1+1
     expect(result[1].option).toBe('B');
@@ -21,7 +24,10 @@ describe('computeBorda', () => {
   });
 
   it('two voters, disagreement — tie', () => {
-    const result = computeBorda([['A', 'B'], ['B', 'A']]);
+    const result = computeBorda([
+      ['A', 'B'],
+      ['B', 'A'],
+    ]);
     expect(result[0].score).toBe(result[1].score);
   });
 
@@ -45,11 +51,11 @@ describe('computeBorda', () => {
       ['E', 'D', 'C', 'B', 'A'],
     ]);
     // C is 3rd for both → always 2 pts each → total 4
-    const c = result.find(r => r.option === 'C');
+    const c = result.find((r) => r.option === 'C');
     expect(c?.score).toBe(4);
     // A and E are symmetric — both score 4+0 = 4
-    const a = result.find(r => r.option === 'A');
-    const e = result.find(r => r.option === 'E');
+    const a = result.find((r) => r.option === 'A');
+    const e = result.find((r) => r.option === 'E');
     expect(a?.score).toBe(e?.score);
   });
 });

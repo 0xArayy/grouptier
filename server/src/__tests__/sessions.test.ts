@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
+import Fastify from 'fastify';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -67,11 +67,13 @@ async function buildApp(): Promise<FastifyInstance> {
 // expectation whose `match` substring appears in the SQL. Order-independent:
 // adding/removing queries between matched ones won't break unrelated assertions.
 function qMocks(expectations: Array<{ match: string; rows: unknown[] }>) {
-  const pending = expectations.map(e => ({ ...e }));
+  const pending = expectations.map((e) => ({ ...e }));
   mockQuery.mockImplementation((sql: string) => {
-    const idx = pending.findIndex(e => sql.includes(e.match));
+    const idx = pending.findIndex((e) => sql.includes(e.match));
     if (idx === -1) {
-      throw new Error(`qMocks: unmatched SQL\n  sql: ${sql.slice(0, 120)}\n  remaining: [${pending.map(e => `"${e.match}"`).join(', ')}]`);
+      throw new Error(
+        `qMocks: unmatched SQL\n  sql: ${sql.slice(0, 120)}\n  remaining: [${pending.map((e) => `"${e.match}"`).join(', ')}]`,
+      );
     }
     const [{ rows }] = pending.splice(idx, 1);
     return Promise.resolve({ rows });
@@ -216,7 +218,10 @@ describe('GET /api/sessions/:id', () => {
 
   it('surfaces voting+message_sent=false as collecting (crash recovery)', async () => {
     qMocks([
-      { match: 'SELECT * FROM sessions', rows: [{ id: SESSION_ID, name: 'Poll', status: 'voting', message_sent: false }] },
+      {
+        match: 'SELECT * FROM sessions',
+        rows: [{ id: SESSION_ID, name: 'Poll', status: 'voting', message_sent: false }],
+      },
       { match: 'INSERT INTO session_voters', rows: [] },
       { match: 'SELECT text FROM options', rows: [] },
       { match: 'COUNT(*) FROM session_voters', rows: [{ count: '1' }] },
@@ -237,12 +242,18 @@ describe('GET /api/sessions/:id', () => {
   it('returns my_result for current user when they have submitted', async () => {
     // pg returns BIGINT user_id as string; String() coercion ensures type-safe match against JS number
     qMocks([
-      { match: 'SELECT * FROM sessions', rows: [{ id: SESSION_ID, name: 'Poll', status: 'voting', message_sent: true }] },
+      {
+        match: 'SELECT * FROM sessions',
+        rows: [{ id: SESSION_ID, name: 'Poll', status: 'voting', message_sent: true }],
+      },
       { match: 'INSERT INTO session_voters', rows: [] },
       { match: 'SELECT text FROM options', rows: [{ text: 'Alpha' }, { text: 'Beta' }] },
       { match: 'COUNT(*) FROM session_voters', rows: [{ count: '2' }] },
       { match: 'COUNT(*) FROM user_results', rows: [{ count: '1' }] },
-      { match: 'user_id, ranked_list FROM user_results', rows: [{ user_id: '42', ranked_list: ['Alpha', 'Beta'] }] },
+      {
+        match: 'user_id, ranked_list FROM user_results',
+        rows: [{ user_id: '42', ranked_list: ['Alpha', 'Beta'] }],
+      },
     ]);
 
     const res = await app.inject({
@@ -366,7 +377,10 @@ describe('POST /api/sessions/:id/vote', () => {
 
   it('starts voting, sends photo card, returns ok', async () => {
     qMocks([
-      { match: 'SELECT id, name, chat_id, status', rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, status: 'collecting' }] },
+      {
+        match: 'SELECT id, name, chat_id, status',
+        rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, status: 'collecting' }],
+      },
       { match: 'COUNT(*) FROM options', rows: [{ count: '3' }] },
       { match: "SET status = 'voting'", rows: [] },
       { match: 'SELECT text FROM options', rows: [{ text: 'A' }, { text: 'B' }, { text: 'C' }] },
@@ -393,7 +407,10 @@ describe('POST /api/sessions/:id/vote', () => {
 
   it('rolls back and returns 502 when sendPhoto fails', async () => {
     qMocks([
-      { match: 'SELECT id, name, chat_id, status', rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, status: 'collecting' }] },
+      {
+        match: 'SELECT id, name, chat_id, status',
+        rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, status: 'collecting' }],
+      },
       { match: 'COUNT(*) FROM options', rows: [{ count: '2' }] },
       { match: "SET status = 'voting'", rows: [] },
       { match: 'SELECT text FROM options', rows: [{ text: 'A' }, { text: 'B' }] },
@@ -409,15 +426,16 @@ describe('POST /api/sessions/:id/vote', () => {
     });
 
     expect(res.statusCode).toBe(502);
-    expect(mockQuery).toHaveBeenCalledWith(
-      "UPDATE sessions SET status = 'collecting' WHERE id = $1",
-      [SESSION_ID],
-    );
+    expect(mockQuery).toHaveBeenCalledWith("UPDATE sessions SET status = 'collecting' WHERE id = $1", [
+      SESSION_ID,
+    ]);
   });
 
   it('returns 422 when fewer than 2 options', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, status: 'collecting' }] })
+      .mockResolvedValueOnce({
+        rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, status: 'collecting' }],
+      })
       .mockResolvedValueOnce({ rows: [{ count: '1' }] });
 
     const res = await app.inject({
@@ -430,7 +448,9 @@ describe('POST /api/sessions/:id/vote', () => {
   });
 
   it('returns 409 when session is not in collecting state', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, status: 'voting' }] });
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, status: 'voting' }],
+    });
 
     const res = await app.inject({
       method: 'POST',
@@ -514,7 +534,10 @@ describe('POST /api/sessions/:id/results', () => {
 
   it('returns 400 when ranked_list length does not match option count', async () => {
     qMocks([
-      { match: 'SELECT status, name', rows: [{ status: 'voting', name: 'Poll', message_id: null, chat_id: -1001 }] },
+      {
+        match: 'SELECT status, name',
+        rows: [{ status: 'voting', name: 'Poll', message_id: null, chat_id: -1001 }],
+      },
       { match: 'SELECT text FROM options', rows: [{ text: 'A' }, { text: 'B' }, { text: 'C' }] },
     ]);
 
@@ -530,7 +553,9 @@ describe('POST /api/sessions/:id/results', () => {
   });
 
   it('returns 403 when session is closed', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ status: 'closed', name: 'Poll', message_id: null, chat_id: -1001 }] });
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ status: 'closed', name: 'Poll', message_id: null, chat_id: -1001 }],
+    });
 
     const res = await app.inject({
       method: 'POST',
@@ -545,7 +570,10 @@ describe('POST /api/sessions/:id/results', () => {
 
   it('submits result and returns borda ranking', async () => {
     qMocks([
-      { match: 'SELECT status, name', rows: [{ status: 'voting', name: 'Poll', message_id: null, chat_id: -1001 }] },
+      {
+        match: 'SELECT status, name',
+        rows: [{ status: 'voting', name: 'Poll', message_id: null, chat_id: -1001 }],
+      },
       { match: 'SELECT text FROM options', rows: [{ text: 'A' }, { text: 'B' }] },
       { match: 'INSERT INTO user_results', rows: [] },
       { match: 'INSERT INTO session_voters', rows: [] },
@@ -638,7 +666,9 @@ describe('DELETE /api/sessions/:id/options/:text', () => {
   });
 
   it('returns 403 when caller is not the creator', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ status: 'collecting', chat_id: -1001, creator_user_id: 99 }] }); // creator 99 ≠ middleware userId 42
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ status: 'collecting', chat_id: -1001, creator_user_id: 99 }],
+    }); // creator 99 ≠ middleware userId 42
 
     const res = await app.inject({
       method: 'DELETE',
@@ -871,9 +901,15 @@ describe('POST /api/sessions/:id/close', () => {
 
   it('closes session and returns winner', async () => {
     qMocks([
-      { match: 'SELECT id, name, chat_id, creator_user_id', rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, creator_user_id: 42, status: 'voting' }] },
+      {
+        match: 'SELECT id, name, chat_id, creator_user_id',
+        rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, creator_user_id: 42, status: 'voting' }],
+      },
       { match: "SET status = 'closed'", rows: [] },
-      { match: 'ranked_list FROM user_results', rows: [{ ranked_list: ['A', 'B'] }, { ranked_list: ['B', 'A'] }] },
+      {
+        match: 'ranked_list FROM user_results',
+        rows: [{ ranked_list: ['A', 'B'] }, { ranked_list: ['B', 'A'] }],
+      },
     ]);
     mockSendPhoto.mockResolvedValueOnce({ message_id: 1 });
 
@@ -890,7 +926,9 @@ describe('POST /api/sessions/:id/close', () => {
   });
 
   it('returns 409 when session is not in voting state', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, creator_user_id: null, status: 'collecting' }] }); // SELECT — wrong status
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, creator_user_id: null, status: 'collecting' }],
+    }); // SELECT — wrong status
 
     const res = await app.inject({
       method: 'POST',
@@ -903,7 +941,10 @@ describe('POST /api/sessions/:id/close', () => {
 
   it('returns winner=null when no votes have been cast', async () => {
     qMocks([
-      { match: 'SELECT id, name, chat_id, creator_user_id', rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, creator_user_id: 42, status: 'voting' }] },
+      {
+        match: 'SELECT id, name, chat_id, creator_user_id',
+        rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, creator_user_id: 42, status: 'voting' }],
+      },
       { match: "SET status = 'closed'", rows: [] },
       { match: 'ranked_list FROM user_results', rows: [] },
     ]);
@@ -919,7 +960,9 @@ describe('POST /api/sessions/:id/close', () => {
   });
 
   it('returns 403 when caller is not the creator (group session)', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, creator_user_id: 99, status: 'voting' }] }); // creator 99 ≠ middleware userId 42
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ id: SESSION_ID, name: 'Poll', chat_id: -1001, creator_user_id: 99, status: 'voting' }],
+    }); // creator 99 ≠ middleware userId 42
 
     const res = await app.inject({
       method: 'POST',

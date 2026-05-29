@@ -1,16 +1,26 @@
 import type { FastifyInstance } from 'fastify';
 import { InputFile } from 'grammy';
-import { pool } from '../db/client.js';
-import { initDataMiddleware } from '../middleware/initData.js';
-import { computeBorda } from '../db/borda.js';
 import { bot } from '../bot/bot.js';
-import { buildVoteUrl } from '../lib/urls.js';
-import { buildVotingCard, buildVotingCaption, buildWinnerCard } from '../bot/cards.js';
-import { MAX_NAME_LENGTH, MAX_OPTION_TEXT_LENGTH, MAX_OPTIONS } from '../lib/constants.js';
-import { createSession } from '../lib/sessions.js';
+import { buildVotingCaption, buildVotingCard, buildWinnerCard } from '../bot/cards.js';
+import { computeBorda } from '../db/borda.js';
+import { pool } from '../db/client.js';
+import { MAX_NAME_LENGTH, MAX_OPTION_TEXT_LENGTH, MAX_OPTIONS, UUID_RE } from '../lib/constants.js';
 import { emitSession } from '../lib/sessionEvents.js';
+import { resolveEffectiveStatus } from '../lib/sessionPayload.js';
+import { createSession } from '../lib/sessions.js';
+import { buildVoteUrl } from '../lib/urls.js';
+import { initDataMiddleware } from '../middleware/initData.js';
 
 export async function sessionRoutes(fastify: FastifyInstance) {
+  // Validate :id param is a UUID before any route handler runs.
+  // Prevents unnecessary DB round-trips from malformed or oversized IDs.
+  fastify.addHook('preHandler', async (request, reply) => {
+    const params = request.params as { id?: string };
+    if (params.id !== undefined && !UUID_RE.test(params.id)) {
+      return reply.status(400).send({ error: 'Invalid session id' });
+    }
+  });
+
   // POST /api/sessions — create session from Mini App (chat_id from validated initData)
   fastify.post<{ Body: { name?: string } }>(
     '/api/sessions',
@@ -26,39 +36,34 @@ export async function sessionRoutes(fastify: FastifyInstance) {
 
       const outcome = await createSession(chat, userId, rawName);
       if (outcome.conflict) {
-        return reply.status(409).send({ error: 'Session already exists', id: outcome.id, share_url: outcome.share_url });
+        return reply
+          .status(409)
+          .send({ error: 'Session already exists', id: outcome.id, share_url: outcome.share_url });
       }
       return reply.status(201).send({ id: outcome.id, share_url: outcome.share_url });
     },
   );
 
   // GET /api/sessions/active — return current collecting session for this chat or user
-  fastify.get(
-    '/api/sessions/active',
-    { preHandler: initDataMiddleware },
-    async (request, reply) => {
-      const chat = request.telegramChat;
-      const userId = request.telegramUser.id;
+  fastify.get('/api/sessions/active', { preHandler: initDataMiddleware }, async (request, reply) => {
+    const chat = request.telegramChat;
+    const userId = request.telegramUser.id;
 
-      let res;
-      if (chat) {
-        res = await pool.query(
+    const res = chat
+      ? await pool.query(
           "SELECT id, name, status FROM sessions WHERE chat_id = $1 AND status = 'collecting' ORDER BY created_at DESC LIMIT 1",
           [chat.id],
-        );
-      } else {
-        res = await pool.query(
+        )
+      : await pool.query(
           "SELECT id, name, status FROM sessions WHERE creator_user_id = $1 AND chat_id IS NULL AND status = 'collecting' ORDER BY created_at DESC LIMIT 1",
           [userId],
         );
-      }
 
-      if (res.rows.length === 0) {
-        return reply.status(404).send({ error: 'No active session' });
-      }
-      return res.rows[0];
-    },
-  );
+    if (res.rows.length === 0) {
+      return reply.status(404).send({ error: 'No active session' });
+    }
+    return res.rows[0];
+  });
 
   // GET /api/sessions/:id — fetch session state for Mini App
   fastify.get<{ Params: { id: string } }>(
@@ -68,10 +73,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       const { id } = request.params;
       const userId = request.telegramUser.id;
 
-      const sessionRes = await pool.query(
-        'SELECT * FROM sessions WHERE id = $1',
-        [id],
-      );
+      const sessionRes = await pool.query('SELECT * FROM sessions WHERE id = $1', [id]);
       if (sessionRes.rows.length === 0) {
         return reply.status(404).send({ error: 'Session not found' });
       }
@@ -90,89 +92,78 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         pool.query('SELECT user_id, ranked_list FROM user_results WHERE session_id = $1', [id]),
       ]);
       const options = optionsRes.rows.map((r: { text: string }) => r.text);
-      const borda = computeBorda(resultsRes.rows.map((r: { user_id: number; ranked_list: string[] }) => r.ranked_list));
+      const borda = computeBorda(
+        resultsRes.rows.map((r: { user_id: number; ranked_list: string[] }) => r.ranked_list),
+      );
 
-      // A crash between status flip and sendMessage leaves status='voting' but
-      // message_sent=false — surface it as 'collecting' so the UI stays functional.
-      // chat_id === null means chatless: no bot message is ever sent, so message_sent
-      // stays false by design — must not be treated as a crash recovery case.
-      const effectiveStatus =
-        session.status === 'voting' && !session.message_sent && session.chat_id !== null
-          ? 'collecting' : session.status;
+      const effectiveStatus = resolveEffectiveStatus(session);
 
       return {
         id: session.id,
         name: session.name ?? 'Untitled Session',
         status: effectiveStatus,
         options,
-        voter_count: parseInt(voterCount.rows[0].count),
-        result_count: parseInt(resultCount.rows[0].count),
+        voter_count: parseInt(voterCount.rows[0].count, 10),
+        result_count: parseInt(resultCount.rows[0].count, 10),
         borda_ranking: borda,
-        my_result: (resultsRes.rows.find((r: { user_id: number; ranked_list: string[] }) => String(r.user_id) === String(userId))?.ranked_list) ?? null,
+        my_result:
+          resultsRes.rows.find(
+            (r: { user_id: number; ranked_list: string[] }) => String(r.user_id) === String(userId),
+          )?.ranked_list ?? null,
         share_url: buildVoteUrl(id),
       };
     },
   );
 
   // GET /api/sessions/:id/winner-card — public PNG of winner announcement (no auth, for inline sharing)
-  fastify.get<{ Params: { id: string } }>(
-    '/api/sessions/:id/winner-card',
-    async (request, reply) => {
-      const { id } = request.params;
+  fastify.get<{ Params: { id: string } }>('/api/sessions/:id/winner-card', async (request, reply) => {
+    const { id } = request.params;
 
-      const sessionRes = await pool.query(
-        "SELECT name FROM sessions WHERE id = $1 AND status = 'closed'",
-        [id],
-      );
-      if (sessionRes.rows.length === 0) {
-        return reply.status(404).send({ error: 'Session not found or not closed' });
-      }
+    const sessionRes = await pool.query("SELECT name FROM sessions WHERE id = $1 AND status = 'closed'", [
+      id,
+    ]);
+    if (sessionRes.rows.length === 0) {
+      return reply.status(404).send({ error: 'Session not found or not closed' });
+    }
 
-      const resultsRes = await pool.query(
-        'SELECT ranked_list FROM user_results WHERE session_id = $1',
-        [id],
-      );
-      if (resultsRes.rows.length === 0) {
-        return reply.status(404).send({ error: 'No results' });
-      }
+    const resultsRes = await pool.query('SELECT ranked_list FROM user_results WHERE session_id = $1', [id]);
+    if (resultsRes.rows.length === 0) {
+      return reply.status(404).send({ error: 'No results' });
+    }
 
-      const borda = computeBorda(resultsRes.rows.map((r: { ranked_list: string[] }) => r.ranked_list));
-      const card = await buildWinnerCard(sessionRes.rows[0].name ?? 'Untitled Session', borda);
+    const borda = computeBorda(resultsRes.rows.map((r: { ranked_list: string[] }) => r.ranked_list));
+    const card = await buildWinnerCard(sessionRes.rows[0].name ?? 'Untitled Session', borda);
 
-      reply.header('Content-Type', 'image/png');
-      reply.header('Cache-Control', 'public, max-age=3600');
-      return reply.send(card.image);
-    },
-  );
+    reply.header('Content-Type', 'image/png');
+    reply.header('Cache-Control', 'public, max-age=3600');
+    return reply.send(card.image);
+  });
 
   // GET /api/sessions/:id/voting-card — public PNG of voting card (no auth, for inline sharing)
-  fastify.get<{ Params: { id: string } }>(
-    '/api/sessions/:id/voting-card',
-    async (request, reply) => {
-      const { id } = request.params;
+  fastify.get<{ Params: { id: string } }>('/api/sessions/:id/voting-card', async (request, reply) => {
+    const { id } = request.params;
 
-      const sessionRes = await pool.query(
-        "SELECT name, status FROM sessions WHERE id = $1 AND status != 'closed'",
-        [id],
-      );
-      if (sessionRes.rows.length === 0) {
-        return reply.status(404).send({ error: 'Session not found or already closed' });
-      }
+    const sessionRes = await pool.query(
+      "SELECT name, status FROM sessions WHERE id = $1 AND status != 'closed'",
+      [id],
+    );
+    if (sessionRes.rows.length === 0) {
+      return reply.status(404).send({ error: 'Session not found or already closed' });
+    }
 
-      const optionsRes = await pool.query(
-        'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
-        [id],
-      );
-      const options: string[] = optionsRes.rows.map((r: { text: string }) => r.text);
+    const optionsRes = await pool.query(
+      'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
+      [id],
+    );
+    const options: string[] = optionsRes.rows.map((r: { text: string }) => r.text);
 
-      const voteUrl = buildVoteUrl(id);
-      const card = await buildVotingCard(sessionRes.rows[0].name ?? 'Untitled Session', options, 0, 0, voteUrl);
+    const voteUrl = buildVoteUrl(id);
+    const card = await buildVotingCard(sessionRes.rows[0].name ?? 'Untitled Session', options, 0, 0, voteUrl);
 
-      reply.header('Content-Type', 'image/png');
-      reply.header('Cache-Control', 'public, max-age=60');
-      return reply.send(card.image);
-    },
-  );
+    reply.header('Content-Type', 'image/png');
+    reply.header('Cache-Control', 'public, max-age=60');
+    return reply.send(card.image);
+  });
 
   // GET /api/sessions/:id/options — lightweight poll-friendly options fetch (no voter registration)
   fastify.get<{ Params: { id: string } }>(
@@ -184,10 +175,9 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       if (sessionRes.rows.length === 0) {
         return reply.status(404).send({ error: 'Session not found' });
       }
-      const res = await pool.query(
-        'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
-        [id],
-      );
+      const res = await pool.query('SELECT text FROM options WHERE session_id = $1 ORDER BY created_at', [
+        id,
+      ]);
       return { options: res.rows.map((r: { text: string }) => r.text) };
     },
   );
@@ -219,10 +209,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       }
 
       // Validate ranked_list items are actual session options (no injected/duplicate entries)
-      const validOptRes = await pool.query(
-        'SELECT text FROM options WHERE session_id = $1',
-        [id],
-      );
+      const validOptRes = await pool.query('SELECT text FROM options WHERE session_id = $1', [id]);
       const validOptions = new Set<string>(validOptRes.rows.map((r: { text: string }) => r.text));
       for (const opt of ranked_list) {
         if (!validOptions.has(opt)) {
@@ -233,7 +220,9 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'Duplicate options in ranked_list' });
       }
       if (ranked_list.length !== validOptions.size) {
-        return reply.status(400).send({ error: `ranked_list must contain all ${validOptions.size} options, got ${ranked_list.length}` });
+        return reply.status(400).send({
+          error: `ranked_list must contain all ${validOptions.size} options, got ${ranked_list.length}`,
+        });
       }
 
       // Upsert result
@@ -256,7 +245,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       ]);
       const borda = computeBorda(resultsRes.rows.map((r: { ranked_list: string[] }) => r.ranked_list));
       const resultCount = resultsRes.rows.length;
-      const totalVoters = parseInt(voterCountRes.rows[0].count);
+      const totalVoters = parseInt(voterCountRes.rows[0].count, 10);
 
       if (session.message_id) {
         const caption = buildVotingCaption(resultCount, totalVoters);
@@ -324,10 +313,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
 
       const chat = request.telegramChat;
 
-      const sessionRes = await pool.query(
-        'SELECT status, chat_id FROM sessions WHERE id = $1',
-        [id],
-      );
+      const sessionRes = await pool.query('SELECT status, chat_id FROM sessions WHERE id = $1', [id]);
       if (sessionRes.rows.length === 0) {
         return reply.status(404).send({ error: 'Session not found' });
       }
@@ -344,11 +330,8 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         // Lock the session row to serialize concurrent option inserts (TOCTOU guard)
         await client.query('SELECT 1 FROM sessions WHERE id = $1 FOR UPDATE', [id]);
 
-        const countRes = await client.query(
-          'SELECT COUNT(*) FROM options WHERE session_id = $1',
-          [id],
-        );
-        if (parseInt(countRes.rows[0].count) >= MAX_OPTIONS) {
+        const countRes = await client.query('SELECT COUNT(*) FROM options WHERE session_id = $1', [id]);
+        if (parseInt(countRes.rows[0].count, 10) >= MAX_OPTIONS) {
           await client.query('ROLLBACK');
           return reply.status(422).send({ error: `Max ${MAX_OPTIONS} options reached` });
         }
@@ -414,15 +397,14 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         return reply.status(403).send({ error: 'Session is not collecting options' });
       }
 
-      await pool.query(
-        'DELETE FROM options WHERE session_id = $1 AND LOWER(text) = LOWER($2)',
-        [id, decoded],
-      );
+      await pool.query('DELETE FROM options WHERE session_id = $1 AND LOWER(text) = LOWER($2)', [
+        id,
+        decoded,
+      ]);
 
-      const allRes = await pool.query(
-        'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
-        [id],
-      );
+      const allRes = await pool.query('SELECT text FROM options WHERE session_id = $1 ORDER BY created_at', [
+        id,
+      ]);
       emitSession(id);
       return { options: allRes.rows.map((r: { text: string }) => r.text) };
     },
@@ -446,7 +428,10 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       const deduped: string[] = [];
       for (const t of texts) {
         const key = t.toLowerCase();
-        if (!seen.has(key)) { seen.add(key); deduped.push(t); }
+        if (!seen.has(key)) {
+          seen.add(key);
+          deduped.push(t);
+        }
       }
 
       if (deduped.length > MAX_OPTIONS) {
@@ -483,7 +468,10 @@ export async function sessionRoutes(fastify: FastifyInstance) {
           await client.query('ROLLBACK');
           return reply.status(403).send({ error: 'Forbidden' });
         }
-        if (sessionRes.rows[0].creator_user_id && String(sessionRes.rows[0].creator_user_id) !== String(userId)) {
+        if (
+          sessionRes.rows[0].creator_user_id &&
+          String(sessionRes.rows[0].creator_user_id) !== String(userId)
+        ) {
           await client.query('ROLLBACK');
           return reply.status(403).send({ error: 'Only the creator can replace options' });
         }
@@ -495,10 +483,10 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         if (name !== undefined) {
           const trimmedName = String(name).trim();
           if (trimmedName) {
-            await client.query(
-              "UPDATE sessions SET name = $1 WHERE id = $2 AND status = 'collecting'",
-              [trimmedName, id],
-            );
+            await client.query("UPDATE sessions SET name = $1 WHERE id = $2 AND status = 'collecting'", [
+              trimmedName,
+              id,
+            ]);
           }
         }
 
@@ -507,10 +495,10 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         if (deduped.length > 0) {
           // clock_timestamp() gives each row its own timestamp, preserving insertion order
           const placeholders = deduped.map((_, i) => `($1, $${i + 2}, clock_timestamp())`).join(', ');
-          await client.query(
-            `INSERT INTO options (session_id, text, created_at) VALUES ${placeholders}`,
-            [id, ...deduped],
-          );
+          await client.query(`INSERT INTO options (session_id, text, created_at) VALUES ${placeholders}`, [
+            id,
+            ...deduped,
+          ]);
         }
 
         const allRes = await client.query(
@@ -538,10 +526,9 @@ export async function sessionRoutes(fastify: FastifyInstance) {
 
       const chat = request.telegramChat;
 
-      const sessionRes = await pool.query(
-        'SELECT id, name, chat_id, status FROM sessions WHERE id = $1',
-        [id],
-      );
+      const sessionRes = await pool.query('SELECT id, name, chat_id, status FROM sessions WHERE id = $1', [
+        id,
+      ]);
       if (sessionRes.rows.length === 0) {
         return reply.status(404).send({ error: 'Session not found' });
       }
@@ -555,11 +542,8 @@ export async function sessionRoutes(fastify: FastifyInstance) {
         return reply.status(409).send({ error: 'Session is not in collecting state' });
       }
 
-      const countRes = await pool.query(
-        'SELECT COUNT(*) FROM options WHERE session_id = $1',
-        [id],
-      );
-      if (parseInt(countRes.rows[0].count) < 2) {
+      const countRes = await pool.query('SELECT COUNT(*) FROM options WHERE session_id = $1', [id]);
+      if (parseInt(countRes.rows[0].count, 10) < 2) {
         return reply.status(422).send({ error: 'Need at least 2 options' });
       }
 
@@ -574,23 +558,22 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       const miniAppUrl = buildVoteUrl(id);
       const name = session.name ?? 'Untitled Session';
 
-      const optRes = await pool.query(
-        'SELECT text FROM options WHERE session_id = $1 ORDER BY created_at',
-        [id],
-      );
+      const optRes = await pool.query('SELECT text FROM options WHERE session_id = $1 ORDER BY created_at', [
+        id,
+      ]);
       const options: string[] = optRes.rows.map((r: { text: string }) => r.text);
 
       try {
         const card = await buildVotingCard(name, options, 0, 0, miniAppUrl);
-        const sent = await bot.api.sendPhoto(
-          session.chat_id,
-          new InputFile(card.image, 'card.png'),
-          { caption: card.caption, parse_mode: card.parse_mode, reply_markup: card.reply_markup },
-        );
-        await pool.query(
-          'UPDATE sessions SET message_id = $1, message_sent = true WHERE id = $2',
-          [sent.message_id, id],
-        );
+        const sent = await bot.api.sendPhoto(session.chat_id, new InputFile(card.image, 'card.png'), {
+          caption: card.caption,
+          parse_mode: card.parse_mode,
+          reply_markup: card.reply_markup,
+        });
+        await pool.query('UPDATE sessions SET message_id = $1, message_sent = true WHERE id = $2', [
+          sent.message_id,
+          id,
+        ]);
         emitSession(id);
         return { ok: true };
       } catch (err) {
@@ -630,10 +613,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
       await pool.query("UPDATE sessions SET status = 'closed' WHERE id = $1", [id]);
       emitSession(id);
 
-      const resultsRes = await pool.query(
-        'SELECT ranked_list FROM user_results WHERE session_id = $1',
-        [id],
-      );
+      const resultsRes = await pool.query('SELECT ranked_list FROM user_results WHERE session_id = $1', [id]);
 
       if (resultsRes.rows.length === 0) {
         return { ok: true, winner: null };

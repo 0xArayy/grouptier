@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
+import Fastify from 'fastify';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -59,23 +59,45 @@ describe('GET /api/public-polls', () => {
   it('returns paginated list with items and nextOffset', async () => {
     mockQuery.mockResolvedValueOnce({
       rows: [
-        { id: POLL_ID, name: 'Movies', emoji: '🎬', author_name: 'Alice', uses_count: 5, option_count: 3, categories: [] },
+        {
+          id: POLL_ID,
+          name: 'Movies',
+          emoji: '🎬',
+          author_name: 'Alice',
+          uses_count: 5,
+          option_count: 3,
+          categories: [],
+        },
       ],
     });
 
-    const res = await app.inject({ method: 'GET', url: '/api/public-polls', headers: { 'x-init-data': 'dev' } });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/public-polls',
+      headers: { 'x-init-data': 'dev' },
+    });
 
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.items).toHaveLength(1);
     expect(body.nextOffset).toBeNull();
-    expect(body.items[0]).toMatchObject({ id: POLL_ID, name: 'Movies', emoji: '🎬', option_count: 3, uses_count: 5 });
+    expect(body.items[0]).toMatchObject({
+      id: POLL_ID,
+      name: 'Movies',
+      emoji: '🎬',
+      option_count: 3,
+      uses_count: 5,
+    });
   });
 
   it('returns filtered list when q is provided — passes %q% as first param', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] });
 
-    const res = await app.inject({ method: 'GET', url: '/api/public-polls?q=games', headers: { 'x-init-data': 'dev' } });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/public-polls?q=games',
+      headers: { 'x-init-data': 'dev' },
+    });
 
     expect(res.statusCode).toBe(200);
     const callArgs = mockQuery.mock.calls[0];
@@ -84,10 +106,24 @@ describe('GET /api/public-polls', () => {
 
   it('returns author_name as null when show_author=false (SQL CASE WHEN)', async () => {
     mockQuery.mockResolvedValueOnce({
-      rows: [{ id: POLL_ID, name: 'Anon Poll', emoji: '🎮', author_name: null, uses_count: 0, option_count: 2, categories: [] }],
+      rows: [
+        {
+          id: POLL_ID,
+          name: 'Anon Poll',
+          emoji: '🎮',
+          author_name: null,
+          uses_count: 0,
+          option_count: 2,
+          categories: [],
+        },
+      ],
     });
 
-    const res = await app.inject({ method: 'GET', url: '/api/public-polls', headers: { 'x-init-data': 'dev' } });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/public-polls',
+      headers: { 'x-init-data': 'dev' },
+    });
 
     const body = JSON.parse(res.body);
     expect(body.items[0].author_name).toBeNull();
@@ -95,10 +131,24 @@ describe('GET /api/public-polls', () => {
 
   it('returns option_count not full options array', async () => {
     mockQuery.mockResolvedValueOnce({
-      rows: [{ id: POLL_ID, name: 'Test', emoji: '✅', author_name: 'Bob', uses_count: 1, option_count: 10, categories: [] }],
+      rows: [
+        {
+          id: POLL_ID,
+          name: 'Test',
+          emoji: '✅',
+          author_name: 'Bob',
+          uses_count: 1,
+          option_count: 10,
+          categories: [],
+        },
+      ],
     });
 
-    const res = await app.inject({ method: 'GET', url: '/api/public-polls', headers: { 'x-init-data': 'dev' } });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/public-polls',
+      headers: { 'x-init-data': 'dev' },
+    });
 
     const body = JSON.parse(res.body);
     expect(body.items[0].option_count).toBe(10);
@@ -108,8 +158,13 @@ describe('GET /api/public-polls', () => {
   it('sets nextOffset when more results exist (limit+1 trick)', async () => {
     // Mock returns limit+1 = 21 rows → hasMore=true
     const rows = Array.from({ length: 21 }, (_, i) => ({
-      id: `id-${i}`, name: `Poll ${i}`, emoji: '🎮',
-      author_name: null, uses_count: 0, option_count: 2, categories: [],
+      id: `id-${i}`,
+      name: `Poll ${i}`,
+      emoji: '🎮',
+      author_name: null,
+      uses_count: 0,
+      option_count: 2,
+      categories: [],
     }));
     mockQuery.mockResolvedValueOnce({ rows });
 
@@ -120,14 +175,19 @@ describe('GET /api/public-polls', () => {
     });
 
     const body = JSON.parse(res.body);
-    expect(body.items).toHaveLength(20);      // trimmed to limit
-    expect(body.nextOffset).toBe(20);         // off + limit
+    expect(body.items).toHaveLength(20); // trimmed to limit
+    expect(body.nextOffset).toBe(20); // off + limit
   });
 
   it('passes offset to SQL and returns null nextOffset on last page', async () => {
     const rows = Array.from({ length: 3 }, (_, i) => ({
-      id: `id-${i}`, name: `Poll ${i}`, emoji: '🎮',
-      author_name: null, uses_count: 0, option_count: 2, categories: [],
+      id: `id-${i}`,
+      name: `Poll ${i}`,
+      emoji: '🎮',
+      author_name: null,
+      uses_count: 0,
+      option_count: 2,
+      categories: [],
     }));
     mockQuery.mockResolvedValueOnce({ rows });
 
@@ -210,7 +270,7 @@ describe('POST /api/public-polls/:id/use', () => {
     expect(insertCall[1][0]).toBe(SESSION_ID);
     expect(insertCall[1].slice(1)).toEqual(options);
     // Exactly one INSERT call (not N separate calls)
-    const insertCalls = client.query.mock.calls.filter(c => String(c[0]).includes('INSERT INTO options'));
+    const insertCalls = client.query.mock.calls.filter((c) => String(c[0]).includes('INSERT INTO options'));
     expect(insertCalls).toHaveLength(1);
   });
 
@@ -297,7 +357,7 @@ describe('POST /api/public-polls/:id/use', () => {
     });
 
     expect(res.statusCode).toBe(500);
-    const rollbackCall = client.query.mock.calls.find(c => c[0] === 'ROLLBACK');
+    const rollbackCall = client.query.mock.calls.find((c) => c[0] === 'ROLLBACK');
     expect(rollbackCall).toBeDefined();
     expect(client.release).toHaveBeenCalledOnce();
   });
@@ -412,7 +472,11 @@ describe('GET /api/public-polls (additional coverage)', () => {
   it('respects custom limit parameter (capped at 50, uses limit+1 fetch)', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] });
 
-    const res = await app.inject({ method: 'GET', url: '/api/public-polls?q=test&limit=100', headers: { 'x-init-data': 'dev' } });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/public-polls?q=test&limit=100',
+      headers: { 'x-init-data': 'dev' },
+    });
 
     expect(res.statusCode).toBe(200);
     const callArgs = mockQuery.mock.calls[0];
@@ -433,11 +497,23 @@ describe('GET /api/saved-polls', () => {
   it('includes is_public field in response', async () => {
     mockQuery.mockResolvedValueOnce({
       rows: [
-        { id: POLL_ID, name: 'Test', options: ['A', 'B'], emoji: '🎬', is_public: true, created_at: '2026-01-01', updated_at: '2026-01-01' },
+        {
+          id: POLL_ID,
+          name: 'Test',
+          options: ['A', 'B'],
+          emoji: '🎬',
+          is_public: true,
+          created_at: '2026-01-01',
+          updated_at: '2026-01-01',
+        },
       ],
     });
 
-    const res = await app.inject({ method: 'GET', url: '/api/saved-polls', headers: { 'x-init-data': 'dev' } });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/saved-polls',
+      headers: { 'x-init-data': 'dev' },
+    });
 
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
@@ -484,8 +560,8 @@ describe('createSession — 23505 race-condition fallback', () => {
     const dupError = Object.assign(new Error('unique violation'), { code: '23505' });
     const { createSession } = await import('../lib/sessions.js');
     mockQuery
-      .mockResolvedValueOnce({ rows: [] })            // initial SELECT: no existing session
-      .mockRejectedValueOnce(dupError)                // INSERT: 23505 race
+      .mockResolvedValueOnce({ rows: [] }) // initial SELECT: no existing session
+      .mockRejectedValueOnce(dupError) // INSERT: 23505 race
       .mockResolvedValueOnce({ rows: [{ id: SESSION_ID }] }); // fallback SELECT: finds it
 
     const result = await createSession({ id: -1001 }, 42, 'Test Session');
@@ -505,9 +581,9 @@ describe('createSession — 23505 race-condition fallback', () => {
     const dupError = Object.assign(new Error('unique violation'), { code: '23505' });
     const { createSession } = await import('../lib/sessions.js');
     mockQuery
-      .mockResolvedValueOnce({ rows: [] })  // initial SELECT: no existing
-      .mockRejectedValueOnce(dupError)       // INSERT: 23505
-      .mockResolvedValueOnce({ rows: [] });  // fallback SELECT: empty
+      .mockResolvedValueOnce({ rows: [] }) // initial SELECT: no existing
+      .mockRejectedValueOnce(dupError) // INSERT: 23505
+      .mockResolvedValueOnce({ rows: [] }); // fallback SELECT: empty
 
     await expect(createSession({ id: -1001 }, 42, 'Test')).rejects.toThrow('unique violation');
   });

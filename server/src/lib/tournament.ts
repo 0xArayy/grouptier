@@ -87,24 +87,20 @@ function assignTier(roundLost: number, numRounds: number): Tier {
  * Process a pick (winner beats loser) and return the next state.
  * Returns { nextState, done: true } when all comparisons are complete.
  */
-export function pick(
-  state: TournamentState,
-  winner: string,
-  loser: string,
-): TournamentState {
-  const numRounds = Math.ceil(Math.log2(
-    state.rounds[0].length * 2 - (state.rounds[0].some(m => m.isBye) ? 1 : 0),
-  )) || 1;
+export function pick(state: TournamentState, winner: string, loser: string): TournamentState {
+  const numRounds =
+    Math.ceil(Math.log2(state.rounds[0].length * 2 - (state.rounds[0].some((m) => m.isBye) ? 1 : 0))) || 1;
 
   // Don't record '__bye__' as an eliminated option — it's not a real entry.
-  const eliminated: TierEntry[] = loser === '__bye__'
-    ? [...state.eliminated]
-    : [...state.eliminated, { option: loser, tier: assignTier(state.currentRound, numRounds) }];
+  const eliminated: TierEntry[] =
+    loser === '__bye__'
+      ? [...state.eliminated]
+      : [...state.eliminated, { option: loser, tier: assignTier(state.currentRound, numRounds) }];
 
   const completedMatchups = state.completedMatchups + 1;
   const currentRound = state.currentRound;
   const currentMatchup = state.currentMatchup;
-  const rounds = state.rounds.map(r => [...r]);
+  const rounds = state.rounds.map((r) => [...r]);
 
   const roundWinner = winner;
   const currentRoundWinners = [...state.currentRoundWinners, roundWinner];
@@ -130,7 +126,11 @@ export function pick(
     const nextRoundMatchups: Matchup[] = [];
     for (let i = 0; i < currentRoundWinners.length; i += 2) {
       if (i + 1 < currentRoundWinners.length) {
-        nextRoundMatchups.push({ optionA: currentRoundWinners[i], optionB: currentRoundWinners[i + 1], isBye: false });
+        nextRoundMatchups.push({
+          optionA: currentRoundWinners[i],
+          optionB: currentRoundWinners[i + 1],
+          isBye: false,
+        });
       } else {
         nextRoundMatchups.push({ optionA: currentRoundWinners[i], optionB: '', isBye: true });
       }
@@ -170,8 +170,8 @@ export function buildRankedList(state: TournamentState): string[] {
   const result: string[] = [];
   for (const tier of tierOrder) {
     const inTier = state.eliminated
-      .filter(e => e.tier === tier)
-      .map(e => e.option)
+      .filter((e) => e.tier === tier)
+      .map((e) => e.option)
       .reverse(); // last eliminated = better within tier
     result.push(...inTier);
   }

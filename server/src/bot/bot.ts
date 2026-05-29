@@ -1,9 +1,10 @@
 import { Bot, InputFile } from 'grammy';
 import type { InlineQueryResultArticle, InlineQueryResultPhoto } from 'grammy/types';
-import { pool } from '../db/client.js';
 import { computeBorda } from '../db/borda.js';
+import { pool } from '../db/client.js';
+import { createSession } from '../lib/sessions.js';
 import { buildVoteUrl } from '../lib/urls.js';
-import { buildSetupCard, buildVotingCard, buildWinnerCard } from './cards.js';
+import { buildSetupCard } from './cards.js';
 
 export const bot = new Bot(process.env.BOT_TOKEN ?? '');
 
@@ -17,20 +18,10 @@ bot.command('newpoll', async (ctx) => {
     return ctx.reply('Use /newpoll in a group chat.');
   }
 
-  const existing = await pool.query(
-    "SELECT id FROM sessions WHERE chat_id = $1 AND status = 'collecting' LIMIT 1",
-    [ctx.chat.id],
-  );
-  let sessionId: string;
-  if (existing.rows.length > 0) {
-    sessionId = existing.rows[0].id;
-  } else {
-    const res = await pool.query(
-      "INSERT INTO sessions (chat_id, creator_user_id, name, status) VALUES ($1, $2, 'Untitled Poll', 'collecting') RETURNING id",
-      [ctx.chat.id, ctx.from?.id ?? null],
-    );
-    sessionId = res.rows[0].id;
-  }
+  const userId = ctx.from?.id ?? 0;
+  const outcome = await createSession(ctx.chat, userId, 'Untitled Poll');
+  // outcome.conflict means a collecting session already exists — reuse it
+  const sessionId = outcome.id;
 
   const manageUrl = buildVoteUrl(sessionId);
   const card = await buildSetupCard(manageUrl);
@@ -38,7 +29,6 @@ bot.command('newpoll', async (ctx) => {
     reply_markup: card.reply_markup,
   });
 });
-
 
 // Noop handler for display-only option grid buttons (answer all to prevent Telegram spinner timeout)
 bot.on('callback_query:data', async (ctx) => {
@@ -57,8 +47,9 @@ bot.on('inline_query', async (ctx) => {
   const sessionId = parts[0];
   const mode = parts[1]; // 'winner' or undefined
 
-  const serverUrl = process.env.SERVER_URL?.replace(/\/$/, '')
-    ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : null);
+  const serverUrl =
+    process.env.SERVER_URL?.replace(/\/$/, '') ??
+    (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null);
 
   // ── Winner card mode ────────────────────────────────────────────────────
   if (mode === 'winner') {
@@ -75,7 +66,10 @@ bot.on('inline_query', async (ctx) => {
     const sessionName = sessionRes.rows[0].name ?? 'Untitled Session';
     const borda = computeBorda(resultsRes.rows.map((r: { ranked_list: string[] }) => r.ranked_list));
     const medals = ['🥇', '🥈', '🥉'];
-    const caption = borda.slice(0, 3).map((r, i) => `${medals[i]} ${r.option}`).join('\n');
+    const caption = borda
+      .slice(0, 3)
+      .map((r, i) => `${medals[i]} ${r.option}`)
+      .join('\n');
     const photoUrl = `${serverUrl}/api/sessions/${sessionId}/winner-card`;
 
     const result: InlineQueryResultPhoto = {
@@ -95,7 +89,10 @@ bot.on('inline_query', async (ctx) => {
 
   const [sessionRes, resResult] = await Promise.all([
     pool.query('SELECT name, status FROM sessions WHERE id = $1', [sessionId]),
-    pool.query('SELECT ranked_list FROM user_results WHERE session_id = $1 AND user_id = $2', [sessionId, requesterId]),
+    pool.query('SELECT ranked_list FROM user_results WHERE session_id = $1 AND user_id = $2', [
+      sessionId,
+      requesterId,
+    ]),
   ]);
   if (sessionRes.rows.length === 0) return ctx.answerInlineQuery([]);
 

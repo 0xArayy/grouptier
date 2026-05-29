@@ -8,6 +8,11 @@
     "build": "cd frontend && npm run build && cd ../server && npm run build",
     "build:railway": "cd frontend && npm install --include=dev && npm run build && cd ../server && npm install --include=dev && npm run build",
     "start": "node server/dist/index.js",
-    "install:all": "cd server && npm install && cd ../frontend && npm install"
+    "install:all": "cd server && npm install && cd ../frontend && npm install",
+    "lint": "biome check server/src frontend/src",
+    "lint:fix": "biome check --write --unsafe server/src frontend/src"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.16"
   }
 }

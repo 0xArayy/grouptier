@@ -17,6 +17,13 @@ Key routing rules:
 - Save progress → invoke /context-save
 - Resume context → invoke /context-restore
 
+## Health Stack
+
+- typecheck-server: cd server && tsc --noEmit
+- typecheck-frontend: cd frontend && tsc --noEmit
+- test: cd server && npx vitest run
+- lint: npm run lint (biome check — 0 errors target, warnings OK)
+
 ## Design System
 Always read DESIGN.md before making any visual or UI decisions.
 All font choices, colors, spacing, and aesthetic direction are defined there.

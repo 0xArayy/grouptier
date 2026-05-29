@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { pool } from '../db/client.js';
-import { initDataMiddleware } from '../middleware/initData.js';
 import { createSession } from '../lib/sessions.js';
+import { initDataMiddleware } from '../middleware/initData.js';
 
 export async function publicPollRoutes(fastify: FastifyInstance) {
   // GET /api/public-polls?q=<search>&limit=20&offset=0 — paginated public poll catalog
@@ -12,9 +12,9 @@ export async function publicPollRoutes(fastify: FastifyInstance) {
     async (request, _reply) => {
       const q = (request.query.q ?? '').trim();
       const limit = Math.max(1, Math.min(Number(request.query.limit) || 20, 50));
-      const off   = Math.max(0, Number(request.query.offset) || 0);
+      const off = Math.max(0, Number(request.query.offset) || 0);
       // Fetch limit+1 to detect whether a next page exists (no COUNT query needed).
-      const fetch  = limit + 1;
+      const fetch = limit + 1;
 
       const SELECT = `
         SELECT id, name, emoji,
@@ -25,25 +25,22 @@ export async function publicPollRoutes(fastify: FastifyInstance) {
         FROM saved_polls
         WHERE is_public = true`;
 
-      let res;
-      if (q) {
-        res = await pool.query(
-          `${SELECT} AND name ILIKE $1
+      const res = q
+        ? await pool.query(
+            `${SELECT} AND name ILIKE $1
            ORDER BY uses_count DESC, updated_at DESC
            LIMIT $2 OFFSET $3`,
-          [`%${q}%`, fetch, off],
-        );
-      } else {
-        res = await pool.query(
-          `${SELECT}
+            [`%${q}%`, fetch, off],
+          )
+        : await pool.query(
+            `${SELECT}
            ORDER BY uses_count DESC, updated_at DESC
            LIMIT $1 OFFSET $2`,
-          [fetch, off],
-        );
-      }
+            [fetch, off],
+          );
 
       const hasMore = res.rows.length > limit;
-      const items   = hasMore ? res.rows.slice(0, limit) : res.rows;
+      const items = hasMore ? res.rows.slice(0, limit) : res.rows;
       const nextOffset = hasMore ? off + limit : null;
       return { items, nextOffset };
     },
@@ -83,25 +80,26 @@ export async function publicPollRoutes(fastify: FastifyInstance) {
         const outcome = await createSession(chat, userId, name, client);
         if (outcome.conflict) {
           await client.query('ROLLBACK');
-          return reply.status(409).send({ error: 'Session already exists', id: outcome.id, share_url: outcome.share_url });
+          return reply
+            .status(409)
+            .send({ error: 'Session already exists', id: outcome.id, share_url: outcome.share_url });
         }
 
         // Single bulk INSERT — clock_timestamp() gives each row its own timestamp for stable ordering
         const vals = options as string[];
         const placeholders = vals.map((_, i) => `($1, $${i + 2}, clock_timestamp())`).join(', ');
-        await client.query(
-          `INSERT INTO options (session_id, text, created_at) VALUES ${placeholders}`,
-          [outcome.id, ...vals],
-        );
+        await client.query(`INSERT INTO options (session_id, text, created_at) VALUES ${placeholders}`, [
+          outcome.id,
+          ...vals,
+        ]);
 
         // Increment uses_count
-        await client.query(
-          'UPDATE saved_polls SET uses_count = uses_count + 1 WHERE id = $1',
-          [id],
-        );
+        await client.query('UPDATE saved_polls SET uses_count = uses_count + 1 WHERE id = $1', [id]);
 
         await client.query('COMMIT');
-        return reply.status(201).send({ id: outcome.id, share_url: outcome.share_url, name, options: options as string[] });
+        return reply
+          .status(201)
+          .send({ id: outcome.id, share_url: outcome.share_url, name, options: options as string[] });
       } catch (err) {
         await client.query('ROLLBACK');
         throw err;

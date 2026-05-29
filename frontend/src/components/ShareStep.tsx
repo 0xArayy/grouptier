@@ -12,10 +12,13 @@ export function ShareStep({ shareUrl, sessionId, onDone }: Props) {
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    }).catch(() => {});
+    navigator.clipboard
+      .writeText(shareUrl)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      })
+      .catch(() => {});
   }
 
   function handleSendToTelegram() {
@@ -27,9 +30,7 @@ export function ShareStep({ shareUrl, sessionId, onDone }: Props) {
       <div className={styles.hero}>
         <img src={logoUrl} alt="GroupTier" className={styles.heroLogo} />
         <div className={styles.heroTitle}>Тир-лист готов</div>
-        <div className={styles.heroSubtitle}>
-          Поделись ссылкой — голосовать можно без бота в группе.
-        </div>
+        <div className={styles.heroSubtitle}>Поделись ссылкой — голосовать можно без бота в группе.</div>
       </div>
 
       <div className={styles.linkBox}>
@@ -39,13 +40,14 @@ export function ShareStep({ shareUrl, sessionId, onDone }: Props) {
 
       <div className={styles.actions}>
         <button
+          type="button"
           onClick={handleCopy}
           className={`${styles.copyBtn}${copied ? ` ${styles.copyBtnCopied}` : ''}`}
         >
           {copied ? '✓ Скопировано!' : 'Скопировать ссылку'}
         </button>
 
-        <button onClick={handleSendToTelegram} className={styles.tgBtn}>
+        <button type="button" onClick={handleSendToTelegram} className={styles.tgBtn}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
             <path d="M21.5 3.5 2.5 11l6 2.2 9-7-7 8 1 6.3 3-3 4.5 3.5 3.5-17z" fill="currentColor" />
           </svg>
@@ -61,7 +63,7 @@ export function ShareStep({ shareUrl, sessionId, onDone }: Props) {
           <div className={styles.continueTitle}>Поделился?</div>
           <div className={styles.continueSub}>Пройди тир-лист и следи за результатом</div>
         </div>
-        <button onClick={onDone} className={styles.continueBtn}>
+        <button type="button" onClick={onDone} className={styles.continueBtn}>
           Дальше <span>→</span>
         </button>
       </div>

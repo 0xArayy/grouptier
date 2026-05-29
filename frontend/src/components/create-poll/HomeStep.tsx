@@ -16,9 +16,16 @@ interface Props {
 }
 
 export function HomeStep({
-  customName, setCustomName, error, busy,
-  savedPolls, savedPollsLoading,
-  onNavigateMyPolls, onNavigatePresets, onCreate, onGenerateWithAi,
+  customName,
+  setCustomName,
+  error,
+  busy,
+  savedPolls,
+  savedPollsLoading,
+  onNavigateMyPolls,
+  onNavigatePresets,
+  onCreate,
+  onGenerateWithAi,
 }: Props) {
   return (
     <div className={styles.container}>
@@ -29,22 +36,20 @@ export function HomeStep({
         </div>
       </div>
 
-      <button className={styles.primaryBtn} disabled={busy} onClick={onNavigatePresets}>
+      <button type="button" className={styles.primaryBtn} disabled={busy} onClick={onNavigatePresets}>
         <span>Выбрать шаблон</span>
         <span>→</span>
       </button>
 
       {savedPolls.length > 0 && (
         <div className={styles.myPollsWrap}>
-          <button className={styles.secondaryBtn} disabled={busy} onClick={onNavigateMyPolls}>
+          <button type="button" className={styles.secondaryBtn} disabled={busy} onClick={onNavigateMyPolls}>
             <span className={styles.myPollsLeft}>
               <span className={styles.myPollsIcon}>⭐</span>
               <span>Мои шаблоны</span>
             </span>
             <span className={styles.myPollsRight}>
-              <span className={styles.myPollsCount}>
-                {savedPollsLoading ? '…' : savedPolls.length}
-              </span>
+              <span className={styles.myPollsCount}>{savedPollsLoading ? '…' : savedPolls.length}</span>
               <span className={styles.myPollsArrow}>›</span>
             </span>
           </button>
@@ -62,14 +67,19 @@ export function HomeStep({
         className={styles.input}
         placeholder="Название тир-листа…"
         value={customName}
-        onChange={e => setCustomName(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onCreate(); } }}
-        autoFocus
+        onChange={(e) => setCustomName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            onCreate();
+          }
+        }}
       />
       {error && <div className={styles.errorText}>{error}</div>}
 
       <div className={styles.bottomActions}>
         <button
+          type="button"
           className={styles.aiBtn}
           disabled={busy || !customName.trim()}
           onClick={onGenerateWithAi}
@@ -77,11 +87,7 @@ export function HomeStep({
           <span>Сгенерировать с ИИ</span>
           <span className={styles.aiSpark}>✦</span>
         </button>
-        <button
-          className={styles.ghostBtn}
-          disabled={busy}
-          onClick={onCreate}
-        >
+        <button type="button" className={styles.ghostBtn} disabled={busy} onClick={onCreate}>
           {busy ? 'Создаём…' : 'Создать пустой тир-лист'}
         </button>
       </div>

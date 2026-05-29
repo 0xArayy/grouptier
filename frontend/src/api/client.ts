@@ -13,7 +13,11 @@ export class ApiError extends Error {
 async function throwOnError(res: Response): Promise<void> {
   if (res.ok) return;
   let body: { error?: string; id?: string } = {};
-  try { body = await res.json(); } catch { /* non-JSON body, leave body empty */ }
+  try {
+    body = await res.json();
+  } catch {
+    /* non-JSON body, leave body empty */
+  }
   throw new ApiError(res.status, body);
 }
 
@@ -31,7 +35,7 @@ async function apiFetch(url: string, opts: RequestInit & { json?: unknown } = {}
   if (json !== undefined) h['Content-Type'] = 'application/json';
   return fetch(url, {
     ...rest,
-    headers: { ...h, ...(extraHeaders as Record<string, string> | undefined ?? {}) },
+    headers: { ...h, ...((extraHeaders as Record<string, string> | undefined) ?? {}) },
     ...(json !== undefined && { body: JSON.stringify(json) }),
   });
 }
@@ -59,7 +63,11 @@ export async function addOption(sessionId: string, text: string): Promise<{ opti
   return res.json();
 }
 
-export async function bulkReplaceOptions(sessionId: string, options: string[], name?: string): Promise<{ options: string[] }> {
+export async function bulkReplaceOptions(
+  sessionId: string,
+  options: string[],
+  name?: string,
+): Promise<{ options: string[] }> {
   const res = await apiFetch(`${BASE}/sessions/${sessionId}/options`, {
     method: 'PUT',
     json: { options, ...(name !== undefined && { name }) },
@@ -69,7 +77,9 @@ export async function bulkReplaceOptions(sessionId: string, options: string[], n
 }
 
 export async function removeOption(sessionId: string, text: string): Promise<{ options: string[] }> {
-  const res = await apiFetch(`${BASE}/sessions/${sessionId}/options/${encodeURIComponent(text)}`, { method: 'DELETE' });
+  const res = await apiFetch(`${BASE}/sessions/${sessionId}/options/${encodeURIComponent(text)}`, {
+    method: 'DELETE',
+  });
   await throwOnError(res);
   return res.json();
 }
@@ -115,13 +125,20 @@ export async function fetchSavedPolls(): Promise<SavedPoll[]> {
   return res.json();
 }
 
-export async function createSavedPoll(name: string, options: string[], emoji: string): Promise<{ id: string }> {
+export async function createSavedPoll(
+  name: string,
+  options: string[],
+  emoji: string,
+): Promise<{ id: string }> {
   const res = await apiFetch(`${BASE}/saved-polls`, { method: 'POST', json: { name, options, emoji } });
   await throwOnError(res);
   return res.json();
 }
 
-export async function updateSavedPoll(id: string, data: { name?: string; options?: string[]; emoji?: string }): Promise<void> {
+export async function updateSavedPoll(
+  id: string,
+  data: { name?: string; options?: string[]; emoji?: string },
+): Promise<void> {
   const res = await apiFetch(`${BASE}/saved-polls/${id}`, { method: 'PUT', json: data });
   await throwOnError(res);
 }
@@ -157,7 +174,9 @@ export async function recordTemplateUse(id: string): Promise<void> {
       method: 'POST',
       headers: { 'x-init-data': getInitData() },
     });
-  } catch { /* silent */ }
+  } catch {
+    /* silent */
+  }
 }
 
 export async function generateAiOptions(
@@ -195,7 +214,9 @@ export async function searchPublicPolls(
   return res.json();
 }
 
-export async function usePublicPoll(id: string): Promise<{ id: string; share_url: string; name: string; options: string[] }> {
+export async function applyPublicPoll(
+  id: string,
+): Promise<{ id: string; share_url: string; name: string; options: string[] }> {
   const res = await apiFetch(`${BASE}/public-polls/${id}/use`, { method: 'POST' });
   await throwOnError(res);
   return res.json();

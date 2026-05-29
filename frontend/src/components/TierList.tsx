@@ -35,7 +35,14 @@ function buildRows(rankedList: string[]): TierRow[] {
   ] as TierRow[];
 }
 
-export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, submitting, submitError }: Props) {
+export function TierList({
+  rankedList,
+  sessionClosed,
+  onSubmit,
+  onViewGroup,
+  submitting,
+  submitError,
+}: Props) {
   const [rows, setRows] = useState<TierRow[]>(() => buildRows(rankedList));
 
   const [activeOption, setActiveOption] = useState<string | null>(null);
@@ -52,7 +59,12 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
 
   const canDrag = !sessionClosed && !submitting && rows.length > 1;
 
-  useEffect(() => () => { cleanupRef.current?.(); }, []);
+  useEffect(
+    () => () => {
+      cleanupRef.current?.();
+    },
+    [],
+  );
 
   function setHoverPos(tier: Tier | null, index: number | null) {
     overTierRef.current = tier;
@@ -72,7 +84,7 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
     for (const [tier, el] of rowRefs.current) {
       const rect = el.getBoundingClientRect();
       if (y >= rect.top && y <= rect.bottom && x >= rect.left && x <= rect.right) {
-        const tierOptions = rows.find(r => r.tier === tier)?.options ?? [];
+        const tierOptions = rows.find((r) => r.tier === tier)?.options ?? [];
         let insertIndex = tierOptions.length;
         for (let i = 0; i < tierOptions.length; i++) {
           const chipEl = chipRefs.current.get(`${tier}-${tierOptions[i]}`);
@@ -95,7 +107,7 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
     window.Telegram?.WebApp?.disableVerticalSwipes?.();
     document.body.style.userSelect = 'none';
 
-    const fromIndex = rows.find(r => r.tier === fromTier)?.options.indexOf(option) ?? 0;
+    const fromIndex = rows.find((r) => r.tier === fromTier)?.options.indexOf(option) ?? 0;
     dragRef.current = { option, fromTier, fromIndex };
     setActiveOption(option);
     setFloatPos({ x: e.clientX, y: e.clientY });
@@ -115,12 +127,12 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
         const target = overTierRef.current;
         const dropIndex = overIndexRef.current;
         if (target !== null) {
-          setRows(prev => {
-            const next = prev.map(r => ({ ...r, options: [...r.options] }));
-            const src = next.find(r => r.tier === drag.fromTier);
-            const dst = next.find(r => r.tier === target);
+          setRows((prev) => {
+            const next = prev.map((r) => ({ ...r, options: [...r.options] }));
+            const src = next.find((r) => r.tier === drag.fromTier);
+            const dst = next.find((r) => r.tier === target);
             if (!src || !dst) return prev;
-            src.options = src.options.filter(o => o !== drag.option);
+            src.options = src.options.filter((o) => o !== drag.option);
             let insertAt: number;
             if (drag.fromTier === target) {
               const raw = dropIndex ?? dst.options.length;
@@ -160,14 +172,12 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
 
   function handleSubmit() {
     if (!onSubmit) return;
-    onSubmit(rows.flatMap(r => r.options));
+    onSubmit(rows.flatMap((r) => r.options));
   }
 
   return (
     <div className={styles.container}>
-      {sessionClosed && (
-        <div className={styles.closedBanner}>🔒 Голосование закрыто</div>
-      )}
+      {sessionClosed && <div className={styles.closedBanner}>🔒 Голосование закрыто</div>}
 
       <div className={styles.screenMono}>РАССТАНОВКА ТИРОВ</div>
       <div className={styles.screenTitle}>Расставь по местам</div>
@@ -180,16 +190,13 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
           return (
             <div
               key={tier}
-              ref={el => {
+              ref={(el) => {
                 if (el) rowRefs.current.set(tier, el);
                 else rowRefs.current.delete(tier);
               }}
               className={`${styles.row}${isTargeted ? ` ${styles.rowTargeted}` : ''}`}
             >
-              <div
-                className={styles.tierLabel}
-                style={{ background: meta.bg }}
-              >
+              <div className={styles.tierLabel} style={{ background: meta.bg }}>
                 {tier}
               </div>
               <div className={styles.chips}>
@@ -200,13 +207,13 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
                     <span key={opt} style={{ display: 'contents' }}>
                       {showIndicator && <DropIndicator />}
                       <span
-                        ref={el => {
+                        ref={(el) => {
                           const key = `${tier}-${opt}`;
                           if (el) chipRefs.current.set(key, el);
                           else chipRefs.current.delete(key);
                         }}
                         className={`${styles.chip}${isDragging ? ` ${styles.chipGrabbing}` : canDrag ? ` ${styles.chipGrab}` : ''}`}
-                        onPointerDown={e => onChipPointerDown(e, opt, tier)}
+                        onPointerDown={(e) => onChipPointerDown(e, opt, tier)}
                       >
                         {opt}
                       </span>
@@ -214,9 +221,7 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
                   );
                 })}
                 {isTargeted && overIndex === options.length && <DropIndicator />}
-                {options.length === 0 && (
-                  <span className={styles.emptyHint}>перетащи сюда</span>
-                )}
+                {options.length === 0 && <span className={styles.emptyHint}>перетащи сюда</span>}
               </div>
             </div>
           );
@@ -230,21 +235,17 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
       )}
 
       {floatPos && activeOption && (
-        <div
-          className={styles.floatingChip}
-          style={{ left: floatPos.x - 40, top: floatPos.y - 16 }}
-        >
+        <div className={styles.floatingChip} style={{ left: floatPos.x - 40, top: floatPos.y - 16 }}>
           {activeOption}
         </div>
       )}
 
-      {submitError && (
-        <div className={styles.submitError}>{submitError}</div>
-      )}
+      {submitError && <div className={styles.submitError}>{submitError}</div>}
 
       <div className={styles.footer}>
         {onSubmit && !sessionClosed && (
           <button
+            type="button"
             className={styles.submitBtn}
             style={{ opacity: submitting ? 0.7 : 1 }}
             onClick={handleSubmit}
@@ -254,7 +255,7 @@ export function TierList({ rankedList, sessionClosed, onSubmit, onViewGroup, sub
           </button>
         )}
         {onViewGroup && (
-          <button className={styles.groupBtn} onClick={onViewGroup}>
+          <button type="button" className={styles.groupBtn} onClick={onViewGroup}>
             Смотреть итоги →
           </button>
         )}

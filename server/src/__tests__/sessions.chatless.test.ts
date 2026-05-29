@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
+import Fastify from 'fastify';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -17,13 +17,16 @@ vi.mock('../bot/bot.js', () => ({
 const FAKE_IMG = Buffer.from('fake-png');
 vi.mock('../bot/cards.js', () => ({
   buildVotingCard: () => ({
-    image: FAKE_IMG, caption: 'test caption', parse_mode: 'HTML',
+    image: FAKE_IMG,
+    caption: 'test caption',
+    parse_mode: 'HTML',
     reply_markup: { inline_keyboard: [[{ text: '▶ VOTE', url: 'https://t.me/test' }]] },
   }),
   buildVotingCaption: () => 'test caption',
   buildWinnerCard: () => ({ image: FAKE_IMG, caption: '🥇 Winner', parse_mode: 'HTML' }),
   buildSetupCard: () => ({
-    image: FAKE_IMG, parse_mode: 'HTML',
+    image: FAKE_IMG,
+    parse_mode: 'HTML',
     reply_markup: { inline_keyboard: [[{ text: '⚙️ SET UP', url: 'https://t.me/test' }]] },
   }),
 }));
@@ -39,7 +42,8 @@ let mockUserId = 42;
 vi.mock('../middleware/initData.js', () => ({
   initDataMiddleware: async (req: { telegramUser: unknown; telegramChat: unknown }) => {
     req.telegramUser = { id: mockUserId, first_name: 'Test' };
-    req.telegramChat = mockChatId !== null ? { id: mockChatId, type: 'supergroup', title: 'Test Group' } : null;
+    req.telegramChat =
+      mockChatId !== null ? { id: mockChatId, type: 'supergroup', title: 'Test Group' } : null;
   },
 }));
 
@@ -215,7 +219,9 @@ describe('GET /api/sessions/:id effectiveStatus (chatless)', () => {
 
   it('shows voting (not collecting) for chatless session with message_sent=false', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', status: 'voting', message_sent: false, chat_id: null }] })
+      .mockResolvedValueOnce({
+        rows: [{ id: SESSION_ID, name: 'Poll', status: 'voting', message_sent: false, chat_id: null }],
+      })
       .mockResolvedValueOnce({ rows: [] }) // register voter
       .mockResolvedValueOnce({ rows: [] }) // options
       .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // voter count
@@ -236,7 +242,9 @@ describe('GET /api/sessions/:id effectiveStatus (chatless)', () => {
   it('still recovers crash for group session with message_sent=false', async () => {
     mockChatId = -1001;
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', status: 'voting', message_sent: false, chat_id: -1001 }] })
+      .mockResolvedValueOnce({
+        rows: [{ id: SESSION_ID, name: 'Poll', status: 'voting', message_sent: false, chat_id: -1001 }],
+      })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ count: '1' }] })
@@ -267,7 +275,9 @@ describe('POST /api/sessions/:id/vote (chatless)', () => {
 
   it('flips status to voting without calling sendPhoto, returns share_url', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: null, status: 'collecting' }] })
+      .mockResolvedValueOnce({
+        rows: [{ id: SESSION_ID, name: 'Poll', chat_id: null, status: 'collecting' }],
+      })
       .mockResolvedValueOnce({ rows: [{ count: '3' }] }) // option count
       .mockResolvedValueOnce({ rows: [] }); // update status to voting
 
@@ -297,7 +307,9 @@ describe('POST /api/sessions/:id/close (chatless)', () => {
 
   it('closes session and returns winner without calling sendPhoto', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: null, creator_user_id: 42, status: 'voting' }] })
+      .mockResolvedValueOnce({
+        rows: [{ id: SESSION_ID, name: 'Poll', chat_id: null, creator_user_id: 42, status: 'voting' }],
+      })
       .mockResolvedValueOnce({ rows: [] }) // update to closed
       .mockResolvedValueOnce({ rows: [{ ranked_list: ['A', 'B'] }, { ranked_list: ['A', 'B'] }] }); // results
 
@@ -315,7 +327,9 @@ describe('POST /api/sessions/:id/close (chatless)', () => {
 
   it('returns winner=null when no votes', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: null, creator_user_id: 42, status: 'voting' }] })
+      .mockResolvedValueOnce({
+        rows: [{ id: SESSION_ID, name: 'Poll', chat_id: null, creator_user_id: 42, status: 'voting' }],
+      })
       .mockResolvedValueOnce({ rows: [] }) // update to closed
       .mockResolvedValueOnce({ rows: [] }); // no results
 
@@ -333,7 +347,9 @@ describe('POST /api/sessions/:id/close (chatless)', () => {
     mockUserId = 99; // different user from creator_user_id=42
     mockQuery
       // pg returns BIGINT as string — simulate that here
-      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: null, creator_user_id: '42', status: 'voting' }] });
+      .mockResolvedValueOnce({
+        rows: [{ id: SESSION_ID, name: 'Poll', chat_id: null, creator_user_id: '42', status: 'voting' }],
+      });
 
     const res = await app.inject({
       method: 'POST',
@@ -347,7 +363,9 @@ describe('POST /api/sessions/:id/close (chatless)', () => {
 
   it('does not block close when creator_user_id is null (legacy session)', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ id: SESSION_ID, name: 'Poll', chat_id: null, creator_user_id: null, status: 'voting' }] })
+      .mockResolvedValueOnce({
+        rows: [{ id: SESSION_ID, name: 'Poll', chat_id: null, creator_user_id: null, status: 'voting' }],
+      })
       .mockResolvedValueOnce({ rows: [] }) // update to closed
       .mockResolvedValueOnce({ rows: [] }); // no results
 

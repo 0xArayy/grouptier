@@ -37,12 +37,31 @@ if (!process.env.GROQ_API_KEY) {
   process.exit(1);
 }
 
-// Auto-initialize DB schema on every start (idempotent — uses IF NOT EXISTS)
+// Auto-initialize DB schema on every start (idempotent — uses IF NOT EXISTS).
+// Each statement is run independently so a harmless failure on one (e.g. an
+// ALTER that references a table created by an earlier ad-hoc migration) does
+// not abort the rest of the batch.
 const schemaPath = path.join(__dirname, '../../scripts/schema.sql');
 if (existsSync(schemaPath)) {
   const sql = readFileSync(schemaPath, 'utf8');
-  await pool.query(sql);
-  console.log('✓ DB schema ready');
+  // Split on statement boundaries; filter out blank/comment-only entries.
+  const stmts = sql
+    .split(/;[ \t]*(\r?\n|$)/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && !s.startsWith('--'));
+  let ok = 0;
+  let skipped = 0;
+  for (const stmt of stmts) {
+    try {
+      await pool.query(stmt);
+      ok++;
+    } catch (err) {
+      // Log but continue — idempotent migrations tolerate partial pre-existing state.
+      console.warn(`schema stmt skipped (${(err as Error).message.split('\n')[0]})`);
+      skipped++;
+    }
+  }
+  console.log(`✓ DB schema ready (${ok} ok, ${skipped} skipped)`);
 } else {
   console.warn('schema.sql not found — skipping auto-init');
 }

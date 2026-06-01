@@ -60,7 +60,37 @@ CREATE TABLE IF NOT EXISTS saved_polls (
 
 CREATE INDEX IF NOT EXISTS saved_polls_user_id_idx ON saved_polls(user_id);
 
--- Tags column for curated public_templates (full-text search enrichment)
+-- Publish-related columns for saved_polls (added post-launch)
+ALTER TABLE saved_polls ADD COLUMN IF NOT EXISTS is_public    BOOLEAN  NOT NULL DEFAULT false;
+ALTER TABLE saved_polls ADD COLUMN IF NOT EXISTS show_author  BOOLEAN  NOT NULL DEFAULT false;
+ALTER TABLE saved_polls ADD COLUMN IF NOT EXISTS author_name  TEXT;
+ALTER TABLE saved_polls ADD COLUMN IF NOT EXISTS uses_count   INTEGER  NOT NULL DEFAULT 0;
+ALTER TABLE saved_polls ADD COLUMN IF NOT EXISTS categories   TEXT[]   NOT NULL DEFAULT '{}';
+
+-- Curated public templates catalog
+CREATE TABLE IF NOT EXISTS public_templates (
+  id        UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+  emoji     TEXT    NOT NULL DEFAULT '📋',
+  name      TEXT    NOT NULL,
+  options   JSONB   NOT NULL DEFAULT '[]',
+  author    TEXT    NOT NULL DEFAULT 'GroupTier',
+  official  BOOLEAN NOT NULL DEFAULT false,
+  category  TEXT    NOT NULL DEFAULT 'other',
+  tags      TEXT[]  NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Usage event log for HOT metric
+CREATE TABLE IF NOT EXISTS template_uses (
+  id          UUID      PRIMARY KEY DEFAULT gen_random_uuid(),
+  template_id UUID      NOT NULL REFERENCES public_templates(id) ON DELETE CASCADE,
+  used_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS template_uses_template_id_idx ON template_uses (template_id);
+CREATE INDEX IF NOT EXISTS template_uses_used_at_idx     ON template_uses (used_at DESC, template_id);
+
+-- Tags column for curated public_templates (full-text search enrichment, idempotent on existing DBs)
 ALTER TABLE public_templates ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}';
 
 -- Seed tags for curated templates by category (idempotent — only updates rows with empty tags)

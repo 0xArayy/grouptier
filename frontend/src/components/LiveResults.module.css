@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 0 0 16px;
+  padding: 0;
   flex: 1;
   overflow-y: auto;
   max-width: 400px;
@@ -298,9 +298,28 @@
 
 /* Footer */
 .footer {
-  padding: 10px 16px 0;
+  position: sticky;
+  bottom: 0;
+  background: var(--bg, #000);
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
   display: flex;
   gap: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.backBtn {
+  flex: 0 0 auto;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  color: oklch(0.78 0.16 35);
+  border-radius: var(--radius-xl);
+  font-size: 13px;
+  font-weight: 600;
+  min-height: var(--tap-target-min);
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
 }
 
 .shareBtn {

@@ -13,6 +13,7 @@ interface Props {
   resultCount: number;
   voterCount: number;
   sessionClosed: boolean;
+  onBack?: () => void;
   onShare?: () => void;
   onClose?: () => void;
   closing?: boolean;
@@ -45,6 +46,7 @@ export function LiveResults({
   resultCount,
   voterCount,
   sessionClosed,
+  onBack,
   onShare,
   onClose,
   closing,
@@ -197,6 +199,11 @@ export function LiveResults({
 
       {/* Footer buttons */}
       <div className={styles.footer}>
+        {onBack && (
+          <button type="button" className={styles.backBtn} onClick={onBack}>
+            ← Меню
+          </button>
+        )}
         {onShare && (
           <button type="button" className={styles.shareBtn} onClick={onShare}>
             ↗ Share

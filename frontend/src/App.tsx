@@ -448,13 +448,13 @@ export default function App() {
     return (
       <>
         {offline && <OfflineBanner />}
-        <HomeButton onClick={handleGoHome} />
         <LiveResults
           sessionName={session.name}
           bordaRanking={session.borda_ranking}
           resultCount={session.result_count}
           voterCount={session.voter_count}
           sessionClosed={session.status === 'closed'}
+          onBack={handleGoHome}
           onShare={submitted || session.status === 'closed' ? handleShare : undefined}
           onClose={session.status === 'voting' ? handleClose : undefined}
           closing={closing}

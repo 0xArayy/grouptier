@@ -116,6 +116,56 @@ describe('GET /api/templates', () => {
     expect(mockQuery).toHaveBeenCalledTimes(1);
   });
 
+  it('includes tags field in response items', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          id: TEMPLATE_ID,
+          emoji: '🎮',
+          name: 'Во что сыграем?',
+          options: ['Minecraft', 'Valorant'],
+          author: 'GroupTier',
+          official: true,
+          category: 'games',
+          uses_7d: 3,
+          hot: false,
+          tags: ['games', 'gaming', 'pc'],
+        },
+      ],
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/templates' });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.items[0].tags).toEqual(['games', 'gaming', 'pc']);
+  });
+
+  it('passes through empty tags array when DB row has empty tags', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          id: TEMPLATE_ID,
+          emoji: '🎬',
+          name: 'Что посмотреть?',
+          options: ['Inception', 'Dune'],
+          author: 'GroupTier',
+          official: true,
+          category: 'movies',
+          uses_7d: 0,
+          hot: false,
+          tags: [],
+        },
+      ],
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/templates' });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.items[0].tags).toEqual([]);
+  });
+
   it('clamps limit to max 100', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [{ id: TEMPLATE_ID, name: 'Poll' }] });
     const res = await app.inject({ method: 'GET', url: '/api/templates?limit=999' });

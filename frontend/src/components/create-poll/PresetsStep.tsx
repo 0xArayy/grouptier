@@ -94,7 +94,11 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
       if (category !== 'all' && category !== 'hot' && category !== 'official' && t.category !== category)
         return false;
       if (!q) return true;
-      return t.name.toLowerCase().includes(q) || t.options.some((o) => o.toLowerCase().includes(q));
+      return (
+        t.name.toLowerCase().includes(q) ||
+        t.options.some((o) => o.toLowerCase().includes(q)) ||
+        (t.tags ?? []).some((tag) => tag.toLowerCase().includes(q))
+      );
     });
 
     // user-published polls: not shown for hot/official filters
@@ -294,6 +298,11 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
                         })}
                       </div>
                     )}
+                    {p.matched_option &&
+                      query.trim() &&
+                      !p.name.toLowerCase().includes(query.trim().toLowerCase()) && (
+                        <div className={styles.cardMatchedOption}>Содержит: «{p.matched_option}»</div>
+                      )}
                   </div>
                   <span className={styles.cardArrow}>›</span>
                 </button>

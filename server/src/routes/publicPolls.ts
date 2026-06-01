@@ -16,26 +16,40 @@ export async function publicPollRoutes(fastify: FastifyInstance) {
       // Fetch limit+1 to detect whether a next page exists (no COUNT query needed).
       const fetch = limit + 1;
 
-      const SELECT = `
-        SELECT id, name, emoji,
-               CASE WHEN show_author THEN author_name ELSE NULL END AS author_name,
-               uses_count,
-               jsonb_array_length(options) AS option_count,
-               categories
-        FROM saved_polls
-        WHERE is_public = true`;
-
       const res = q
         ? await pool.query(
-            `${SELECT} AND name ILIKE $1
-           ORDER BY uses_count DESC, updated_at DESC
-           LIMIT $2 OFFSET $3`,
+            `SELECT id, name, emoji,
+                    CASE WHEN show_author THEN author_name ELSE NULL END AS author_name,
+                    uses_count,
+                    jsonb_array_length(options) AS option_count,
+                    categories,
+                    mo.elem AS matched_option
+             FROM saved_polls
+             LEFT JOIN LATERAL (
+               SELECT elem
+               FROM jsonb_array_elements_text(options) elem
+               WHERE elem ILIKE $1
+               LIMIT 1
+             ) mo ON true
+             WHERE is_public = true
+               AND (
+                 name ILIKE $1
+                 OR (jsonb_typeof(options) = 'array' AND mo.elem IS NOT NULL)
+               )
+             ORDER BY uses_count DESC, updated_at DESC
+             LIMIT $2 OFFSET $3`,
             [`%${q}%`, fetch, off],
           )
         : await pool.query(
-            `${SELECT}
-           ORDER BY uses_count DESC, updated_at DESC
-           LIMIT $1 OFFSET $2`,
+            `SELECT id, name, emoji,
+                    CASE WHEN show_author THEN author_name ELSE NULL END AS author_name,
+                    uses_count,
+                    jsonb_array_length(options) AS option_count,
+                    categories
+             FROM saved_polls
+             WHERE is_public = true
+             ORDER BY uses_count DESC, updated_at DESC
+             LIMIT $1 OFFSET $2`,
             [fetch, off],
           );
 

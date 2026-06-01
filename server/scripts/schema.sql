@@ -59,3 +59,14 @@ CREATE TABLE IF NOT EXISTS saved_polls (
 );
 
 CREATE INDEX IF NOT EXISTS saved_polls_user_id_idx ON saved_polls(user_id);
+
+-- Tags column for curated public_templates (full-text search enrichment)
+ALTER TABLE public_templates ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}';
+
+-- Seed tags for curated templates by category (idempotent — only updates rows with empty tags)
+UPDATE public_templates SET tags = ARRAY['games', 'gaming', 'pc', 'multiplayer', 'steam']::TEXT[] WHERE category = 'games'   AND tags = '{}';
+UPDATE public_templates SET tags = ARRAY['food', 'restaurant', 'pizza', 'delivery', 'lunch']::TEXT[] WHERE category = 'food'    AND tags = '{}';
+UPDATE public_templates SET tags = ARRAY['movies', 'cinema', 'film', 'watch', 'кино']::TEXT[]           WHERE category = 'movies'  AND tags = '{}';
+UPDATE public_templates SET tags = ARRAY['series', 'tv', 'netflix', 'show', 'сериал']::TEXT[]           WHERE category = 'series'  AND tags = '{}';
+UPDATE public_templates SET tags = ARRAY['music', 'song', 'album', 'playlist', 'artist']::TEXT[]         WHERE category = 'music'   AND tags = '{}';
+UPDATE public_templates SET tags = ARRAY['sport', 'football', 'fitness', 'match', 'team']::TEXT[]        WHERE category = 'sport'   AND tags = '{}';

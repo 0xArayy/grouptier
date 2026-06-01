@@ -158,6 +158,7 @@ export interface PublicTemplate {
   hot: boolean;
   uses_7d: number;
   category: 'games' | 'food' | 'movies' | 'series' | 'music' | 'sport' | 'other';
+  tags?: string[];
 }
 
 export async function fetchTemplates(signal?: AbortSignal): Promise<PublicTemplate[]> {
@@ -199,6 +200,7 @@ export interface PublicPoll {
   uses_count: number;
   option_count: number;
   categories: string[];
+  matched_option?: string | null;
 }
 
 export async function searchPublicPolls(

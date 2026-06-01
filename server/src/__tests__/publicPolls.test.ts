@@ -459,6 +459,128 @@ describe('POST /api/saved-polls/:id/unpublish', () => {
   });
 });
 
+// ── GET /api/public-polls — option-text search (LATERAL join) ────────────
+
+describe('GET /api/public-polls — option-text search', () => {
+  let app: FastifyInstance;
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    mockChat = null;
+    app = await buildPublicApp();
+  });
+
+  it('search query SQL contains LEFT JOIN LATERAL', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    await app.inject({
+      method: 'GET',
+      url: '/api/public-polls?q=pizza',
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toMatch(/LEFT JOIN LATERAL/i);
+    expect(sql).toMatch(/jsonb_array_elements_text/i);
+    expect(sql).toMatch(/jsonb_typeof/i);
+  });
+
+  it('returns matched_option when option text matches query', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          id: POLL_ID,
+          name: 'Restaurants',
+          emoji: '🍕',
+          author_name: null,
+          uses_count: 2,
+          option_count: 5,
+          categories: ['food'],
+          matched_option: 'Pizza Hut',
+        },
+      ],
+    });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/public-polls?q=pizza',
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.items[0].matched_option).toBe('Pizza Hut');
+  });
+
+  it('returns matched_option as null when match is by name only', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          id: POLL_ID,
+          name: 'Pizza Places',
+          emoji: '🍕',
+          author_name: null,
+          uses_count: 1,
+          option_count: 3,
+          categories: ['food'],
+          matched_option: null,
+        },
+      ],
+    });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/public-polls?q=pizza',
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    const body = JSON.parse(res.body);
+    expect(body.items[0].matched_option).toBeNull();
+  });
+
+  it('does not include matched_option in non-search branch', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          id: POLL_ID,
+          name: 'Movies',
+          emoji: '🎬',
+          author_name: null,
+          uses_count: 0,
+          option_count: 4,
+          categories: ['movies'],
+        },
+      ],
+    });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/public-polls',
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    const body = JSON.parse(res.body);
+    expect(body.items[0].matched_option).toBeUndefined();
+    // verify no LATERAL in non-search SQL
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).not.toMatch(/LATERAL/i);
+  });
+
+  it('returns empty results when nothing matches — no crash on empty options', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/public-polls?q=xyzunmatchable',
+      headers: { 'x-init-data': 'dev' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.items).toEqual([]);
+    expect(body.nextOffset).toBeNull();
+  });
+});
+
 // ── GET /api/public-polls — coverage gaps ─────────────────────────────────
 
 describe('GET /api/public-polls (additional coverage)', () => {

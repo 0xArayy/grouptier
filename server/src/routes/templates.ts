@@ -31,6 +31,7 @@ const FULL_QUERY = `
     t.author,
     t.official,
     t.category,
+    t.tags,
     COALESCE(u.cnt, 0) AS uses_7d,
     (t.id IN (SELECT template_id FROM top3) AND COALESCE(u.cnt, 0) >= 1) AS hot
   FROM public_templates t

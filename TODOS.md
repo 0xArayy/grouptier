@@ -2,6 +2,14 @@
 
 ## Remaining
 
+### [template-tag-ui-chips] — Tag filter chips in PresetsStep — after tags ship, surface them as clickable filter chips alongside the existing category chips; requires tag facet API or client-side grouping from loaded template data
+
+### [template-tag-ai-suggest] — AI-suggested tags — when an admin creates/updates a public template, call the AI endpoint to suggest candidate tags from the template name + options; saves manual tagging effort as the catalog grows
+
+### [template-similar] — Similar templates by tag overlap — on the template card or in a detail view, show "похожие шаблоны" using tag intersection; pure client-side after tags are loaded
+
+### [template-match-highlight] — Highlight matched text in search results — bold/highlight the specific substring that caused a template or poll to match the query (both option-text and name matches); pure frontend enhancement to PresetsStep
+
 ### ~~[options-pre-vote-share]~~ ✅ Done — "Поделиться" button on OptionsStep copies session link so others can add options before voting; `POST /api/sessions` now returns `share_url`; 409 catch added to AI blank-canvas path
 
 ### ~~[apierror-status-checks]~~ ✅ Done — App.tsx 404/403 status detection replaced from fragile string-matching to `err instanceof ApiError && err.status === N`; fixes blank screen for users opening the bot without an active session

@@ -8,7 +8,7 @@ export async function publicPollRoutes(fastify: FastifyInstance) {
   // Response: { items: PublicPoll[], nextOffset: number | null }
   fastify.get<{ Querystring: { q?: string; limit?: string; offset?: string } }>(
     '/api/public-polls',
-    { preHandler: initDataMiddleware, config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
+    { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
     async (request, _reply) => {
       const q = (request.query.q ?? '').trim();
       const limit = Math.max(1, Math.min(Number(request.query.limit) || 20, 50));

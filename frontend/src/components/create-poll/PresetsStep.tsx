@@ -53,14 +53,24 @@ export function PresetsStep({ busy, error, onBack, onSelect }: Props) {
   const load = useCallback((signal?: AbortSignal) => {
     setLoading(true);
     setFetchError('');
-    Promise.all([fetchTemplates(signal), searchPublicPolls()])
-      .then(([tmpl, { items, nextOffset }]) => {
-        setTemplates(tmpl);
-        setPolls(items);
-        setPollsNextOffset(nextOffset);
-      })
-      .catch((err) => {
-        if ((err as Error).name !== 'AbortError') setFetchError('Не удалось загрузить шаблоны.');
+    Promise.allSettled([fetchTemplates(signal), searchPublicPolls()])
+      .then(([tmplResult, pollsResult]) => {
+        const aborted =
+          tmplResult.status === 'rejected' && (tmplResult.reason as Error).name === 'AbortError';
+        if (aborted) return;
+
+        if (tmplResult.status === 'fulfilled') {
+          setTemplates(tmplResult.value);
+        }
+        if (pollsResult.status === 'fulfilled') {
+          const { items, nextOffset } = pollsResult.value;
+          setPolls(items);
+          setPollsNextOffset(nextOffset);
+        }
+        // Show error only when templates (the primary source) failed to load
+        if (tmplResult.status === 'rejected') {
+          setFetchError('Не удалось загрузить шаблоны.');
+        }
       })
       .finally(() => setLoading(false));
   }, []);

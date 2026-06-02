@@ -45,9 +45,11 @@ const schemaPath = path.join(__dirname, '../../scripts/schema.sql');
 if (existsSync(schemaPath)) {
   const sql = readFileSync(schemaPath, 'utf8');
   // Split on statement boundaries; filter out blank/comment-only entries.
+  // Strip leading comment lines before the check so that statements preceded
+  // by a "-- comment" block are not incorrectly discarded.
   const stmts = sql
     .split(/;[ \t]*(\r?\n|$)/)
-    .map((s) => s.trim())
+    .map((s) => s.replace(/^(\s*--[^\n]*\n)*/g, '').trim())
     .filter((s) => s.length > 0 && !s.startsWith('--'));
   let ok = 0;
   let skipped = 0;

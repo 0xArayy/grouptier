@@ -94,7 +94,6 @@ CREATE TABLE IF NOT EXISTS template_uses (
 CREATE INDEX IF NOT EXISTS template_uses_template_id_idx ON template_uses(template_id);
 CREATE INDEX IF NOT EXISTS template_uses_used_at_template_id_idx ON template_uses(used_at DESC, template_id);
 
--- Tags for full-text search enrichment (idempotent on existing DBs)
 ALTER TABLE public_templates ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}';
 
 -- Seed official templates (idempotent — upsert to fix author/official on existing rows)

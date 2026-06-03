@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fastifyCors from '@fastify/cors';
@@ -37,51 +37,13 @@ if (!process.env.GROQ_API_KEY) {
   process.exit(1);
 }
 
-// Auto-initialize DB schema on every start (idempotent — uses IF NOT EXISTS).
-// Each statement is run independently so a harmless failure on one (e.g. an
-// ALTER that references a table created by an earlier ad-hoc migration) does
-// not abort the rest of the batch.
-const schemaPath = path.join(__dirname, '../../scripts/schema.sql');
-if (existsSync(schemaPath)) {
-  const sql = readFileSync(schemaPath, 'utf8');
-  // Split on statement boundaries; filter out blank/comment-only entries.
-  // Strip leading comment lines before the check so that statements preceded
-  // by a "-- comment" block are not incorrectly discarded.
-  const stmts = sql
-    .split(/;[ \t]*(\r?\n|$)/)
-    .map((s) => s.replace(/^(\s*--[^\n]*\n)*/g, '').trim())
-    .filter((s) => s.length > 0 && !s.startsWith('--'));
-  let ok = 0;
-  let skipped = 0;
-  for (const stmt of stmts) {
-    try {
-      await pool.query(stmt);
-      ok++;
-    } catch (err) {
-      // Log but continue — idempotent migrations tolerate partial pre-existing state.
-      console.warn(`schema stmt skipped (${(err as Error).message.split('\n')[0]})`);
-      skipped++;
-    }
-  }
-  console.log(`✓ DB schema ready (${ok} ok, ${skipped} skipped)`);
-} else {
-  console.warn('schema.sql not found — skipping auto-init');
-}
-
-// Clean up abandoned collecting sessions and half-open voting sessions older than 24 h.
-// collecting: stranded sessions block new session creation (unique index).
-// voting+message_sent=false: server crashed between status flip and sendMessage — never got a bot message.
-const cleaned = await pool.query(
-  `DELETE FROM sessions
-   WHERE created_at < NOW() - INTERVAL '24 hours'
-     AND (
-       status = 'collecting'
-       OR (status = 'voting' AND message_sent = false)
-     )
-   RETURNING id`,
-);
-if (cleaned.rowCount && cleaned.rowCount > 0) {
-  console.log(`✓ Cleaned up ${cleaned.rowCount} stranded session(s)`);
+// Schema migrations are NO LONGER run on every boot — doing so ran 27+ sequential
+// DB round-trips before the server could listen, adding seconds to every (cold)
+// start. Run them once per deploy via `npm run migrate`, or set RUN_MIGRATIONS=1
+// to opt back into boot-time migration for a single run.
+if (process.env.RUN_MIGRATIONS === '1' || process.env.RUN_MIGRATIONS === 'true') {
+  const { runSchemaMigrations } = await import('./migrate.js');
+  await runSchemaMigrations();
 }
 
 // Import bot AFTER env check so grammy never gets an empty token
@@ -146,6 +108,12 @@ if (existsSync(frontendDist)) {
 const port = parseInt(process.env.PORT ?? '3000', 10);
 await fastify.listen({ port, host: '0.0.0.0' });
 console.log(`Server listening on port ${port}`);
+
+// Off the critical path: clean up stale sessions after we're already serving,
+// so it never delays the first response on a cold start.
+void import('./migrate.js')
+  .then(({ cleanupStaleSessions }) => cleanupStaleSessions())
+  .catch((err) => console.error('session cleanup failed:', err));
 
 bot.start({
   onStart: () => console.log('Bot polling started'),

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import logoUrl from '../assets/grouptier-logo.png';
+import logoUrl from '../assets/grouptier-logo.webp';
 import styles from './ShareStep.module.css';
 
 interface Props {

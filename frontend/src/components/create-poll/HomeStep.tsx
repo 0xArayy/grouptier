@@ -1,5 +1,5 @@
 import type { SavedPoll } from '../../api/client.ts';
-import logoUrl from '../../assets/grouptier-logo.png';
+import logoUrl from '../../assets/grouptier-logo.webp';
 import styles from './HomeStep.module.css';
 
 interface Props {

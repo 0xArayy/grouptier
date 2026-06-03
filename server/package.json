@@ -7,6 +7,7 @@
     "dev": "tsx watch --env-file=.env src/index.ts",
     "build": "tsc && mkdir -p dist/bot/assets && cp src/bot/assets/*.png dist/bot/assets/",
     "start": "node dist/index.js",
+    "migrate": "node dist/migrate.js",
     "db:init": "node --input-type=module < scripts/init-db.js",
     "test": "vitest run"
   },

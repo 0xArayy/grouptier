@@ -110,6 +110,9 @@ export async function sessionRoutes(fastify: FastifyInstance) {
           resultsRes.rows.find(
             (r: { user_id: number; ranked_list: string[] }) => String(r.user_id) === String(userId),
           )?.ranked_list ?? null,
+        // Mirrors POST /api/sessions/:id/close auth: only the creator may close
+        // (creatorless legacy sessions are closable by anyone). Drives the UI button.
+        can_close: session.creator_user_id == null || String(session.creator_user_id) === String(userId),
         share_url: buildVoteUrl(id),
       };
     },

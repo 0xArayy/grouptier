@@ -27,6 +27,13 @@ export interface SessionPayload {
   result_count: number;
   borda_ranking: BordaResult[];
   my_result: string[] | null;
+  /**
+   * Whether the requesting user is allowed to close this session. Mirrors the
+   * server-side auth rule in POST /api/sessions/:id/close: the creator may close,
+   * and legacy sessions with no creator_user_id are closable by anyone. The UI
+   * uses this to show/hide the "close & announce" button.
+   */
+  can_close: boolean;
   share_url: string;
 }
 
@@ -39,7 +46,9 @@ type ResultsRow = { user_id: number; ranked_list: string[] };
  * queries (N = connected clients per session).
  */
 export interface SharedPayload {
-  base: Omit<SessionPayload, 'my_result'>;
+  base: Omit<SessionPayload, 'my_result' | 'can_close'>;
+  /** Session creator (BIGINT → string from pg), or null for legacy/creatorless sessions. */
+  creatorUserId: string | null;
   resultsRows: ResultsRow[];
 }
 
@@ -79,6 +88,7 @@ export async function buildSharedPayload(id: string): Promise<SharedPayload | nu
       borda_ranking: borda,
       share_url: buildVoteUrl(id),
     },
+    creatorUserId: session.creator_user_id != null ? String(session.creator_user_id) : null,
     resultsRows: resultsRes.rows as ResultsRow[],
   };
 }
@@ -89,7 +99,11 @@ export function hydratePayload(shared: SharedPayload, userId: number | undefined
     userId !== undefined
       ? (shared.resultsRows.find((r) => String(r.user_id) === String(userId))?.ranked_list ?? null)
       : null;
-  return { ...shared.base, my_result: myResult };
+  // Mirrors the close-endpoint auth: creatorless sessions are closable by anyone,
+  // otherwise only the creator. Unauthenticated requests (no userId) can't close.
+  const canClose =
+    shared.creatorUserId == null || (userId !== undefined && shared.creatorUserId === String(userId));
+  return { ...shared.base, my_result: myResult, can_close: canClose };
 }
 
 /**

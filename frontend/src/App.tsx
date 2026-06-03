@@ -456,7 +456,7 @@ export default function App() {
           sessionClosed={session.status === 'closed'}
           onBack={handleGoHome}
           onShare={submitted || session.status === 'closed' ? handleShare : undefined}
-          onClose={session.status === 'voting' ? handleClose : undefined}
+          onClose={session.status === 'voting' && session.can_close ? handleClose : undefined}
           closing={closing}
           onSaveTemplate={submitted ? handleSaveTemplate : undefined}
           initialSaved={initialSaved}

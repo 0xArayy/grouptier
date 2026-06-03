@@ -255,6 +255,8 @@ export interface SessionData {
   result_count: number;
   borda_ranking: { option: string; score: number }[];
   my_result: string[] | null;
+  /** True only when the current user may close the session (creator, or legacy creatorless). */
+  can_close: boolean;
   share_url: string;
 }
 

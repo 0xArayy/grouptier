@@ -26,6 +26,7 @@ const _FAKE_SHARED: SharedPayload = {
     borda_ranking: [],
     share_url: 'https://t.me/bot/app?startapp=test',
   },
+  creatorUserId: null,
   resultsRows: [],
 };
 
@@ -41,9 +42,10 @@ vi.mock('../lib/sessionPayload.js', () => ({
       borda_ranking: [],
       share_url: 'https://t.me/bot/app?startapp=test',
     },
+    creatorUserId: null,
     resultsRows: [],
   }),
-  hydratePayload: vi.fn((shared: SharedPayload) => ({ ...shared.base, my_result: null })),
+  hydratePayload: vi.fn((shared: SharedPayload) => ({ ...shared.base, my_result: null, can_close: true })),
   resolveEffectiveStatus: vi.fn((s: { status: string }) => s.status),
 }));
 
